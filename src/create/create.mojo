@@ -71,6 +71,11 @@ struct Canvas(Movable):
     var _stroke: Color
     var _stroke_width: Int
     var _stroke_enabled: Bool
+    var mouse_x: Int
+    var mouse_y: Int
+    var mouse_pressed: Bool
+    var mouse_button: Int
+    var _held_keys: List[Int]
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
@@ -81,6 +86,17 @@ struct Canvas(Movable):
         self._stroke = Color.black()
         self._stroke_width = 1
         self._stroke_enabled = True
+        self.mouse_x = 0
+        self.mouse_y = 0
+        self.mouse_pressed = False
+        self.mouse_button = 0
+        self._held_keys = List[Int]()
+
+    def is_key_down(self, keycode: Int) -> Bool:
+        for k in self._held_keys:
+            if k[] == keycode:
+                return True
+        return False
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -287,17 +303,31 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
             if event.isa[Quit]():
                 canvas.close()
             elif event.isa[KeyDown]():
-                program.on_key_down(event[KeyDown].keycode)
+                var keycode = event[KeyDown].keycode
+                canvas._held_keys.append(keycode)
+                program.on_key_down(keycode)
             elif event.isa[KeyUp]():
-                program.on_key_up(event[KeyUp].keycode)
+                var keycode = event[KeyUp].keycode
+                for i in range(len(canvas._held_keys)):
+                    if canvas._held_keys[i] == keycode:
+                        _ = canvas._held_keys.pop(i)
+                        break
+                program.on_key_up(keycode)
             elif event.isa[MouseMoved]():
                 var e = event[MouseMoved]
+                canvas.mouse_x = e.x
+                canvas.mouse_y = e.y
                 program.on_mouse_moved(e.x, e.y)
             elif event.isa[MouseButtonDown]():
                 var e = event[MouseButtonDown]
+                canvas.mouse_pressed = True
+                canvas.mouse_button = e.button
+                canvas.mouse_x = e.x
+                canvas.mouse_y = e.y
                 program.on_mouse_down(e.button, e.x, e.y)
             elif event.isa[MouseButtonUp]():
                 var e = event[MouseButtonUp]
+                canvas.mouse_pressed = False
                 program.on_mouse_up(e.button, e.x, e.y)
             elif event.isa[MouseWheel]():
                 var e = event[MouseWheel]
