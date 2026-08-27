@@ -12,6 +12,9 @@ struct App(Program, Movable, Deinitable):
         canvas.rect(10, 10, 100, 100)
         canvas.fill(Color.blue())
         canvas.circle(200, 100, 50)
+        canvas.stroke(Color.green())
+        canvas.stroke_width(3)
+        canvas.line(0, 0, 300, 200)
 
 
 def main() raises:

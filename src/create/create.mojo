@@ -181,6 +181,46 @@ struct Canvas(Movable):
                         px[unsafe_offset=off + 2] = self._stroke.b
                         px[unsafe_offset=off + 3] = self._stroke.a
 
+    def line(mut self, x0: Int, y0: Int, x1: Int, y1: Int) raises:
+        if not self._stroke_enabled:
+            return
+        var W = self.width()
+        var H = self.height()
+        var px = self._win.pixels()
+        var c = self._stroke
+        var half = self._stroke_width // 2
+        var dx = abs(x1 - x0)
+        var dy = -abs(y1 - y0)
+        var sx = 1 if x0 < x1 else -1
+        var sy = 1 if y0 < y1 else -1
+        var err = dx + dy
+        var x = x0
+        var y = y0
+        while True:
+            for ry in range(-half, self._stroke_width - half):
+                for rx in range(-half, self._stroke_width - half):
+                    var nx = x + rx
+                    var ny = y + ry
+                    if 0 <= nx < W and 0 <= ny < H:
+                        var off = (ny * W + nx) * 4
+                        px[unsafe_offset=off] = c.r
+                        px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b
+                        px[unsafe_offset=off + 3] = c.a
+            if x == x1 and y == y1:
+                break
+            var e2 = 2 * err
+            if e2 >= dy:
+                if x == x1:
+                    break
+                err += dy
+                x += sx
+            if e2 <= dx:
+                if y == y1:
+                    break
+                err += dx
+                y += sy
+
     def background(mut self, color: Color) raises:
         var w = self.width()
         var h = self.height()
