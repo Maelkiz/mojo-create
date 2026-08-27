@@ -7,10 +7,10 @@ struct App(Program, Movable, Deinitable):
         return WindowConfig("Example Sketch", 300, 200)
 
     def update(mut self, mut canvas: Canvas) raises:
-        canvas.background(255)
-        canvas.fill(255, 0, 0)
+        canvas.background(Color(255))
+        canvas.fill(Color.red())
         canvas.rect(10, 10, 100, 100)
-        canvas.fill(0, 0, 255)
+        canvas.fill(Color.blue())
         canvas.circle(200, 100, 50)
 
 

@@ -12,6 +12,45 @@ from window.event import (
 )
 
 
+struct Color(ImplicitlyCopyable, Movable):
+    var r: UInt8
+    var g: UInt8
+    var b: UInt8
+    var a: UInt8
+
+    def __init__(out self, r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255):
+        self.r = r
+        self.g = g
+        self.b = b
+        self.a = a
+
+    def __init__(out self, gray: UInt8):
+        self.r = gray
+        self.g = gray
+        self.b = gray
+        self.a = 255
+
+    @staticmethod
+    def black() -> Color:
+        return Color(0)
+
+    @staticmethod
+    def white() -> Color:
+        return Color(255)
+
+    @staticmethod
+    def red() -> Color:
+        return Color(255, 0, 0)
+
+    @staticmethod
+    def green() -> Color:
+        return Color(0, 255, 0)
+
+    @staticmethod
+    def blue() -> Color:
+        return Color(0, 0, 255)
+
+
 struct WindowConfig(ImplicitlyCopyable, Movable):
     var title: String
     var width: Int
@@ -27,17 +66,13 @@ struct WindowConfig(ImplicitlyCopyable, Movable):
 
 struct Canvas(Movable):
     var _win: Window
-    var _fill_r: UInt8
-    var _fill_g: UInt8
-    var _fill_b: UInt8
+    var _fill: Color
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
         if config._fullscreen:
             self._win.set_fullscreen(True)
-        self._fill_r = 0
-        self._fill_g = 0
-        self._fill_b = 0
+        self._fill = Color.white()
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -57,13 +92,8 @@ struct Canvas(Movable):
     def present(mut self) raises:
         self._win.present()
 
-    def fill(mut self, gray: UInt8):
-        self.fill(gray, gray, gray)
-
-    def fill(mut self, r: UInt8, g: UInt8, b: UInt8):
-        self._fill_r = r
-        self._fill_g = g
-        self._fill_b = b
+    def fill(mut self, color: Color):
+        self._fill = color
 
     def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
         var W = self.width()
@@ -76,10 +106,10 @@ struct Canvas(Movable):
         for row in range(y0, y1):
             for col in range(x0, x1):
                 var off = (row * W + col) * 4
-                px[unsafe_offset=off] = self._fill_r
-                px[unsafe_offset=off + 1] = self._fill_g
-                px[unsafe_offset=off + 2] = self._fill_b
-                px[unsafe_offset=off + 3] = 255
+                px[unsafe_offset=off] = self._fill.r
+                px[unsafe_offset=off + 1] = self._fill.g
+                px[unsafe_offset=off + 2] = self._fill.b
+                px[unsafe_offset=off + 3] = self._fill.a
 
     def circle(mut self, cx: Int, cy: Int, r: Int) raises:
         var W = self.width()
@@ -96,24 +126,21 @@ struct Canvas(Movable):
                 var dx = col - cx
                 if dx * dx + dy * dy <= r2:
                     var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = self._fill_r
-                    px[unsafe_offset=off + 1] = self._fill_g
-                    px[unsafe_offset=off + 2] = self._fill_b
-                    px[unsafe_offset=off + 3] = 255
+                    px[unsafe_offset=off] = self._fill.r
+                    px[unsafe_offset=off + 1] = self._fill.g
+                    px[unsafe_offset=off + 2] = self._fill.b
+                    px[unsafe_offset=off + 3] = self._fill.a
 
-    def background(mut self, gray: UInt8) raises:
-        self.background(gray, gray, gray)
-
-    def background(mut self, r: UInt8, g: UInt8, b: UInt8) raises:
+    def background(mut self, color: Color) raises:
         var w = self.width()
         var h = self.height()
         var px = self._win.pixels()
         for i in range(w * h):
             var off = i * 4
-            px[unsafe_offset=off] = r
-            px[unsafe_offset=off + 1] = g
-            px[unsafe_offset=off + 2] = b
-            px[unsafe_offset=off + 3] = 255
+            px[unsafe_offset=off] = color.r
+            px[unsafe_offset=off + 1] = color.g
+            px[unsafe_offset=off + 2] = color.b
+            px[unsafe_offset=off + 3] = color.a
 
 
 trait Program:
