@@ -12,11 +12,23 @@ from window.event import (
 )
 
 
-@fieldwise_init
 struct WindowConfig(ImplicitlyCopyable, Movable):
     var title: String
     var width: Int
     var height: Int
+    var _fullscreen: Bool
+
+    def __init__(out self, title: String, width: Int, height: Int):
+        self.title = title
+        self.width = width
+        self.height = height
+        self._fullscreen = False
+
+    @staticmethod
+    def fullscreen(title: String) -> WindowConfig:
+        var c = WindowConfig(title, 0, 0)
+        c._fullscreen = True
+        return c
 
 
 struct Canvas(Movable):
@@ -27,6 +39,8 @@ struct Canvas(Movable):
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
+        if config._fullscreen:
+            self._win.set_fullscreen(True)
         self._fill_r = 0
         self._fill_g = 0
         self._fill_b = 0
