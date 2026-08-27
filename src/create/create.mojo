@@ -73,6 +73,26 @@ struct Canvas(Movable):
                 px[unsafe_offset=off + 2] = self._fill_b
                 px[unsafe_offset=off + 3] = 255
 
+    def circle(mut self, cx: Int, cy: Int, r: Int) raises:
+        var W = self.width()
+        var H = self.height()
+        var x0 = max(cx - r, 0)
+        var y0 = max(cy - r, 0)
+        var x1 = min(cx + r + 1, W)
+        var y1 = min(cy + r + 1, H)
+        var r2 = r * r
+        var px = self._win.pixels()
+        for row in range(y0, y1):
+            var dy = row - cy
+            for col in range(x0, x1):
+                var dx = col - cx
+                if dx * dx + dy * dy <= r2:
+                    var off = (row * W + col) * 4
+                    px[unsafe_offset=off] = self._fill_r
+                    px[unsafe_offset=off + 1] = self._fill_g
+                    px[unsafe_offset=off + 2] = self._fill_b
+                    px[unsafe_offset=off + 3] = 255
+
     def background(mut self, gray: UInt8) raises:
         self.background(gray, gray, gray)
 

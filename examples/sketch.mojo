@@ -10,6 +10,8 @@ struct App(Program, Movable, Deinitable):
         canvas.background(255)
         canvas.fill(255, 0, 0)
         canvas.rect(10, 10, 100, 100)
+        canvas.fill(0, 0, 255)
+        canvas.circle(200, 100, 50)
 
 
 def main() raises:
