@@ -233,13 +233,24 @@ struct Canvas(Movable):
             px[unsafe_offset=off + 3] = color.a
 
 
+@fieldwise_init
+struct Time(ImplicitlyCopyable, Movable):
+    var frame_count: Int
+    var delta_time: Float64
+    var delta_millis: Int
+
+
 trait Program:
     def window(self) -> WindowConfig: ...
 
     def setup(mut self) raises:
         pass
 
-    def update(mut self, mut canvas: Canvas) raises: ...
+    def update(mut self, mut canvas: Canvas) raises:
+        pass
+
+    def update(mut self, mut canvas: Canvas, time: Time) raises:
+        self.update(canvas)
 
     def on_key_down(mut self, keycode: Int) raises:
         pass
@@ -267,6 +278,9 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
     var canvas = Canvas(program.window())
     program.setup()
 
+    var frame_count = 0
+    var last_ticks = canvas._win.ticks()
+
     while canvas.is_open():
         var events = canvas.events()
         for event in events:
@@ -292,7 +306,12 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
                 var e = event[Resized]
                 program.on_resize(e.width, e.height)
 
-        program.update(canvas)
+        var now = canvas._win.ticks()
+        var delta_millis = now - last_ticks
+        last_ticks = now
+        frame_count += 1
+        var time = Time(frame_count, Float64(delta_millis) / 1000.0, delta_millis)
+        program.update(canvas, time)
         canvas.present()
 
 
