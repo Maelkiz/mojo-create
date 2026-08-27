@@ -117,7 +117,7 @@ struct Canvas(Movable):
 
 
 trait Program:
-    def window(mut self) -> WindowConfig: ...
+    def window(self) -> WindowConfig: ...
 
     def setup(mut self) raises:
         pass
