@@ -106,13 +106,13 @@ struct Canvas(Movable):
         self._rng ^= self._rng << 17
         return self._rng
 
-    def random_f(mut self) -> Float64:
+    def random(mut self) -> Float64:
         return Float64(self._xorshift()) / Float64(UInt64.MAX)
 
-    def random_f(mut self, low: Float64, high: Float64) -> Float64:
-        return low + self.random_f() * (high - low)
+    def random(mut self, low: Float64, high: Float64) -> Float64:
+        return low + self.random() * (high - low)
 
-    def random_i(mut self, low: Int, high: Int) -> Int:
+    def random(mut self, low: Int, high: Int) -> Int:
         return low + Int(self._xorshift() % UInt64(high - low))
 
     def is_open(self) -> Bool:
