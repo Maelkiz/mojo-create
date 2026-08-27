@@ -18,19 +18,11 @@ struct WindowConfig(ImplicitlyCopyable, Movable):
     var height: Int
     var _fullscreen: Bool
 
-    @staticmethod
-    def size(title: String, width: Int, height: Int) -> WindowConfig:
-        return WindowConfig(title, width, height, False)
-
-    @staticmethod
-    def fullscreen(title: String) -> WindowConfig:
-        return WindowConfig(title, 0, 0, True)
-
-    def __init__(out self, title: String, width: Int, height: Int, fullscreen: Bool):
+    def __init__(out self, title: String, width: Int = 0, height: Int = 0):
         self.title = title
         self.width = width
         self.height = height
-        self._fullscreen = fullscreen
+        self._fullscreen = width == 0 and height == 0
 
 
 struct Canvas(Movable):
