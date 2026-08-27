@@ -1,12 +1,13 @@
 from create import *
 
 
-struct App(Program, Movable):
-    def setup(mut self):
-        init_window("Example Sketch", 300, 200)
+@fieldwise_init
+struct App(Program, Movable, Deinitable):
+    def settings(mut self) -> WindowConfig:
+        return WindowConfig("Example Sketch", 300, 200)
 
-    def update(mut self):
-        draw_background(0)
+    def update(mut self, mut canvas: Canvas) raises:
+        draw_background(canvas, 255)
 
 
 def main() raises:

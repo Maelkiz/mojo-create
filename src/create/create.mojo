@@ -1,5 +1,6 @@
 from window.window import Window
 from window.event import (
+    Event,
     Quit,
     Resized,
     KeyDown,
@@ -10,48 +11,78 @@ from window.event import (
     MouseWheel,
 )
 
-var _win: Optional[Window] = None
+
+@fieldwise_init
+struct WindowConfig(ImplicitlyCopyable, Movable):
+    var title: String
+    var width: Int
+    var height: Int
 
 
-def init_window(title: String, width: Int, height: Int) raises:
-    _win = Window(title, width, height)
+struct Canvas(Movable):
+    var _win: Window
+
+    def __init__(out self, config: WindowConfig) raises:
+        self._win = Window(config.title, config.width, config.height)
+
+    def is_open(self) -> Bool:
+        return self._win.is_open()
+
+    def close(mut self):
+        self._win.close()
+
+    def width(self) -> Int:
+        return self._win.width()
+
+    def height(self) -> Int:
+        return self._win.height()
+
+    def events(mut self) raises -> List[Event]:
+        return self._win.events()
+
+    def present(mut self) raises:
+        self._win.present()
 
 
 trait Program:
-    def setup(mut self):
+    def settings(mut self) -> WindowConfig: ...
+
+    def setup(mut self) raises:
         pass
 
-    def update(mut self): ...
+    def update(mut self, mut canvas: Canvas) raises: ...
 
-    def on_key_down(mut self, keycode: Int):
+    def on_key_down(mut self, keycode: Int) raises:
         pass
 
-    def on_key_up(mut self, keycode: Int):
+    def on_key_up(mut self, keycode: Int) raises:
         pass
 
-    def on_mouse_moved(mut self, x: Int, y: Int):
+    def on_mouse_moved(mut self, x: Int, y: Int) raises:
         pass
 
-    def on_mouse_down(mut self, button: Int, x: Int, y: Int):
+    def on_mouse_down(mut self, button: Int, x: Int, y: Int) raises:
         pass
 
-    def on_mouse_up(mut self, button: Int, x: Int, y: Int):
+    def on_mouse_up(mut self, button: Int, x: Int, y: Int) raises:
         pass
 
-    def on_mouse_wheel(mut self, x: Int, y: Int):
+    def on_mouse_wheel(mut self, x: Int, y: Int) raises:
         pass
 
-    def on_resize(mut self, width: Int, height: Int):
+    def on_resize(mut self, width: Int, height: Int) raises:
         pass
 
 
-def run[P: Program & Movable](var program: P) raises:
+def run[P: Program & Movable & Deinitable](var program: P) raises:
+    var canvas = Canvas(program.settings())
     program.setup()
 
-    while _win.value().is_open():
-        for event in _win.value().events():
+    while canvas.is_open():
+        var events = canvas.events()
+        for event in events:
             if event.isa[Quit]():
-                _win.value().close()
+                canvas.close()
             elif event.isa[KeyDown]():
                 program.on_key_down(event[KeyDown].keycode)
             elif event.isa[KeyUp]():
@@ -72,14 +103,15 @@ def run[P: Program & Movable](var program: P) raises:
                 var e = event[Resized]
                 program.on_resize(e.width, e.height)
 
-        program.update()
-        _win.value().present()
+        program.update(canvas)
+        canvas.present()
 
 
-def draw_background(gray: UInt8) raises:
-    var px = _win.value().pixels()
-    var total = _win.value().width() * _win.value().height()
-    for i in range(total):
+def draw_background(mut canvas: Canvas, gray: UInt8) raises:
+    var w = canvas.width()
+    var h = canvas.height()
+    var px = canvas._win.pixels()
+    for i in range(w * h):
         var off = i * 4
         px[unsafe_offset=off] = gray
         px[unsafe_offset=off + 1] = gray
