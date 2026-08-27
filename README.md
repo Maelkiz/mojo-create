@@ -12,26 +12,29 @@ from create import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    def settings(mut self) -> WindowConfig:
-        return WindowConfig("My Program", 800, 600)
+    def window(self) -> WindowConfig:
+        return WindowConfig("My Sketch", 800, 600)
 
     def update(mut self, mut canvas: Canvas) raises:
-        draw_background(canvas, 255)  # White background
+        canvas.background(Color(255))
+        canvas.fill(Color.red())
+        canvas.circle(400, 300, 100)
 
 
 def main() raises:
     run(App())
 ```
 
-Define a struct conforming to `Program`, implement `settings` (window config)
+Define a struct conforming to `Program`, implement `window` (window config)
 and `update` (called every frame), then hand it to `run`.
 
 ## The `Program` trait
 
 ```mojo
 trait Program:
-    def settings(mut self) -> WindowConfig: ...   # required — title, width, height
-    def update(mut self, mut canvas: Canvas) raises: ...  # required — per frame
+    def window(self) -> WindowConfig: ...        # required — title and size
+    def update(mut self, mut canvas: Canvas) raises: ...         # required
+    def update(mut self, mut canvas: Canvas, time: Time) raises: ...  # or with time
 
     # optional — default no-ops:
     def setup(mut self) raises: ...
@@ -44,14 +47,49 @@ trait Program:
     def on_resize(mut self, width: Int, height: Int) raises: ...
 ```
 
-Only `settings` and `update` must be implemented. All other methods are
-optional — override only what you need. User state lives in struct fields.
+Override `update(canvas, time)` instead of `update(canvas)` to receive frame
+timing. User state lives in struct fields.
 
-## Drawing functions
+## Window config
 
-| Function | Description |
-|---|---|
-| `draw_background(canvas, gray)` | Fill canvas with a grayscale value (0–255) |
+```mojo
+WindowConfig("My Sketch", 800, 600)  # windowed
+WindowConfig("My Sketch")            # fullscreen
+```
+
+## Color
+
+```mojo
+Color(255)               # gray
+Color(255, 0, 0)         # RGB
+Color(255, 0, 0, 128)    # RGBA
+Color.red()              # named constant (also black, white, green, blue)
+```
+
+## Drawing
+
+```mojo
+canvas.background(Color(40))
+
+canvas.fill(Color.red())
+canvas.stroke(Color.black())
+canvas.stroke_width(2)
+canvas.rect(x, y, w, h)
+canvas.circle(cx, cy, r)
+
+canvas.no_fill()         # outline only
+canvas.no_stroke()       # filled only
+canvas.line(x0, y0, x1, y1)
+```
+
+## Time
+
+```mojo
+def update(mut self, mut canvas: Canvas, time: Time) raises:
+    # time.frame_count   — frames elapsed since start
+    # time.delta_time    — seconds since last frame (Float64)
+    # time.delta_millis  — milliseconds since last frame (Int)
+```
 
 ## Running
 
