@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [tasks]
 run = "mojo run -I src -I ../mojo-window/src"
+setup = "git config core.hooksPath .githooks"
 
 [dependencies]
 mojo = ">=1.0.0,<2"

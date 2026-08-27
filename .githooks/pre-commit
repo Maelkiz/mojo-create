@@ -1,0 +1,10 @@
+#!/bin/sh
+echo "Compiling..."
+pixi run mojo build -I src -I ../mojo-window/src examples/sketch.mojo -o /tmp/mojo-create-precommit-check 2>&1
+status=$?
+rm -f /tmp/mojo-create-precommit-check
+if [ $status -ne 0 ]; then
+    echo "Compilation failed — commit aborted."
+    exit 1
+fi
+exit 0
