@@ -7,7 +7,7 @@ struct App(Program, Movable, Deinitable):
         return WindowConfig("Example Sketch", 300, 200)
 
     def update(mut self, mut canvas: Canvas) raises:
-        draw_background(canvas, 255)
+        canvas.background(255)
 
 
 def main() raises:

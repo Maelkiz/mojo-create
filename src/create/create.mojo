@@ -43,6 +43,20 @@ struct Canvas(Movable):
     def present(mut self) raises:
         self._win.present()
 
+    def background(mut self, gray: UInt8) raises:
+        self.background(gray, gray, gray)
+
+    def background(mut self, r: UInt8, g: UInt8, b: UInt8) raises:
+        var w = self.width()
+        var h = self.height()
+        var px = self._win.pixels()
+        for i in range(w * h):
+            var off = i * 4
+            px[unsafe_offset=off] = r
+            px[unsafe_offset=off + 1] = g
+            px[unsafe_offset=off + 2] = b
+            px[unsafe_offset=off + 3] = 255
+
 
 trait Program:
     def settings(mut self) -> WindowConfig: ...
@@ -107,13 +121,3 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
         canvas.present()
 
 
-def draw_background(mut canvas: Canvas, gray: UInt8) raises:
-    var w = canvas.width()
-    var h = canvas.height()
-    var px = canvas._win.pixels()
-    for i in range(w * h):
-        var off = i * 4
-        px[unsafe_offset=off] = gray
-        px[unsafe_offset=off + 1] = gray
-        px[unsafe_offset=off + 2] = gray
-        px[unsafe_offset=off + 3] = 255
