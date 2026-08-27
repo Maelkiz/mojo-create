@@ -95,8 +95,8 @@ struct Canvas(Movable):
         self._rng = UInt64(self._win.ticks()) | 1
 
     def is_key_down(self, keycode: Int) -> Bool:
-        for k in self._held_keys:
-            if k[] == keycode:
+        for i in range(len(self._held_keys)):
+            if self._held_keys[i] == keycode:
                 return True
         return False
 
