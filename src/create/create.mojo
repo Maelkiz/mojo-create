@@ -18,17 +18,19 @@ struct WindowConfig(ImplicitlyCopyable, Movable):
     var height: Int
     var _fullscreen: Bool
 
-    def __init__(out self, title: String, width: Int, height: Int):
-        self.title = title
-        self.width = width
-        self.height = height
-        self._fullscreen = False
+    @staticmethod
+    def size(title: String, width: Int, height: Int) -> WindowConfig:
+        return WindowConfig(title, width, height, False)
 
     @staticmethod
     def fullscreen(title: String) -> WindowConfig:
-        var c = WindowConfig(title, 0, 0)
-        c._fullscreen = True
-        return c
+        return WindowConfig(title, 0, 0, True)
+
+    def __init__(out self, title: String, width: Int, height: Int, fullscreen: Bool):
+        self.title = title
+        self.width = width
+        self.height = height
+        self._fullscreen = fullscreen
 
 
 struct Canvas(Movable):
@@ -123,7 +125,7 @@ struct Canvas(Movable):
 
 
 trait Program:
-    def settings(mut self) -> WindowConfig: ...
+    def window(mut self) -> WindowConfig: ...
 
     def setup(mut self) raises:
         pass
@@ -153,7 +155,7 @@ trait Program:
 
 
 def run[P: Program & Movable & Deinitable](var program: P) raises:
-    var canvas = Canvas(program.settings())
+    var canvas = Canvas(program.window())
     program.setup()
 
     while canvas.is_open():
