@@ -1,4 +1,3 @@
-from random import random_float64, random_si64
 from window.window import Window
 from window.event import (
     Event,
@@ -77,6 +76,7 @@ struct Canvas(Movable):
     var mouse_pressed: Bool
     var mouse_button: Int
     var _held_keys: List[Int]
+    var _rng: UInt64
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
@@ -92,12 +92,28 @@ struct Canvas(Movable):
         self.mouse_pressed = False
         self.mouse_button = 0
         self._held_keys = List[Int]()
+        self._rng = UInt64(self._win.ticks()) | 1
 
     def is_key_down(self, keycode: Int) -> Bool:
         for k in self._held_keys:
             if k[] == keycode:
                 return True
         return False
+
+    def _xorshift(mut self) -> UInt64:
+        self._rng ^= self._rng << 13
+        self._rng ^= self._rng >> 7
+        self._rng ^= self._rng << 17
+        return self._rng
+
+    def random_f(mut self) -> Float64:
+        return Float64(self._xorshift()) / Float64(UInt64.MAX)
+
+    def random_f(mut self, low: Float64, high: Float64) -> Float64:
+        return low + self.random_f() * (high - low)
+
+    def random_i(mut self, low: Int, high: Int) -> Int:
+        return low + Int(self._xorshift() % UInt64(high - low))
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -345,15 +361,6 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
         program.update(canvas, time)
         canvas.present()
 
-
-def random_f() -> Float64:
-    return random_float64(0.0, 1.0)
-
-def random_f(low: Float64, high: Float64) -> Float64:
-    return random_float64(low, high)
-
-def random_i(low: Int, high: Int) -> Int:
-    return Int(random_si64(low, high))
 
 def lerp(a: Float64, b: Float64, t: Float64) -> Float64:
     return a + (b - a) * t
