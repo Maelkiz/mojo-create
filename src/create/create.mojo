@@ -1,3 +1,4 @@
+from random import random_float64, random_si64
 from window.window import Window
 from window.event import (
     Event,
@@ -343,5 +344,21 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
         var time = Time(frame_count, Float64(delta_millis) / 1000.0, delta_millis)
         program.update(canvas, time)
         canvas.present()
+
+
+def random_f() -> Float64:
+    return random_float64(0.0, 1.0)
+
+def random_f(low: Float64, high: Float64) -> Float64:
+    return random_float64(low, high)
+
+def random_i(low: Int, high: Int) -> Int:
+    return Int(random_si64(low, high))
+
+def lerp(a: Float64, b: Float64, t: Float64) -> Float64:
+    return a + (b - a) * t
+
+def map(value: Float64, in_low: Float64, in_high: Float64, out_low: Float64, out_high: Float64) -> Float64:
+    return out_low + (value - in_low) / (in_high - in_low) * (out_high - out_low)
 
 
