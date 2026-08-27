@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "skills": {
+    "closure_migration": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "closure_migration/SKILL.md",
+      "computedHash": "b0798fb56a99a3cd8fb264206f4ddb145f49020b3bf77b5fd8334090988c8ed1"
+    },
+    "mojo-gpu-fundamentals": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "mojo-gpu-fundamentals/SKILL.md",
+      "computedHash": "519eb8d52b262a1a40e410b9b56192c56bf3b8645d4636cf9a8f42ab371e0c94"
+    },
+    "mojo-python-interop": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "mojo-python-interop/SKILL.md",
+      "computedHash": "0bdffb6ba574327afadafb5265d95217435ffc9e11bff7f8fdf1073b4b2677cd"
+    },
+    "mojo-syntax": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "mojo-syntax/SKILL.md",
+      "computedHash": "9b12c81b5453be4745b22d53306a493615a4318060efa5e78aa144eb2d984a52"
+    },
+    "new-modular-project": {
+      "source": "modular/skills",
+      "sourceType": "github",
+      "skillPath": "new-modular-project/SKILL.md",
+      "computedHash": "babcdc53d94a42a92427c47384151efe5d6b85de19a1f406a31d249f16973b39"
+    }
+  }
+}
