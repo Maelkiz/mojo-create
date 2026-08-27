@@ -21,9 +21,15 @@ struct WindowConfig(ImplicitlyCopyable, Movable):
 
 struct Canvas(Movable):
     var _win: Window
+    var _fill_r: UInt8
+    var _fill_g: UInt8
+    var _fill_b: UInt8
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
+        self._fill_r = 0
+        self._fill_g = 0
+        self._fill_b = 0
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -42,6 +48,30 @@ struct Canvas(Movable):
 
     def present(mut self) raises:
         self._win.present()
+
+    def fill(mut self, gray: UInt8):
+        self.fill(gray, gray, gray)
+
+    def fill(mut self, r: UInt8, g: UInt8, b: UInt8):
+        self._fill_r = r
+        self._fill_g = g
+        self._fill_b = b
+
+    def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
+        var W = self.width()
+        var H = self.height()
+        var x0 = max(x, 0)
+        var y0 = max(y, 0)
+        var x1 = min(x + w, W)
+        var y1 = min(y + h, H)
+        var px = self._win.pixels()
+        for row in range(y0, y1):
+            for col in range(x0, x1):
+                var off = (row * W + col) * 4
+                px[unsafe_offset=off] = self._fill_r
+                px[unsafe_offset=off + 1] = self._fill_g
+                px[unsafe_offset=off + 2] = self._fill_b
+                px[unsafe_offset=off + 3] = 255
 
     def background(mut self, gray: UInt8) raises:
         self.background(gray, gray, gray)
