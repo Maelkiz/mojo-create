@@ -21,7 +21,7 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
     var w = draw.width
     var h = draw.height
     var ctx = Context(draw^, Input(), Time(0, 0.0, 0), w, h)
-    program.setup()
+    program.setup(ctx)
 
     var last_ticks = ctx.draw._win.ticks()
 

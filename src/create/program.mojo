@@ -5,7 +5,7 @@ from .window_config import WindowConfig
 trait Program:
     def window(self) -> WindowConfig: ...
 
-    def setup(mut self) raises:
+    def setup(mut self, mut ctx: Context) raises:
         pass
 
     def update(mut self, mut ctx: Context) raises:
