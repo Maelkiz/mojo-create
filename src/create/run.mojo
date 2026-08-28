@@ -58,6 +58,8 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
                 program.on_mouse_wheel(e.x, e.y)
             elif event.isa[Resized]():
                 var e = event[Resized]
+                canvas.width = e.width
+                canvas.height = e.height
                 program.on_resize(e.width, e.height)
 
         var now = canvas._win.ticks()

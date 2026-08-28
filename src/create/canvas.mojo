@@ -12,6 +12,8 @@ struct Canvas(Movable):
     var _stroke: Color
     var _stroke_width: Int
     var _stroke_enabled: Bool
+    var width: Int
+    var height: Int
     var mouse_x: Int
     var mouse_y: Int
     var mouse_pressed: Bool
@@ -28,6 +30,8 @@ struct Canvas(Movable):
         self._stroke = Color.black()
         self._stroke_width = 1
         self._stroke_enabled = True
+        self.width = self._win.width()
+        self.height = self._win.height()
         self.mouse_x = 0
         self.mouse_y = 0
         self.mouse_pressed = False
@@ -56,12 +60,6 @@ struct Canvas(Movable):
     def close(mut self):
         self._win.close()
 
-    def width(self) -> Int:
-        return self._win.width()
-
-    def height(self) -> Int:
-        return self._win.height()
-
     def events(mut self) raises -> List[Event]:
         return self._win.events()
 
@@ -86,8 +84,8 @@ struct Canvas(Movable):
         self._stroke_width = w
 
     def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
-        var W = self.width()
-        var H = self.height()
+        var W = self.width
+        var H = self.height
         var px = self._win.pixels()
         if self._fill_enabled:
             for row in range(max(y, 0), min(y + h, H)):
@@ -121,8 +119,8 @@ struct Canvas(Movable):
                     px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
 
     def circle(mut self, cx: Int, cy: Int, r: Int) raises:
-        var W = self.width()
-        var H = self.height()
+        var W = self.width
+        var H = self.height
         var x0 = max(cx - r, 0)
         var y0 = max(cy - r, 0)
         var x1 = min(cx + r + 1, W)
@@ -152,8 +150,8 @@ struct Canvas(Movable):
     def line(mut self, x0: Int, y0: Int, x1: Int, y1: Int) raises:
         if not self._stroke_enabled:
             return
-        var W = self.width()
-        var H = self.height()
+        var W = self.width
+        var H = self.height
         var px = self._win.pixels()
         var c = self._stroke
         var half = self._stroke_width // 2
@@ -190,8 +188,8 @@ struct Canvas(Movable):
                 y += sy
 
     def triangle(mut self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int) raises:
-        var W = self.width()
-        var H = self.height()
+        var W = self.width
+        var H = self.height
         var px = self._win.pixels()
         if self._fill_enabled:
             var min_x = max(min(x1, min(x2, x3)), 0)
@@ -218,8 +216,8 @@ struct Canvas(Movable):
             self.line(x3, y3, x1, y1)
 
     def background(mut self, color: Color) raises:
-        var w = self.width()
-        var h = self.height()
+        var w = self.width
+        var h = self.height
         var px = self._win.pixels()
         for i in range(w * h):
             var off = i * 4
