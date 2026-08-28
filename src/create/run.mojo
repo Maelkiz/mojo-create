@@ -10,7 +10,6 @@ from window.event import (
     MouseWheel,
 )
 from .canvas import Canvas
-from .time import Time
 from .program import Program
 
 
@@ -18,7 +17,6 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
     var canvas = Canvas(program.window())
     program.setup()
 
-    var frame_count = 0
     var last_ticks = canvas._win.ticks()
 
     while canvas.is_open():
@@ -63,9 +61,9 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
                 program.on_resize(e.width, e.height)
 
         var now = canvas._win.ticks()
-        var delta_millis = now - last_ticks
+        canvas.delta_millis = now - last_ticks
+        canvas.delta_time = Float64(canvas.delta_millis) / 1000.0
+        canvas.frame_count += 1
         last_ticks = now
-        frame_count += 1
-        var time = Time(frame_count, Float64(delta_millis) / 1000.0, delta_millis)
-        program.update(canvas, time)
+        program.update(canvas)
         canvas.present()

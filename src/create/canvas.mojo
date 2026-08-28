@@ -14,6 +14,9 @@ struct Canvas(Movable):
     var _stroke_enabled: Bool
     var width: Int
     var height: Int
+    var frame_count: Int
+    var delta_time: Float64
+    var delta_millis: Int
     var mouse_x: Int
     var mouse_y: Int
     var mouse_pressed: Bool
@@ -32,6 +35,9 @@ struct Canvas(Movable):
         self._stroke_enabled = True
         self.width = self._win.width()
         self.height = self._win.height()
+        self.frame_count = 0
+        self.delta_time = 0.0
+        self.delta_millis = 0
         self.mouse_x = 0
         self.mouse_y = 0
         self.mouse_pressed = False

@@ -1,5 +1,4 @@
 from .canvas import Canvas
-from .time import Time
 from .window_config import WindowConfig
 
 
@@ -11,9 +10,6 @@ trait Program:
 
     def update(mut self, mut canvas: Canvas) raises:
         pass
-
-    def update(mut self, mut canvas: Canvas, time: Time) raises:
-        self.update(canvas)
 
     def on_key_down(mut self, keycode: Int) raises:
         pass
