@@ -1,4 +1,4 @@
-from .canvas import Canvas
+from .context import Context
 from .window_config import WindowConfig
 
 
@@ -8,7 +8,7 @@ trait Program:
     def setup(mut self) raises:
         pass
 
-    def update(mut self, mut canvas: Canvas) raises:
+    def update(mut self, mut ctx: Context) raises:
         pass
 
     def on_key_down(mut self, keycode: Int) raises:

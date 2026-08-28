@@ -9,61 +9,69 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from .canvas import Canvas
+from .draw import Draw
+from .input import Input
+from .time import Time
+from .context import Context
 from .program import Program
 
 
 def run[P: Program & Movable & Deinitable](var program: P) raises:
-    var canvas = Canvas(program.window())
+    var ctx = Context(
+        Draw(program.window()),
+        Input(),
+        Time(0, 0.0, 0),
+    )
     program.setup()
 
-    var last_ticks = canvas._win.ticks()
+    var last_ticks = ctx.draw._win.ticks()
 
-    while canvas.is_open():
-        var events = canvas.events()
+    while ctx.draw.is_open():
+        var events = ctx.draw.events()
         for event in events:
             if event.isa[Quit]():
-                canvas.close()
+                ctx.draw.close()
             elif event.isa[KeyDown]():
                 var keycode = event[KeyDown].keycode
-                canvas._held_keys.append(keycode)
+                ctx.input._held_keys.append(keycode)
                 program.on_key_down(keycode)
             elif event.isa[KeyUp]():
                 var keycode = event[KeyUp].keycode
-                for i in range(len(canvas._held_keys)):
-                    if canvas._held_keys[i] == keycode:
-                        _ = canvas._held_keys.pop(i)
+                for i in range(len(ctx.input._held_keys)):
+                    if ctx.input._held_keys[i] == keycode:
+                        _ = ctx.input._held_keys.pop(i)
                         break
                 program.on_key_up(keycode)
             elif event.isa[MouseMoved]():
                 var e = event[MouseMoved]
-                canvas.mouse_x = e.x
-                canvas.mouse_y = e.y
+                ctx.input.mouse_x = e.x
+                ctx.input.mouse_y = e.y
                 program.on_mouse_moved(e.x, e.y)
             elif event.isa[MouseButtonDown]():
                 var e = event[MouseButtonDown]
-                canvas.mouse_pressed = True
-                canvas.mouse_button = e.button
-                canvas.mouse_x = e.x
-                canvas.mouse_y = e.y
+                ctx.input.mouse_pressed = True
+                ctx.input.mouse_button = e.button
+                ctx.input.mouse_x = e.x
+                ctx.input.mouse_y = e.y
                 program.on_mouse_down(e.button, e.x, e.y)
             elif event.isa[MouseButtonUp]():
                 var e = event[MouseButtonUp]
-                canvas.mouse_pressed = False
+                ctx.input.mouse_pressed = False
                 program.on_mouse_up(e.button, e.x, e.y)
             elif event.isa[MouseWheel]():
                 var e = event[MouseWheel]
                 program.on_mouse_wheel(e.x, e.y)
             elif event.isa[Resized]():
                 var e = event[Resized]
-                canvas.width = e.width
-                canvas.height = e.height
+                ctx.draw.width = e.width
+                ctx.draw.height = e.height
                 program.on_resize(e.width, e.height)
 
-        var now = canvas._win.ticks()
-        canvas.delta_millis = now - last_ticks
-        canvas.delta_time = Float64(canvas.delta_millis) / 1000.0
-        canvas.frame_count += 1
+        var now = ctx.draw._win.ticks()
+        ctx.time.delta_millis = now - last_ticks
+        ctx.time.delta_time = Float64(ctx.time.delta_millis) / 1000.0
+        ctx.time.frame_count += 1
         last_ticks = now
-        program.update(canvas)
-        canvas.present()
+
+        program.update(ctx)
+        ctx.draw.present()
