@@ -3,9 +3,6 @@ from create import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    def window(self) -> WindowConfig:
-        return WindowConfig("Circle Overlap")
-
     def update(mut self, mut ctx: Context) raises:
         var radius = 100
         var cx = ctx.width // 2
@@ -26,4 +23,4 @@ struct App(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(App())
+    run(App(), "Circle Overlap")

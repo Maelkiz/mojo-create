@@ -82,11 +82,6 @@ def _make_ctx(config: WindowConfig) raises -> Context:
     return Context(draw^, Input(), Time(0, 0.0, 0), w, h)
 
 
-def run[P: Program & Movable & Deinitable](var program: P) raises:
-    var ctx = _make_ctx(program.window())
-    _run_loop(program, ctx)
-
-
 def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:
     var ctx = _make_ctx(WindowConfig(title))
     _run_loop(program, ctx)

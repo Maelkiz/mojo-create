@@ -1,5 +1,4 @@
 from .color import Color
-from .window_config import WindowConfig
 from .draw import Draw
 from .input import Input
 from .time import Time

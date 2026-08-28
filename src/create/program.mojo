@@ -1,11 +1,7 @@
 from .context import Context
-from .window_config import WindowConfig
 
 
 trait Program:
-    def window(self) -> WindowConfig:
-        return WindowConfig("Sketch")
-
     def setup(mut self, mut ctx: Context) raises:
         pass
 
