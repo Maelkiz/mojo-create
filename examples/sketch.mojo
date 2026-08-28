@@ -3,9 +3,6 @@ from create import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    def window(self) -> WindowConfig:
-        return WindowConfig("Example Sketch", 300, 200)
-
     def update(mut self, mut ctx: Context) raises:
         ctx.draw.background(Color(255))
         ctx.draw.fill(Color.red())
@@ -18,4 +15,4 @@ struct App(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(App())
+    run(App(), "Example Sketch", 300, 200)

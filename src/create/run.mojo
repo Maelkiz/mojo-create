@@ -14,13 +14,10 @@ from .input import Input
 from .time import Time
 from .context import Context
 from .program import Program
+from .window_config import WindowConfig
 
 
-def run[P: Program & Movable & Deinitable](var program: P) raises:
-    var draw = Draw(program.window())
-    var w = draw.width
-    var h = draw.height
-    var ctx = Context(draw^, Input(), Time(0, 0.0, 0), w, h)
+def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Context) raises:
     program.setup(ctx)
 
     var last_ticks = ctx.draw._win.ticks()
@@ -76,3 +73,27 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
 
         program.update(ctx)
         ctx.draw.present()
+
+
+def _make_ctx(config: WindowConfig) raises -> Context:
+    var draw = Draw(config)
+    var w = draw.width
+    var h = draw.height
+    return Context(draw^, Input(), Time(0, 0.0, 0), w, h)
+
+
+def run[P: Program & Movable & Deinitable](var program: P) raises:
+    var ctx = _make_ctx(program.window())
+    _run_loop(program, ctx)
+
+
+def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:
+    var ctx = _make_ctx(WindowConfig(title))
+    _run_loop(program, ctx)
+
+
+def run[P: Program & Movable & Deinitable](
+    var program: P, title: String, width: Int, height: Int
+) raises:
+    var ctx = _make_ctx(WindowConfig(title, width, height))
+    _run_loop(program, ctx)
