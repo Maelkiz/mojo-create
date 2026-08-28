@@ -53,6 +53,7 @@ struct Canvas(Movable):
         return low + self.random() * (high - low)
 
     def random(mut self, low: Int, high: Int) -> Int:
+        debug_assert(high > low, "random: high must be greater than low")
         return low + Int(self._xorshift() % UInt64(high - low))
 
     def is_open(self) -> Bool:
