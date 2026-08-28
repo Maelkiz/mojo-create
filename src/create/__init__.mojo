@@ -1,4 +1,5 @@
 from .color import Color
+from .vector2 import Vector2
 from .draw import Draw
 from .input import Input
 from .time import Time
