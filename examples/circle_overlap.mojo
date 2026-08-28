@@ -8,8 +8,8 @@ struct App(Program, Movable, Deinitable):
 
     def update(mut self, mut ctx: Context) raises:
         var radius = 100
-        var cx = ctx.draw.width // 2
-        var cy = ctx.draw.height // 2
+        var cx = ctx.width // 2
+        var cy = ctx.height // 2
         var dx = ctx.input.mouse_x - cx
         var dy = ctx.input.mouse_y - cy
 

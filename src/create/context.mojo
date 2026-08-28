@@ -8,3 +8,5 @@ struct Context(Movable):
     var draw: Draw
     var input: Input
     var time: Time
+    var width: Int
+    var height: Int

@@ -17,11 +17,10 @@ from .program import Program
 
 
 def run[P: Program & Movable & Deinitable](var program: P) raises:
-    var ctx = Context(
-        Draw(program.window()),
-        Input(),
-        Time(0, 0.0, 0),
-    )
+    var draw = Draw(program.window())
+    var w = draw.width
+    var h = draw.height
+    var ctx = Context(draw^, Input(), Time(0, 0.0, 0), w, h)
     program.setup()
 
     var last_ticks = ctx.draw._win.ticks()
@@ -65,6 +64,8 @@ def run[P: Program & Movable & Deinitable](var program: P) raises:
                 var e = event[Resized]
                 ctx.draw.width = e.width
                 ctx.draw.height = e.height
+                ctx.width = e.width
+                ctx.height = e.height
                 program.on_resize(e.width, e.height)
 
         var now = ctx.draw._win.ticks()
