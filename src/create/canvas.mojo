@@ -25,9 +25,9 @@ struct Canvas(Movable):
     var _rng: RNG
 
     def __init__(out self, config: WindowConfig) raises:
-        self._win = Window(config.title, config.width, config.height)
-        if config._fullscreen:
-            self._win.set_fullscreen(True)
+        self._win = Window(
+            config.title, config.width, config.height, config._fullscreen
+        )
         self._fill = Color.white()
         self._fill_enabled = True
         self._stroke = Color.black()
