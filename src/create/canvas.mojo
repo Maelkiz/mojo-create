@@ -189,6 +189,34 @@ struct Canvas(Movable):
                 err += dx
                 y += sy
 
+    def triangle(mut self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int) raises:
+        var W = self.width()
+        var H = self.height()
+        var px = self._win.pixels()
+        if self._fill_enabled:
+            var min_x = max(min(x1, min(x2, x3)), 0)
+            var max_x = min(max(x1, max(x2, x3)), W - 1)
+            var min_y = max(min(y1, min(y2, y3)), 0)
+            var max_y = min(max(y1, max(y2, y3)), H - 1)
+            var c = self._fill
+            for row in range(min_y, max_y + 1):
+                for col in range(min_x, max_x + 1):
+                    var d1 = (x2 - x1) * (row - y1) - (y2 - y1) * (col - x1)
+                    var d2 = (x3 - x2) * (row - y2) - (y3 - y2) * (col - x2)
+                    var d3 = (x1 - x3) * (row - y3) - (y1 - y3) * (col - x3)
+                    var has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                    var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+                    if not (has_neg and has_pos):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r
+                        px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b
+                        px[unsafe_offset=off + 3] = c.a
+        if self._stroke_enabled:
+            self.line(x1, y1, x2, y2)
+            self.line(x2, y2, x3, y3)
+            self.line(x3, y3, x1, y1)
+
     def background(mut self, color: Color) raises:
         var w = self.width()
         var h = self.height()
