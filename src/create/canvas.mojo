@@ -2,6 +2,7 @@ from window.window import Window
 from window.event import Event
 from .color import Color
 from .window_config import WindowConfig
+from .rng import RNG
 
 
 struct Canvas(Movable):
@@ -16,7 +17,7 @@ struct Canvas(Movable):
     var mouse_pressed: Bool
     var mouse_button: Int
     var _held_keys: List[Int]
-    var _rng: UInt64
+    var _rng: RNG
 
     def __init__(out self, config: WindowConfig) raises:
         self._win = Window(config.title, config.width, config.height)
@@ -32,7 +33,7 @@ struct Canvas(Movable):
         self.mouse_pressed = False
         self.mouse_button = 0
         self._held_keys = List[Int]()
-        self._rng = UInt64(self._win.ticks()) | 1
+        self._rng = RNG(UInt64(self._win.ticks()))
 
     def is_key_down(self, keycode: Int) -> Bool:
         for i in range(len(self._held_keys)):
@@ -40,21 +41,14 @@ struct Canvas(Movable):
                 return True
         return False
 
-    def _xorshift(mut self) -> UInt64:
-        self._rng ^= self._rng << 13
-        self._rng ^= self._rng >> 7
-        self._rng ^= self._rng << 17
-        return self._rng
-
     def random(mut self) -> Float64:
-        return Float64(self._xorshift()) / Float64(UInt64.MAX)
+        return self._rng.random()
 
     def random(mut self, low: Float64, high: Float64) -> Float64:
-        return low + self.random() * (high - low)
+        return self._rng.random(low, high)
 
     def random(mut self, low: Int, high: Int) -> Int:
-        debug_assert(high > low, "random: high must be greater than low")
-        return low + Int(self._xorshift() % UInt64(high - low))
+        return self._rng.random(low, high)
 
     def is_open(self) -> Bool:
         return self._win.is_open()
