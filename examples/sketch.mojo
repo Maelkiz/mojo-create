@@ -2,7 +2,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct App(Program, Movable, Deinitable):
+struct Sketch(Program, Movable, Deinitable):
     def update(mut self, mut ctx: Context) raises:
         ctx.render(Background(Color(255)))
         ctx.fill(Color.red())
@@ -15,4 +15,4 @@ struct App(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(App(), "Example Sketch", 300, 200)
+    run(Sketch(), "Example Sketch", 300, 200)
