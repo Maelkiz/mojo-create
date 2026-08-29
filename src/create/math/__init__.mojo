@@ -1,6 +1,6 @@
 from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
 from .vector2 import Vector2
-from .random import RNG
+from .random import Random
 from std.math import (
     clamp,
     sqrt,
