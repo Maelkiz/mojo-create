@@ -1,6 +1,14 @@
+from std.time import perf_counter_ns
+
+
 struct Random(Movable):
     var _s0: UInt64
     var _s1: UInt64
+
+    def __init__(out self):
+        # Seeded from nanosecond timer — not cryptographically random,
+        # but collision probability is negligible for normal use.
+        self = Self(UInt64(perf_counter_ns()))
 
     def __init__(out self, seed: UInt64):
         # SplitMix64 to initialize state from seed — avoids bad zero states
