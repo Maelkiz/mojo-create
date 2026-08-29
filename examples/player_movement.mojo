@@ -1,10 +1,13 @@
 from create.core import *
 
 
-@fieldwise_init
 struct Game(Program, Movable, Deinitable):
     var x: Int
     var y: Int
+
+    def __init__(out self):
+        self.x = 0
+        self.y = 0
 
     def setup(mut self, mut ctx: Context) raises:
         self.x = ctx.width // 2 - 30
@@ -28,4 +31,4 @@ struct Game(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(Game(0, 0), "Player Movement")
+    run[Game]("Player Movement")

@@ -89,13 +89,15 @@ def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     return Context(canvas^, Input(), Time(0, 0.0, 0), width, height)
 
 
-def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:
+def run[P: Program & Movable & Deinitable](title: String) raises:
+    var program = P()
     var ctx = _make_ctx(title, 0, 0)
     _run_loop(program, ctx)
 
 
 def run[P: Program & Movable & Deinitable](
-    var program: P, title: String, width: Int, height: Int
+    title: String, width: Int, height: Int
 ) raises:
+    var program = P()
     var ctx = _make_ctx(title, width, height)
     _run_loop(program, ctx)

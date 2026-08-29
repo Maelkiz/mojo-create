@@ -15,4 +15,4 @@ struct Sketch(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(Sketch(), "Example Sketch", 300, 200)
+    run[Sketch]("Example Sketch", 300, 200)

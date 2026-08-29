@@ -23,4 +23,4 @@ struct App(Program, Movable, Deinitable):
 
 
 def main() raises:
-    run(App(), "Circle Overlap")
+    run[App]("Circle Overlap")

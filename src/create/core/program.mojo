@@ -1,7 +1,7 @@
 from .context import Context
 
 
-trait Program:
+trait Program(Defaultable):
     def setup(mut self, mut ctx: Context) raises:
         pass
 

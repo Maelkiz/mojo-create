@@ -24,7 +24,7 @@ struct App(Program, Movable, Deinitable):
 
 def main() raises:
     # Set window title, width, and height, and run the program
-    run(App(), "Example Sketch", 400, 300)
+    run[App]("Example Sketch", 400, 300)
 ```
 
 Run the program using `run`:
