@@ -1,7 +1,6 @@
 from window.window import Window
 from window.event import Event
 from .color import Color
-from .window_config import WindowConfig
 
 
 struct Draw(Movable):
@@ -14,10 +13,9 @@ struct Draw(Movable):
     var width: Int
     var height: Int
 
-    def __init__(out self, config: WindowConfig) raises:
-        self._win = Window(
-            config.title, config.width, config.height, config._fullscreen
-        )
+    def __init__(out self, title: String, width: Int, height: Int) raises:
+        var fullscreen = width == 0 and height == 0
+        self._win = Window(title, width, height, fullscreen)
         self._fill = Color.white()
         self._fill_enabled = True
         self._stroke = Color.black()

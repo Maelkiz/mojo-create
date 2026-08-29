@@ -14,7 +14,6 @@ from .input import Input
 from .time import Time
 from .context import Context
 from .program import Program
-from .window_config import WindowConfig
 
 
 def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Context) raises:
@@ -75,20 +74,20 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
         ctx.draw.present()
 
 
-def _make_ctx(config: WindowConfig) raises -> Context:
-    var draw = Draw(config)
+def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
+    var draw = Draw(title, width, height)
     var w = draw.width
     var h = draw.height
     return Context(draw^, Input(), Time(0, 0.0, 0), w, h)
 
 
 def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:
-    var ctx = _make_ctx(WindowConfig(title))
+    var ctx = _make_ctx(title, 0, 0)
     _run_loop(program, ctx)
 
 
 def run[P: Program & Movable & Deinitable](
     var program: P, title: String, width: Int, height: Int
 ) raises:
-    var ctx = _make_ctx(WindowConfig(title, width, height))
+    var ctx = _make_ctx(title, width, height)
     _run_loop(program, ctx)
