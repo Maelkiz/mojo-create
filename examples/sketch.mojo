@@ -3,6 +3,10 @@ from create.core import *
 
 @fieldwise_init
 struct Sketch(Program, Movable, Deinitable):
+    @staticmethod
+    def create(mut ctx: Context) raises -> Sketch:
+        return Sketch()
+
     def update(mut self, mut ctx: Context) raises:
         ctx.render(Background(Color(255)))
         ctx.fill(Color.red())

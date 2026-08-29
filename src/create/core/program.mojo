@@ -1,9 +1,10 @@
 from .context import Context
 
 
-trait Program(Defaultable):
-    def setup(mut self, mut ctx: Context) raises:
-        pass
+trait Program(Movable, Deinitable):
+    @staticmethod
+    def create(mut ctx: Context) raises -> Self:
+        ...
 
     def update(mut self, mut ctx: Context) raises:
         pass

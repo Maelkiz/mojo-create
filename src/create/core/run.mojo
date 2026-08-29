@@ -16,7 +16,7 @@ from .context import Context
 from .program import Program
 
 
-def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Context) raises:
+def _wait_for_dimensions(mut ctx: Context) raises:
     # For fullscreen (requested 0x0), SDL fires a bogus (1, 1) Resized before
     # reporting real dimensions — pump until we get the actual size.
     if ctx.width == 0 and ctx.height == 0:
@@ -27,8 +27,9 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
                     var e = event[Resized]
                     ctx.width = e.width
                     ctx.height = e.height
-    program.setup(ctx)
 
+
+def _run_loop[P: Program](mut program: P, mut ctx: Context) raises:
     var last_ticks = ctx._canvas.ticks()
 
     while ctx._canvas.is_open():
@@ -89,15 +90,15 @@ def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     return Context(canvas^, Input(), Time(0, 0.0, 0), width, height)
 
 
-def run[P: Program & Movable & Deinitable](title: String) raises:
-    var program = P()
+def run[P: Program](title: String) raises:
     var ctx = _make_ctx(title, 0, 0)
+    _wait_for_dimensions(ctx)
+    var program = P.create(ctx)
     _run_loop(program, ctx)
 
 
-def run[P: Program & Movable & Deinitable](
-    title: String, width: Int, height: Int
-) raises:
-    var program = P()
+def run[P: Program](title: String, width: Int, height: Int) raises:
     var ctx = _make_ctx(title, width, height)
+    _wait_for_dimensions(ctx)
+    var program = P.create(ctx)
     _run_loop(program, ctx)

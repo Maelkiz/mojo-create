@@ -13,9 +13,9 @@ from create.core import Program, Context, run
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    def setup(mut self, mut ctx: Context) raises:
-        # Executed once when the program starts
-        pass
+    @staticmethod
+    def create(mut ctx: Context) raises -> App:
+        return App()
 
     def update(mut self, mut ctx: Context) raises:
         # Executed once per frame
@@ -23,7 +23,6 @@ struct App(Program, Movable, Deinitable):
 
 
 def main() raises:
-    # Set window title, width, and height, and run the program
     run[App]("Example Sketch", 400, 300)
 ```
 

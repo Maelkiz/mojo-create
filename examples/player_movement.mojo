@@ -1,17 +1,14 @@
 from create.core import *
 
 
+@fieldwise_init
 struct Game(Program, Movable, Deinitable):
     var x: Int
     var y: Int
 
-    def __init__(out self):
-        self.x = 0
-        self.y = 0
-
-    def setup(mut self, mut ctx: Context) raises:
-        self.x = ctx.width // 2 - 30
-        self.y = ctx.height // 2 - 50
+    @staticmethod
+    def create(mut ctx: Context) raises -> Game:
+        return Game(ctx.width // 2 - 30, ctx.height // 2 - 50)
 
     def update(mut self, mut ctx: Context) raises:
         var speed = 5

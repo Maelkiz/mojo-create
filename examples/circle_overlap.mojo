@@ -3,6 +3,10 @@ from create.core import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
+    @staticmethod
+    def create(mut ctx: Context) raises -> App:
+        return App()
+
     def update(mut self, mut ctx: Context) raises:
         var radius = 100
         var cx = ctx.width // 2
