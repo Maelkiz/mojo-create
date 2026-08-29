@@ -10,8 +10,6 @@ struct Canvas(Movable):
     var _stroke: Color
     var _stroke_width: Int
     var _stroke_enabled: Bool
-    var width: Int
-    var height: Int
 
     def __init__(out self, title: String, width: Int, height: Int) raises:
         var fullscreen = width == 0 and height == 0
@@ -21,8 +19,6 @@ struct Canvas(Movable):
         self._stroke = Color.black()
         self._stroke_width = 1
         self._stroke_enabled = True
-        self.width = self._win.width()
-        self.height = self._win.height()
 
     def is_open(self) -> Bool:
         return self._win.is_open()

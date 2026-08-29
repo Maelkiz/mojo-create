@@ -9,8 +9,8 @@ struct Background(Renderable):
     var color: Color
 
     def render_to(self, mut canvas: Canvas) raises:
-        var w = canvas.width
-        var h = canvas.height
+        var w = canvas._win.width()
+        var h = canvas._win.height()
         var px = canvas._win.pixels()
         var c = self.color
         for i in range(w * h):
@@ -29,8 +29,8 @@ struct Rect(Renderable):
     var h: Int
 
     def render_to(self, mut canvas: Canvas) raises:
-        var W = canvas.width
-        var H = canvas.height
+        var W = canvas._win.width()
+        var H = canvas._win.height()
         var px = canvas._win.pixels()
         if canvas._fill_enabled:
             var c = canvas._fill
@@ -72,8 +72,8 @@ struct Circle(Renderable):
     var r: Int
 
     def render_to(self, mut canvas: Canvas) raises:
-        var W = canvas.width
-        var H = canvas.height
+        var W = canvas._win.width()
+        var H = canvas._win.height()
         var x0 = max(self.cx - self.r, 0)
         var y0 = max(self.cy - self.r, 0)
         var x1 = min(self.cx + self.r + 1, W)
@@ -111,8 +111,8 @@ struct Line(Renderable):
     def render_to(self, mut canvas: Canvas) raises:
         if not canvas._stroke_enabled:
             return
-        var W = canvas.width
-        var H = canvas.height
+        var W = canvas._win.width()
+        var H = canvas._win.height()
         var px = canvas._win.pixels()
         var c = canvas._stroke
         var half = canvas._stroke_width // 2
@@ -159,8 +159,8 @@ struct Triangle(Renderable):
     var y3: Int
 
     def render_to(self, mut canvas: Canvas) raises:
-        var W = canvas.width
-        var H = canvas.height
+        var W = canvas._win.width()
+        var H = canvas._win.height()
         var px = canvas._win.pixels()
         if canvas._fill_enabled:
             var min_x = max(min(self.x1, min(self.x2, self.x3)), 0)

@@ -17,6 +17,16 @@ from .program import Program
 
 
 def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Context) raises:
+    # For fullscreen (requested 0x0), SDL fires a bogus (1, 1) Resized before
+    # reporting real dimensions — pump until we get the actual size.
+    if ctx.width == 0 and ctx.height == 0:
+        while ctx.width <= 1 or ctx.height <= 1:
+            var events = ctx._canvas.events()
+            for event in events:
+                if event.isa[Resized]():
+                    var e = event[Resized]
+                    ctx.width = e.width
+                    ctx.height = e.height
     program.setup(ctx)
 
     var last_ticks = ctx._canvas.ticks()
@@ -59,11 +69,10 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
                 program.on_mouse_wheel(e.x, e.y)
             elif event.isa[Resized]():
                 var e = event[Resized]
-                ctx._canvas.width = e.width
-                ctx._canvas.height = e.height
-                ctx.width = e.width
-                ctx.height = e.height
                 program.on_resize(e.width, e.height)
+
+        ctx.width = ctx._canvas._win.width()
+        ctx.height = ctx._canvas._win.height()
 
         var now = ctx._canvas.ticks()
         ctx.time.delta_millis = now - last_ticks
@@ -77,9 +86,7 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
 
 def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     var canvas = Canvas(title, width, height)
-    var w = canvas.width
-    var h = canvas.height
-    return Context(canvas^, Input(), Time(0, 0.0, 0), w, h)
+    return Context(canvas^, Input(), Time(0, 0.0, 0), width, height)
 
 
 def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:

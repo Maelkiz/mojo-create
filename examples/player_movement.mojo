@@ -24,10 +24,8 @@ struct Game(Program, Movable, Deinitable):
         ctx.render(Background(Color(30, 30, 30)))
         ctx.fill(Color(220, 80, 80))
         ctx.no_stroke()
-
-        var player = Rect(self.x, self.y, 60, 100)
-        ctx.render(player)
+        ctx.render(Rect(self.x, self.y, 60, 100))
 
 
 def main() raises:
-    run(Game(0, 0), "Player Movement", 800, 600)
+    run(Game(0, 0), "Player Movement")
