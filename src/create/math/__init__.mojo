@@ -1,4 +1,4 @@
-from .util import lerp, map
+from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
 from .vector2 import Vector2
 from .random import RNG
 from std.math import (
