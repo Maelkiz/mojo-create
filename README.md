@@ -8,18 +8,18 @@ taking full advantage of Mojo's performance and language features.
 ## The shape of a program
 
 ```mojo
-from create.core import Program, Context, run
+from create.core import *
 
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
+
     @staticmethod
     def create(mut ctx: Context) raises -> App:
-        return App()
+        return App() # Set initial application state here
 
     def update(mut self, mut ctx: Context) raises:
-        # Executed once per frame
-        pass
+        pass # Executes once per frame
 
 
 def main() raises:
