@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
-from create.window_config import WindowConfig
+from create.core import WindowConfig
 
 
 def test_explicit_dimensions() raises -> None:

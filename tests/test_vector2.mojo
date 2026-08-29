@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal
-from create.vector2 import Vector2
+from create.math import Vector2
 
 
 def test_init() raises -> None:

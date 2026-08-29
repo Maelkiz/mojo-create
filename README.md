@@ -8,12 +8,12 @@ taking full advantage of Mojo's performance and language features.
 ## The shape of a program
 
 ```mojo
-from create import *
+from create.core import Program, Context, run
 
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    def setup():
+    def setup(mut self, mut ctx: Context) raises:
         # Executed once when the program starts
         pass
 

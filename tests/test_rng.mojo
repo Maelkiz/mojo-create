@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_true, assert_equal
-from create.rng import RNG
+from create.math import RNG
 
 
 def test_float_in_unit_interval() raises -> None:
