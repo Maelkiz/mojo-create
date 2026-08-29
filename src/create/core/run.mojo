@@ -28,8 +28,9 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
                 ctx._canvas.close()
             elif event.isa[KeyDown]():
                 var keycode = event[KeyDown].keycode
-                ctx.input._held_keys.append(keycode)
-                program.on_key_down(keycode)
+                if not ctx.input.is_key_down(keycode):
+                    ctx.input._held_keys.append(keycode)
+                    program.on_key_down(keycode)
             elif event.isa[KeyUp]():
                 var keycode = event[KeyUp].keycode
                 for i in range(len(ctx.input._held_keys)):
