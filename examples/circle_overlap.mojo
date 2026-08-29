@@ -14,12 +14,12 @@ struct App(Program, Movable, Deinitable):
 
         var bg_col = Color(40, 40, 60) if overlaps else Color(20, 20, 30)
 
-        ctx.draw.background(bg_col)
-        ctx.draw.no_stroke()
-        ctx.draw.fill(Color(220, 60, 60))
-        ctx.draw.circle(cx, cy, radius)
-        ctx.draw.fill(Color(60, 120, 220))
-        ctx.draw.circle(ctx.input.mouse_x, ctx.input.mouse_y, radius)
+        ctx.render(Background(bg_col))
+        ctx.no_stroke()
+        ctx.fill(Color(220, 60, 60))
+        ctx.render(Circle(cx, cy, radius))
+        ctx.fill(Color(60, 120, 220))
+        ctx.render(Circle(ctx.input.mouse_x, ctx.input.mouse_y, radius))
 
 
 def main() raises:

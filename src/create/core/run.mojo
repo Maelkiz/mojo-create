@@ -9,7 +9,7 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from .draw import Draw
+from .canvas import Canvas
 from .input import Input
 from .time import Time
 from .context import Context
@@ -19,13 +19,13 @@ from .program import Program
 def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Context) raises:
     program.setup(ctx)
 
-    var last_ticks = ctx.draw._win.ticks()
+    var last_ticks = ctx._canvas.ticks()
 
-    while ctx.draw.is_open():
-        var events = ctx.draw.events()
+    while ctx._canvas.is_open():
+        var events = ctx._canvas.events()
         for event in events:
             if event.isa[Quit]():
-                ctx.draw.close()
+                ctx._canvas.close()
             elif event.isa[KeyDown]():
                 var keycode = event[KeyDown].keycode
                 ctx.input._held_keys.append(keycode)
@@ -58,27 +58,27 @@ def _run_loop[P: Program & Movable & Deinitable](mut program: P, mut ctx: Contex
                 program.on_mouse_wheel(e.x, e.y)
             elif event.isa[Resized]():
                 var e = event[Resized]
-                ctx.draw.width = e.width
-                ctx.draw.height = e.height
+                ctx._canvas.width = e.width
+                ctx._canvas.height = e.height
                 ctx.width = e.width
                 ctx.height = e.height
                 program.on_resize(e.width, e.height)
 
-        var now = ctx.draw._win.ticks()
+        var now = ctx._canvas.ticks()
         ctx.time.delta_millis = now - last_ticks
         ctx.time.delta_time = Float64(ctx.time.delta_millis) / 1000.0
         ctx.time.frame_count += 1
         last_ticks = now
 
         program.update(ctx)
-        ctx.draw.present()
+        ctx._canvas.present()
 
 
 def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
-    var draw = Draw(title, width, height)
-    var w = draw.width
-    var h = draw.height
-    return Context(draw^, Input(), Time(0, 0.0, 0), w, h)
+    var canvas = Canvas(title, width, height)
+    var w = canvas.width
+    var h = canvas.height
+    return Context(canvas^, Input(), Time(0, 0.0, 0), w, h)
 
 
 def run[P: Program & Movable & Deinitable](var program: P, title: String) raises:
