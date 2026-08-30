@@ -10,16 +10,19 @@ struct Sketch(Windowed, Movable, Deinitable):
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)
+        canvas.stroke(Color.GREEN)
 
         canvas.fill(Color.RED)
-        canvas.rect(150, 150, 100, 100)
+        canvas.rect((150, 150), 100, 100)
 
         canvas.fill(Color.BLUE)
-        canvas.circle(400, 400, 50)
+        canvas.circle((300, 300), 50)
+        
+        canvas.fill(Color.BLACK)
+        canvas.triangle((400, 400), (450, 550), (550, 450))
 
-        canvas.stroke(Color.GREEN)
         canvas.stroke_width(3)
-        canvas.line(150, 150, 400, 400)
+        canvas.line((200, 200), (400, 400))
 
 
 def main() raises:

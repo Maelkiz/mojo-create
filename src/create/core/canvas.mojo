@@ -4,8 +4,8 @@ from window.event import Event
 from .color import Color
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
+from create.math.point import Point
 from create.graphics.sprite import Sprite
-comptime Point = Vector2
 
 
 struct Canvas(Movable):

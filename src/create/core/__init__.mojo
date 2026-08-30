@@ -1,7 +1,7 @@
 from .path import script_dir
 from create.math.geometry import Convex, overlaps, Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
-comptime Point = Vector2
+from create.math.point import Point
 from .color import Color
 from .time import Time
 from .input import Input

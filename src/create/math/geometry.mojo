@@ -1,6 +1,6 @@
 from std.math import min, max, sqrt
 from .vector2 import Vector2
-comptime Point = Vector2
+from .point import Point
 
 
 trait Convex:
