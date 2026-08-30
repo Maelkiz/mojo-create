@@ -20,6 +20,10 @@ struct Rectangle:
     var w: Float64
     var h: Float64
 
+    def __init__(out self, x: Int, y: Int, w: Int, h: Int):
+        self.x = Float64(x); self.y = Float64(y)
+        self.w = Float64(w); self.h = Float64(h)
+
     def left(self) -> Float64:
         return self.x - self.w / 2.0
 
@@ -53,6 +57,9 @@ struct Circle:
     var y: Float64
     var r: Float64
 
+    def __init__(out self, x: Int, y: Int, r: Int):
+        self.x = Float64(x); self.y = Float64(y); self.r = Float64(r)
+
     def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
         var dy = py - self.y
@@ -74,6 +81,10 @@ struct Line:
     var y0: Float64
     var x1: Float64
     var y1: Float64
+
+    def __init__(out self, x0: Int, y0: Int, x1: Int, y1: Int):
+        self.x0 = Float64(x0); self.y0 = Float64(y0)
+        self.x1 = Float64(x1); self.y1 = Float64(y1)
 
     def length_sq(self) -> Float64:
         var dx = self.x1 - self.x0
@@ -98,6 +109,11 @@ struct Triangle:
     var y2: Float64
     var x3: Float64
     var y3: Float64
+
+    def __init__(out self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int):
+        self.x1 = Float64(x1); self.y1 = Float64(y1)
+        self.x2 = Float64(x2); self.y2 = Float64(y2)
+        self.x3 = Float64(x3); self.y3 = Float64(y3)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         var d1 = (self.x2 - self.x1) * (py - self.y1) - (self.y2 - self.y1) * (px - self.x1)

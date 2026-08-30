@@ -204,6 +204,18 @@ struct Canvas(Movable):
             self.line(x2, y2, x3, y3)
             self.line(x3, y3, x1, y1)
 
+    def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
+        self.rect(Float64(x), Float64(y), Float64(w), Float64(h))
+
+    def circle(mut self, cx: Int, cy: Int, r: Int) raises:
+        self.circle(Float64(cx), Float64(cy), Float64(r))
+
+    def line(mut self, x0: Int, y0: Int, x1: Int, y1: Int) raises:
+        self.line(Float64(x0), Float64(y0), Float64(x1), Float64(y1))
+
+    def triangle(mut self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int) raises:
+        self.triangle(Float64(x1), Float64(y1), Float64(x2), Float64(y2), Float64(x3), Float64(y3))
+
     def rect(mut self, r: Rectangle) raises:
         self.rect(r.x, r.y, r.w, r.h)
 
