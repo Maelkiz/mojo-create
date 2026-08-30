@@ -1,4 +1,5 @@
 from create.core.color import Color
+from std.ffi import _DLHandle
 
 
 def _read_u16(data: List[UInt8], off: Int) -> Int:
@@ -14,6 +15,29 @@ def _read_i32(data: List[UInt8], off: Int) -> Int:
 
 def _read_u32(data: List[UInt8], off: Int) -> Int:
     return Int(data[off]) | (Int(data[off + 1]) << 8) | (Int(data[off + 2]) << 16) | (Int(data[off + 3]) << 24)
+
+
+def _u32_at_inline(buf: InlineArray[UInt8, 104], off: Int) -> Int:
+    return Int(buf[off]) | (Int(buf[off+1]) << 8) | (Int(buf[off+2]) << 16) | (Int(buf[off+3]) << 24)
+
+
+def _jpeg_dimensions(data: List[UInt8]) raises -> Tuple[Int, Int]:
+    """Parse width and height from JPEG SOF marker."""
+    var i = 2  # skip SOI marker FF D8
+    while i < len(data) - 8:
+        if data[i] != 0xFF:
+            raise Error("Invalid JPEG: expected marker byte")
+        var marker = Int(data[i + 1])
+        if marker == 0xD9:  # EOI
+            break
+        # SOF markers encode image dimensions
+        if (marker >= 0xC0 and marker <= 0xC3) or (marker >= 0xC5 and marker <= 0xC7) or (marker >= 0xC9 and marker <= 0xCB) or (marker >= 0xCD and marker <= 0xCF):
+            var h = (Int(data[i + 5]) << 8) | Int(data[i + 6])
+            var w = (Int(data[i + 7]) << 8) | Int(data[i + 8])
+            return (w, h)
+        var seg_len = (Int(data[i + 2]) << 8) | Int(data[i + 3])
+        i += 2 + seg_len
+    raise Error("No SOF marker found in JPEG")
 
 
 struct Sprite(Movable):
@@ -68,16 +92,86 @@ struct Sprite(Movable):
 
     @staticmethod
     def load(path: String, width: Int, height: Int) raises -> Sprite:
-        """Load a BMP file and resize to the given dimensions."""
+        """Load an image file and resize to the given dimensions."""
         var s = Sprite.load(path)
         s.resize(width, height)
         return s^
 
     @staticmethod
+    def _extension(path: String) -> String:
+        var bytes = path.as_bytes()
+        var dot = -1
+        for i in range(len(bytes)):
+            if bytes[i] == 46:  # '.'
+                dot = i
+        if dot < 0:
+            return ""
+        var ext = String()
+        for i in range(dot + 1, len(bytes)):
+            ext += String(chr(Int(bytes[i]) | 32))  # lowercase
+        return ext
+
+    @staticmethod
+    def _load_png(data: List[UInt8]) raises -> Sprite:
+        var lib = _DLHandle("libpng16.so")
+        var img = InlineArray[UInt8, 104](fill=0)
+        img[8] = 1  # PNG_IMAGE_VERSION
+
+        var ok = lib.call["png_image_begin_read_from_memory", Int](
+            img.unsafe_ptr(), data.unsafe_ptr(), len(data)
+        )
+        if ok == 0:
+            raise Error("Failed to begin reading PNG")
+
+        var w = _u32_at_inline(img, 12)
+        var h = _u32_at_inline(img, 16)
+        img[20] = 3  # PNG_FORMAT_RGBA
+
+        var s = Sprite(w, h)
+        var ok2 = lib.call["png_image_finish_read", Int](
+            img.unsafe_ptr(), Int(0), s.pixels.unsafe_ptr(), Int(0), Int(0)
+        )
+        lib.call["png_image_free"](img.unsafe_ptr())
+
+        if ok2 == 0:
+            raise Error("Failed to decode PNG")
+        return s^
+
+    @staticmethod
+    def _load_jpeg(data: List[UInt8]) raises -> Sprite:
+        var dims = _jpeg_dimensions(data)
+        var w = dims[0]
+        var h = dims[1]
+
+        var lib = _DLHandle("libturbojpeg.so")
+        var handle = lib.call["tjInitDecompress", Int]()
+        if handle == 0:
+            raise Error("Failed to init JPEG decompressor")
+
+        var s = Sprite(w, h)
+        var result = lib.call["tjDecompress2", Int32](
+            handle, data.unsafe_ptr(), len(data),
+            s.pixels.unsafe_ptr(), Int32(w), Int32(0), Int32(h),
+            Int32(7),   # TJPF_RGBA
+            Int32(0),
+        )
+        lib.call["tjDestroy"](handle)
+
+        if result != 0:
+            raise Error("Failed to decode JPEG")
+        return s^
+
+    @staticmethod
     def load(path: String) raises -> Sprite:
-        """Load a BMP file. Supports 24-bit (BGR) and 32-bit (BGRA) uncompressed BMPs."""
+        """Load an image file. Supports BMP, PNG, and JPEG."""
+        var ext = Sprite._extension(path)
         with open(path, "r") as f:
             var data = f.read_bytes()
+
+            if ext == "png":
+                return Sprite._load_png(data)
+            if ext == "jpg" or ext == "jpeg":
+                return Sprite._load_jpeg(data)
 
             if len(data) < 54:
                 raise Error("BMP file too small: " + path)
