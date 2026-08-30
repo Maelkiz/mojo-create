@@ -4,14 +4,14 @@ from create.graphics.sprite import Sprite
 
 
 def test_solid_dimensions() raises -> None:
-    var s = Sprite.solid(4, 3, Color.red())
+    var s = Sprite.solid(4, 3, Color.RED)
     assert_equal(s.width, 4)
     assert_equal(s.height, 3)
     assert_equal(len(s.pixels), 4 * 3 * 4)
 
 
 def test_solid_pixels_correct() raises -> None:
-    var s = Sprite.solid(2, 2, Color.red())
+    var s = Sprite.solid(2, 2, Color.RED)
     var ptr = s.pixels.unsafe_ptr()
     for i in range(4):
         var off = i * 4
@@ -26,7 +26,6 @@ def test_load_bmp_dimensions() raises -> None:
     assert_equal(s.width, 2)
     assert_equal(s.height, 2)
     assert_equal(len(s.pixels), 2 * 2 * 4)
-
 
 def test_load_bmp_pixels() raises -> None:
     # test_2x2.bmp: top-left=red, top-right=white, bottom-left=blue, bottom-right=white
@@ -48,7 +47,7 @@ def test_load_bmp_pixels() raises -> None:
 
 
 def test_resize_dimensions() raises -> None:
-    var s = Sprite.solid(4, 4, Color.red())
+    var s = Sprite.solid(4, 4, Color.RED)
     s.resize(2, 2)
     assert_equal(s.width, 2)
     assert_equal(s.height, 2)
@@ -56,12 +55,12 @@ def test_resize_dimensions() raises -> None:
 
 
 def test_resize_preserves_color() raises -> None:
-    var s = Sprite.solid(4, 4, Color.blue())
+    var s = Sprite.solid(4, 4, Color.RED)
     s.resize(2, 2)
     var ptr = s.pixels.unsafe_ptr()
-    assert_equal(Int(ptr[unsafe_offset=0]), 0)    # R
+    assert_equal(Int(ptr[unsafe_offset=0]), 255)  # R
     assert_equal(Int(ptr[unsafe_offset=1]), 0)    # G
-    assert_equal(Int(ptr[unsafe_offset=2]), 255)  # B
+    assert_equal(Int(ptr[unsafe_offset=2]), 0)    # B
     assert_equal(Int(ptr[unsafe_offset=3]), 255)  # A
 
 

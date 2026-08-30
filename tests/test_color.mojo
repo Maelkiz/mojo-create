@@ -24,7 +24,7 @@ def test_gray_constructor() raises -> None:
 
 
 def test_black() raises -> None:
-    var c = Color.black()
+    var c = Color.BLACK
     assert_equal(c.r, UInt8(0))
     assert_equal(c.g, UInt8(0))
     assert_equal(c.b, UInt8(0))
@@ -32,7 +32,7 @@ def test_black() raises -> None:
 
 
 def test_white() raises -> None:
-    var c = Color.white()
+    var c = Color.WHITE
     assert_equal(c.r, UInt8(255))
     assert_equal(c.g, UInt8(255))
     assert_equal(c.b, UInt8(255))
@@ -40,21 +40,21 @@ def test_white() raises -> None:
 
 
 def test_red() raises -> None:
-    var c = Color.red()
+    var c = Color.RED
     assert_equal(c.r, UInt8(255))
     assert_equal(c.g, UInt8(0))
     assert_equal(c.b, UInt8(0))
 
 
 def test_green() raises -> None:
-    var c = Color.green()
+    var c = Color.GREEN
     assert_equal(c.r, UInt8(0))
     assert_equal(c.g, UInt8(255))
     assert_equal(c.b, UInt8(0))
 
 
 def test_blue() raises -> None:
-    var c = Color.blue()
+    var c = Color.BLUE
     assert_equal(c.r, UInt8(0))
     assert_equal(c.g, UInt8(0))
     assert_equal(c.b, UInt8(255))

@@ -19,9 +19,9 @@ struct Canvas(Movable):
     def __init__(out self, title: String, width: Int, height: Int) raises:
         var fullscreen = width == 0 and height == 0
         self._win = Window(title, width, height, fullscreen)
-        self._fill = Color.white()
+        self._fill = Color.WHITE
         self._fill_enabled = True
-        self._stroke = Color.black()
+        self._stroke = Color.BLACK
         self._stroke_width = 1
         self._stroke_enabled = True
 

@@ -16,22 +16,8 @@ struct Color(ImplicitlyCopyable, Movable):
         self.b = gray
         self.a = 255
 
-    @staticmethod
-    def black() -> Color:
-        return Color(0)
-
-    @staticmethod
-    def white() -> Color:
-        return Color(255)
-
-    @staticmethod
-    def red() -> Color:
-        return Color(255, 0, 0)
-
-    @staticmethod
-    def green() -> Color:
-        return Color(0, 255, 0)
-
-    @staticmethod
-    def blue() -> Color:
-        return Color(0, 0, 255)
+    comptime BLACK = Color(0)
+    comptime WHITE = Color(255)
+    comptime RED   = Color(255, 0, 0)
+    comptime GREEN = Color(0, 255, 0)
+    comptime BLUE  = Color(0, 0, 255)

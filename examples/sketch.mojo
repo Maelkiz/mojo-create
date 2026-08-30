@@ -9,15 +9,18 @@ struct Sketch(Windowed, Movable, Deinitable):
         return Sketch()
 
     def render(self, mut canvas: Canvas) raises:
-        canvas.background(Color(255))
-        canvas.fill(Color.red())
-        canvas.rect(10, 10, 100, 100)
-        canvas.fill(Color.blue())
-        canvas.circle(200, 100, 50)
-        canvas.stroke(Color.green())
+        canvas.background(Color.WHITE)
+
+        canvas.fill(Color.RED)
+        canvas.rect(150, 150, 100, 100)
+
+        canvas.fill(Color.BLUE)
+        canvas.circle(400, 400, 50)
+
+        canvas.stroke(Color.GREEN)
         canvas.stroke_width(3)
-        canvas.line(0, 0, 300, 200)
+        canvas.line(150, 150, 400, 400)
 
 
 def main() raises:
-    run[Sketch]("Example Sketch", 300, 200)
+    run[Sketch]("Example Sketch", 800, 600)
