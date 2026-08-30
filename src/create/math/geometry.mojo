@@ -79,6 +79,24 @@ struct Rectangle(Convex):
     def contains(self, v: Point) -> Bool:
         return self.contains(v.x, v.y)
 
+    def move_to(mut self, x: Float64, y: Float64):
+        self.x = x; self.y = y
+
+    def move_to(mut self, x: Int, y: Int):
+        self.x = Float64(x); self.y = Float64(y)
+
+    def move_to(mut self, pos: Point):
+        self.x = pos.x; self.y = pos.y
+
+    def translate(mut self, dx: Float64, dy: Float64):
+        self.x += dx; self.y += dy
+
+    def translate(mut self, dx: Int, dy: Int):
+        self.x += Float64(dx); self.y += Float64(dy)
+
+    def translate(mut self, delta: Vector2):
+        self.x += delta.x; self.y += delta.y
+
     def overlaps(self, other: Rectangle) -> Bool:
         return (self.left() < other.right() and self.right() > other.left() and
                 self.top() < other.bottom() and self.bottom() > other.top())
@@ -134,6 +152,24 @@ struct Circle(Convex):
 
     def overlaps(self, r: Rectangle) -> Bool:
         return r.overlaps(self)
+
+    def move_to(mut self, x: Float64, y: Float64):
+        self.x = x; self.y = y
+
+    def move_to(mut self, x: Int, y: Int):
+        self.x = Float64(x); self.y = Float64(y)
+
+    def move_to(mut self, pos: Point):
+        self.x = pos.x; self.y = pos.y
+
+    def translate(mut self, dx: Float64, dy: Float64):
+        self.x += dx; self.y += dy
+
+    def translate(mut self, dx: Int, dy: Int):
+        self.x += Float64(dx); self.y += Float64(dy)
+
+    def translate(mut self, delta: Vector2):
+        self.x += delta.x; self.y += delta.y
 
 
 @fieldwise_init
@@ -219,6 +255,31 @@ struct Triangle(Convex):
         var min2 = _project_min(nx, ny, other.x1, other.y1, other.x2, other.y2, other.x3, other.y3)
         var max2 = _project_max(nx, ny, other.x1, other.y1, other.x2, other.y2, other.x3, other.y3)
         return max1 < min2 or max2 < min1
+
+    def move_to(mut self, x: Float64, y: Float64):
+        var cx = (self.x1 + self.x2 + self.x3) / 3.0
+        var cy = (self.y1 + self.y2 + self.y3) / 3.0
+        var dx = x - cx; var dy = y - cy
+        self.x1 += dx; self.y1 += dy
+        self.x2 += dx; self.y2 += dy
+        self.x3 += dx; self.y3 += dy
+
+    def move_to(mut self, x: Int, y: Int):
+        self.move_to(Float64(x), Float64(y))
+
+    def move_to(mut self, pos: Point):
+        self.move_to(pos.x, pos.y)
+
+    def translate(mut self, dx: Float64, dy: Float64):
+        self.x1 += dx; self.y1 += dy
+        self.x2 += dx; self.y2 += dy
+        self.x3 += dx; self.y3 += dy
+
+    def translate(mut self, dx: Int, dy: Int):
+        self.translate(Float64(dx), Float64(dy))
+
+    def translate(mut self, delta: Vector2):
+        self.translate(delta.x, delta.y)
 
     def overlaps(self, other: Triangle) -> Bool:
         # SAT — 6 edge normals (3 per triangle)
