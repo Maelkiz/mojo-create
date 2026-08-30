@@ -3,6 +3,7 @@ from create.core import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
+    
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         return App()

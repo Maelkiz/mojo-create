@@ -3,6 +3,7 @@ from create.core import *
 
 @fieldwise_init
 struct Sketch(Program, Movable, Deinitable):
+    
     @staticmethod
     def create(mut ctx: Context) raises -> Sketch:
         return Sketch()

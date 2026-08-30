@@ -3,6 +3,7 @@ from create.core import *
 
 @fieldwise_init
 struct Game(Program, Movable, Deinitable):
+    
     var x: Int
     var y: Int
 
