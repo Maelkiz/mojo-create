@@ -1,7 +1,7 @@
 from std.math import sqrt
 
 
-struct Vector2(Writable, Copyable, Movable):
+struct Vector2(Writable, Copyable, ImplicitlyCopyable, Movable):
     var x: Float64
     var y: Float64
 
