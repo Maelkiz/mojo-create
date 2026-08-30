@@ -11,6 +11,7 @@ struct Context(Movable):
     var time: Time
     var width: Int
     var height: Int
+    var exit_on_escape: Bool
 
     def __init__(out self, var canvas: Canvas, var input: Input, time: Time, width: Int, height: Int):
         self._canvas = canvas^
@@ -18,6 +19,7 @@ struct Context(Movable):
         self.time = time
         self.width = width
         self.height = height
+        self.exit_on_escape = True
 
     def fill(mut self, color: Color):
         self._canvas._fill = color

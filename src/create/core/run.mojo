@@ -39,6 +39,8 @@ def _run_loop[P: Program](mut program: P, mut ctx: Context) raises:
                 ctx._canvas.close()
             elif event.isa[KeyDown]():
                 var keycode = event[KeyDown].keycode
+                if keycode == 27 and ctx.exit_on_escape:
+                    ctx._canvas.close()
                 if not ctx.input.is_key_down(keycode):
                     ctx.input._held_keys.append(keycode)
                     program.on_key_down(keycode)
