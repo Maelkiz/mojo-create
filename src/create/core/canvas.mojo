@@ -4,6 +4,7 @@ from window.event import Event
 from .color import Color
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
+from create.graphics.sprite import Sprite
 comptime Point = Vector2
 
 
@@ -247,3 +248,42 @@ struct Canvas(Movable):
 
     def triangle(mut self, a: Point, b: Point, c: Point) raises:
         self.triangle(a.x, a.y, b.x, b.y, c.x, c.y)
+
+    def sprite(mut self, s: Sprite, cx: Int, cy: Int) raises:
+        self.sprite(s, Float64(cx), Float64(cy))
+
+    def sprite(mut self, s: Sprite, cx: Float64, cy: Float64) raises:
+        var W = self._win.width()
+        var H = self._win.height()
+        var px = self._win.pixels()
+        var sp = s.pixels.unsafe_ptr()
+        var x0 = Int(cx) - s.width // 2
+        var y0 = Int(cy) - s.height // 2
+        for row in range(s.height):
+            var dy = y0 + row
+            if dy < 0 or dy >= H:
+                continue
+            for col in range(s.width):
+                var dx = x0 + col
+                if dx < 0 or dx >= W:
+                    continue
+                var src_off = (row * s.width + col) * 4
+                var sa = sp[unsafe_offset=src_off + 3]
+                if sa == 0:
+                    continue
+                var dst_off = (dy * W + dx) * 4
+                if sa == 255:
+                    px[unsafe_offset=dst_off] = sp[unsafe_offset=src_off]
+                    px[unsafe_offset=dst_off + 1] = sp[unsafe_offset=src_off + 1]
+                    px[unsafe_offset=dst_off + 2] = sp[unsafe_offset=src_off + 2]
+                    px[unsafe_offset=dst_off + 3] = 255
+                else:
+                    var a = Int(sa)
+                    var ia = 255 - a
+                    px[unsafe_offset=dst_off] = UInt8((Int(sp[unsafe_offset=src_off]) * a + Int(px[unsafe_offset=dst_off]) * ia) // 255)
+                    px[unsafe_offset=dst_off + 1] = UInt8((Int(sp[unsafe_offset=src_off + 1]) * a + Int(px[unsafe_offset=dst_off + 1]) * ia) // 255)
+                    px[unsafe_offset=dst_off + 2] = UInt8((Int(sp[unsafe_offset=src_off + 2]) * a + Int(px[unsafe_offset=dst_off + 2]) * ia) // 255)
+                    px[unsafe_offset=dst_off + 3] = 255
+
+    def sprite(mut self, s: Sprite, pos: Point) raises:
+        self.sprite(s, pos.x, pos.y)
