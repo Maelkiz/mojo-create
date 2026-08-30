@@ -4,22 +4,6 @@ from .renderable import Renderable
 from .color import Color
 
 
-@fieldwise_init
-struct Background(Renderable):
-    var color: Color
-
-    def render_to(self, mut canvas: Canvas) raises:
-        var w = canvas._win.width()
-        var h = canvas._win.height()
-        var px = canvas._win.pixels()
-        var c = self.color
-        for i in range(w * h):
-            var off = i * 4
-            px[unsafe_offset=off] = c.r
-            px[unsafe_offset=off + 1] = c.g
-            px[unsafe_offset=off + 2] = c.b
-            px[unsafe_offset=off + 3] = c.a
-
 
 @fieldwise_init
 struct Rect(Renderable):

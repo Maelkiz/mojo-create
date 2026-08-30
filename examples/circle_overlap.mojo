@@ -3,7 +3,7 @@ from create.core import *
 
 @fieldwise_init
 struct App(Program, Movable, Deinitable):
-    
+
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         return App()
@@ -19,7 +19,7 @@ struct App(Program, Movable, Deinitable):
 
         var bg_col = Color(40, 40, 60) if overlaps else Color(20, 20, 30)
 
-        ctx.render(Background(bg_col))
+        ctx.background(bg_col)
         ctx.no_stroke()
         ctx.fill(Color(220, 60, 60))
         ctx.render(Circle(cx, cy, radius))

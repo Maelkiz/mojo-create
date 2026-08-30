@@ -40,7 +40,7 @@ struct Game(Program, Movable, Deinitable):
     def update(mut self, mut ctx: Context) raises:
         self.player.move(ctx)
 
-        ctx.render(Background(Color(30, 30, 30)))
+        ctx.background(Color(30, 30, 30))
         ctx.render(self.player)
 
 
