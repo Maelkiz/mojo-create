@@ -1,3 +1,4 @@
+from create.math.geometry import Rectangle, Circle, Line, Triangle
 from .color import Color
 from .time import Time
 from .input import Input

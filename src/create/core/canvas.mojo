@@ -2,6 +2,7 @@ from std.math import max, min, abs
 from window.window import Window
 from window.event import Event
 from .color import Color
+from create.math.geometry import Rectangle, Circle, Line, Triangle
 
 
 struct Canvas(Movable):
@@ -198,3 +199,15 @@ struct Canvas(Movable):
             self.line(x1, y1, x2, y2)
             self.line(x2, y2, x3, y3)
             self.line(x3, y3, x1, y1)
+
+    def rect(mut self, r: Rectangle) raises:
+        self.rect(r.x, r.y, r.w, r.h)
+
+    def circle(mut self, c: Circle) raises:
+        self.circle(c.x, c.y, c.r)
+
+    def line(mut self, l: Line) raises:
+        self.line(l.x0, l.y0, l.x1, l.y1)
+
+    def triangle(mut self, t: Triangle) raises:
+        self.triangle(t.x1, t.y1, t.x2, t.y2, t.x3, t.y3)
