@@ -2,21 +2,21 @@ from create.core import *
 
 
 @fieldwise_init
-struct Sketch(Program, Movable, Deinitable):
+struct Sketch(Windowed, Movable, Deinitable):
 
     @staticmethod
     def create(mut ctx: Context) raises -> Sketch:
         return Sketch()
 
-    def update(mut self, mut ctx: Context) raises:
-        ctx.background(Color(255))
-        ctx.fill(Color.red())
-        ctx.render(Rect(10, 10, 100, 100))
-        ctx.fill(Color.blue())
-        ctx.render(Circle(200, 100, 50))
-        ctx.stroke(Color.green())
-        ctx.stroke_width(3)
-        ctx.render(Line(0, 0, 300, 200))
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color(255))
+        canvas.fill(Color.red())
+        canvas.draw(Rect(10, 10, 100, 100))
+        canvas.fill(Color.blue())
+        canvas.draw(Circle(200, 100, 50))
+        canvas.stroke(Color.green())
+        canvas.stroke_width(3)
+        canvas.draw(Line(0, 0, 300, 200))
 
 
 def main() raises:

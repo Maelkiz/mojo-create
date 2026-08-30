@@ -2,7 +2,7 @@ from create.core import *
 from create.math import clamp
 
 @fieldwise_init
-struct Player(Renderable):
+struct Player:
     var x: Int
     var y: Int
     var width: Int
@@ -22,15 +22,14 @@ struct Player(Renderable):
         self.x = clamp(self.x, self.width // 2, ctx.width - self.width // 2)
         self.y = clamp(self.y, self.height // 2, ctx.height - self.height // 2)
 
-    def render_to(self, mut canvas: Canvas) raises:
-        canvas._fill = Color(220, 80, 80)
-        canvas._fill_enabled = True
-        canvas._stroke_enabled = False
-        Rect(self.x, self.y, self.width, self.height).render_to(canvas)
+    def draw(self, mut canvas: Canvas) raises:
+        canvas.fill(Color(220, 80, 80))
+        canvas.no_stroke()
+        canvas.draw(Rect(self.x, self.y, self.width, self.height))
 
 
 @fieldwise_init
-struct Game(Program, Movable, Deinitable):
+struct Game(Windowed, Movable, Deinitable):
     var player: Player
 
     @staticmethod
@@ -40,8 +39,9 @@ struct Game(Program, Movable, Deinitable):
     def update(mut self, mut ctx: Context) raises:
         self.player.move(ctx)
 
-        ctx.background(Color(30, 30, 30))
-        ctx.render(self.player)
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color(30, 30, 30))
+        self.player.draw(canvas)
 
 
 def main() raises:

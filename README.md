@@ -12,7 +12,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct App(Program, Movable, Deinitable):
+struct App(Windowed, Movable, Deinitable):
 
     @staticmethod
     def create(mut ctx: Context) raises -> App:
@@ -20,6 +20,9 @@ struct App(Program, Movable, Deinitable):
 
     def update(mut self, mut ctx: Context) raises:
         pass # Executes once per frame
+
+    def render(self, mut canvas: Canvas) raises:
+        pass # Draw here
 
 
 def main() raises:

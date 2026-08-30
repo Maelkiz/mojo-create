@@ -1,6 +1,7 @@
 from window.window import Window
 from window.event import Event
 from .color import Color
+from .renderable import Renderable
 
 
 struct Canvas(Movable):
@@ -34,3 +35,34 @@ struct Canvas(Movable):
 
     def ticks(self) raises -> Int:
         return self._win.ticks()
+
+    def fill(mut self, color: Color):
+        self._fill = color
+        self._fill_enabled = True
+
+    def no_fill(mut self):
+        self._fill_enabled = False
+
+    def stroke(mut self, color: Color):
+        self._stroke = color
+        self._stroke_enabled = True
+
+    def no_stroke(mut self):
+        self._stroke_enabled = False
+
+    def stroke_width(mut self, w: Int):
+        self._stroke_width = w
+
+    def background(mut self, color: Color) raises:
+        var w = self._win.width()
+        var h = self._win.height()
+        var px = self._win.pixels()
+        for i in range(w * h):
+            var off = i * 4
+            px[unsafe_offset=off] = color.r
+            px[unsafe_offset=off + 1] = color.g
+            px[unsafe_offset=off + 2] = color.b
+            px[unsafe_offset=off + 3] = color.a
+
+    def draw[S: Renderable](mut self, shape: S) raises:
+        shape.render_to(self)

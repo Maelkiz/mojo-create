@@ -1,7 +1,8 @@
+from .canvas import Canvas
 from .context import Context
 
 
-trait Program(Movable, Deinitable):
+trait Headless(Movable, Deinitable):
     @staticmethod
     def create(mut ctx: Context) raises -> Self:
         ...
@@ -28,4 +29,9 @@ trait Program(Movable, Deinitable):
         pass
 
     def on_resize(mut self, width: Int, height: Int) raises:
+        pass
+
+
+trait Windowed(Headless):
+    def render(self, mut canvas: Canvas) raises:
         pass
