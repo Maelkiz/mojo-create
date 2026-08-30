@@ -1,4 +1,4 @@
-from create.math.geometry import Rectangle, Circle, Line, Triangle
+from create.math.geometry import Convex, overlaps, Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
 comptime Point = Vector2
 from .color import Color

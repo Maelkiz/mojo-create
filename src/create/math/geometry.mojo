@@ -3,6 +3,28 @@ from .vector2 import Vector2
 comptime Point = Vector2
 
 
+trait Convex:
+    def center(self) -> Point: ...
+    def closest_point(self, px: Float64, py: Float64) -> Point: ...
+    def contains(self, px: Float64, py: Float64) -> Bool: ...
+
+
+def overlaps[A: Convex, B: Convex](a: A, b: B) -> Bool:
+    var c = a.center()
+    var p = b.closest_point(c.x, c.y)
+    return a.contains(p.x, p.y)
+
+
+def _closest_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Point:
+    var dx = bx - ax
+    var dy = by - ay
+    var len_sq = dx * dx + dy * dy
+    if len_sq == 0.0:
+        return Point(ax, ay)
+    var t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / len_sq))
+    return Point(ax + t * dx, ay + t * dy)
+
+
 def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
 
@@ -16,7 +38,7 @@ def _project_max(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64
 
 
 @fieldwise_init
-struct Rectangle:
+struct Rectangle(Convex):
     var x: Float64
     var y: Float64
     var w: Float64
@@ -31,6 +53,13 @@ struct Rectangle:
 
     def __init__(out self, pos: Point, size: Vector2):
         self.x = pos.x; self.y = pos.y; self.w = size.x; self.h = size.y
+
+    def center(self) -> Point:
+        return Point(self.x, self.y)
+
+    def closest_point(self, px: Float64, py: Float64) -> Point:
+        return Point(max(self.left(), min(px, self.right())),
+                     max(self.top(), min(py, self.bottom())))
 
     def left(self) -> Float64:
         return self.x - self.w / 2.0
@@ -63,7 +92,7 @@ struct Rectangle:
 
 
 @fieldwise_init
-struct Circle:
+struct Circle(Convex):
     var x: Float64
     var y: Float64
     var r: Float64
@@ -76,6 +105,18 @@ struct Circle:
 
     def __init__(out self, pos: Point, r: Int):
         self.x = pos.x; self.y = pos.y; self.r = Float64(r)
+
+    def center(self) -> Point:
+        return Point(self.x, self.y)
+
+    def closest_point(self, px: Float64, py: Float64) -> Point:
+        var dx = px - self.x
+        var dy = py - self.y
+        var dist_sq = dx * dx + dy * dy
+        if dist_sq == 0.0 or dist_sq <= self.r * self.r:
+            return Point(px, py)
+        var dist = sqrt(dist_sq)
+        return Point(self.x + dx / dist * self.r, self.y + dy / dist * self.r)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
@@ -126,7 +167,7 @@ struct Line:
 
 
 @fieldwise_init
-struct Triangle:
+struct Triangle(Convex):
     var x1: Float64
     var y1: Float64
     var x2: Float64
@@ -143,6 +184,23 @@ struct Triangle:
         self.x1 = a.x; self.y1 = a.y
         self.x2 = b.x; self.y2 = b.y
         self.x3 = c.x; self.y3 = c.y
+
+    def center(self) -> Point:
+        return Point((self.x1 + self.x2 + self.x3) / 3.0,
+                     (self.y1 + self.y2 + self.y3) / 3.0)
+
+    def closest_point(self, px: Float64, py: Float64) -> Point:
+        if self.contains(px, py):
+            return Point(px, py)
+        var p1 = _closest_on_segment(px, py, self.x1, self.y1, self.x2, self.y2)
+        var p2 = _closest_on_segment(px, py, self.x2, self.y2, self.x3, self.y3)
+        var p3 = _closest_on_segment(px, py, self.x3, self.y3, self.x1, self.y1)
+        var d1 = (p1.x - px) * (p1.x - px) + (p1.y - py) * (p1.y - py)
+        var d2 = (p2.x - px) * (p2.x - px) + (p2.y - py) * (p2.y - py)
+        var d3 = (p3.x - px) * (p3.x - px) + (p3.y - py) * (p3.y - py)
+        if d1 <= d2 and d1 <= d3: return p1
+        if d2 <= d3: return p2
+        return p3
 
     def contains(self, v: Point) -> Bool:
         return self.contains(v.x, v.y)
