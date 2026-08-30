@@ -19,12 +19,15 @@ struct App(Program, Movable, Deinitable):
 
         var bg_col = Color(40, 40, 60) if overlaps else Color(20, 20, 30)
 
+        var center_circle = Circle(cx, cy, radius)
+        var mouse_circle = Circle(ctx.input.mouse_x, ctx.input.mouse_y, radius)
+        
         ctx.background(bg_col)
         ctx.no_stroke()
         ctx.fill(Color(220, 60, 60))
-        ctx.render(Circle(cx, cy, radius))
+        ctx.render(center_circle)
         ctx.fill(Color(60, 120, 220))
-        ctx.render(Circle(ctx.input.mouse_x, ctx.input.mouse_y, radius))
+        ctx.render(mouse_circle)
 
 
 def main() raises:
