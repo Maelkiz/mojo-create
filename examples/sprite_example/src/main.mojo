@@ -16,13 +16,13 @@ struct Game(Windowed, Movable, Deinitable):
 
     def update(mut self, mut ctx: Context) raises:
         var speed = 15.0
-        if ctx.input.is_key_down(119):  # w
+        if ctx.input.is_key_down("w"):
             self.y -= speed
-        if ctx.input.is_key_down(115):  # s
+        if ctx.input.is_key_down("s"):
             self.y += speed
-        if ctx.input.is_key_down(97):   # a
+        if ctx.input.is_key_down("a"):
             self.x -= speed
-        if ctx.input.is_key_down(100):  # d
+        if ctx.input.is_key_down("d"):
             self.x += speed
 
         var hw = Float64(self.sprite.width) / 2.0

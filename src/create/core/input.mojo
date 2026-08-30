@@ -17,3 +17,6 @@ struct Input(Movable):
             if self._held_keys[i] == keycode:
                 return True
         return False
+
+    def is_key_down(self, key: String) -> Bool:
+        return self.is_key_down(ord(key))

@@ -10,13 +10,13 @@ struct Player:
 
     def move(mut self, mut ctx: Context):
         var speed = 10
-        if ctx.input.is_key_down(119):  # w
+        if ctx.input.is_key_down("w"):
             self.y -= speed
-        if ctx.input.is_key_down(115):  # s
+        if ctx.input.is_key_down("s"):
             self.y += speed
-        if ctx.input.is_key_down(97):   # a
+        if ctx.input.is_key_down("a"):
             self.x -= speed
-        if ctx.input.is_key_down(100):  # d
+        if ctx.input.is_key_down("d"):
             self.x += speed
 
         self.x = clamp(self.x, self.width // 2, ctx.width - self.width // 2)
