@@ -29,8 +29,8 @@ def main() raises:
     run[App]("Example Sketch", 400, 300)
 ```
 
-Run the program using `run`:
+Run the example programs using the `create` pixi task:
 
 ```bash
-pixi run run examples/sketch.mojo
+pixi run create examples/sketch.mojo
 ```

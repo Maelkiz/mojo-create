@@ -6,7 +6,7 @@ platforms = ["linux-64"]
 version = "0.1.0"
 
 [tasks]
-run = "mojo run -I src"
+create = "mojo run -I src"
 test = "bash -c 'set -e; for f in tests/test_*.mojo; do mojo run -I src \"$f\"; done'"
 setup = "git config core.hooksPath .githooks"
 
