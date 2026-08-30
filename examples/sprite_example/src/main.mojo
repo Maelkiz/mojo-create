@@ -11,11 +11,11 @@ struct Game(Windowed, Movable, Deinitable):
 
     @staticmethod
     def create(mut ctx: Context) raises -> Game:
-        var sprite = Sprite.load(script_dir() + "/../assets/sprite.bmp")
+        var sprite = Sprite.load(script_dir() + "/../assets/sprite.jpeg", 120, 120)
         return Game(sprite^, Float64(ctx.width // 2), Float64(ctx.height // 2))
 
     def update(mut self, mut ctx: Context) raises:
-        var speed = 4.0
+        var speed = 15.0
         if ctx.input.is_key_down(119):  # w
             self.y -= speed
         if ctx.input.is_key_down(115):  # s
@@ -36,4 +36,4 @@ struct Game(Windowed, Movable, Deinitable):
 
 
 def main() raises:
-    run[Game]("Sprite Example", 800, 600)
+    run[Game]("Sprite Example")
