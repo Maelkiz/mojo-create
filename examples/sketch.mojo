@@ -11,12 +11,12 @@ struct Sketch(Windowed, Movable, Deinitable):
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color(255))
         canvas.fill(Color.red())
-        canvas.draw(Rect(10, 10, 100, 100))
+        canvas.rect(10, 10, 100, 100)
         canvas.fill(Color.blue())
-        canvas.draw(Circle(200, 100, 50))
+        canvas.circle(200, 100, 50)
         canvas.stroke(Color.green())
         canvas.stroke_width(3)
-        canvas.draw(Line(0, 0, 300, 200))
+        canvas.line(0, 0, 300, 200)
 
 
 def main() raises:

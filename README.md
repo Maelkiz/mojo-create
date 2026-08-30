@@ -22,7 +22,7 @@ struct App(Windowed, Movable, Deinitable):
         pass # Executes once per frame
 
     def render(self, mut canvas: Canvas) raises:
-        pass # Draw here
+        pass # canvas.rect(), canvas.circle(), etc.
 
 
 def main() raises:

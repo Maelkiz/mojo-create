@@ -28,9 +28,9 @@ struct App(Windowed, Movable, Deinitable):
         canvas.background(Color(40, 40, 60) if self.overlaps else Color(20, 20, 30))
         canvas.no_stroke()
         canvas.fill(Color(220, 60, 60))
-        canvas.draw(Circle(self.cx, self.cy, radius))
+        canvas.circle(self.cx, self.cy, radius)
         canvas.fill(Color(60, 120, 220))
-        canvas.draw(Circle(self.mouse_x, self.mouse_y, radius))
+        canvas.circle(self.mouse_x, self.mouse_y, radius)
 
 
 def main() raises:
