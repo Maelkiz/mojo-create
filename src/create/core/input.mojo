@@ -3,7 +3,6 @@ struct Input(Movable):
     var mouse_y: Int
     var mouse_pressed: Bool
     var mouse_button: Int
-    var case_sensitive: Bool 
     var _held_keys: List[Int]
 
     def __init__(out self):
@@ -12,7 +11,6 @@ struct Input(Movable):
         self.mouse_pressed = False
         self.mouse_button = 0
         self._held_keys = List[Int]()
-        self.case_sensitive = True
 
     def is_key_down(self, keycode: Int) -> Bool:
         for i in range(len(self._held_keys)):
@@ -23,10 +21,7 @@ struct Input(Movable):
     def is_key_down(self, key: String) -> Bool:
         # Single printable char — SDL keycode == ASCII for a-z, 0-9, punctuation
         if key.byte_length() == 1:
-            if self.case_sensitive:
-                return self.is_key_down(ord(key))
-            else: 
-                return self.is_key_down(ord(key.lower())) or self.is_key_down(ord(key.upper()))
+            return self.is_key_down(ord(key))
 
         var k = key.lower()
 
