@@ -1,18 +1,15 @@
 from create.core import *
-
+from create.math import clamp
 
 @fieldwise_init
-struct Game(Program, Movable, Deinitable):
-    
+struct Player(Renderable):
     var x: Int
     var y: Int
+    var width: Int
+    var height: Int
 
-    @staticmethod
-    def create(mut ctx: Context) raises -> Game:
-        return Game(ctx.width // 2 - 30, ctx.height // 2 - 50)
-
-    def update(mut self, mut ctx: Context) raises:
-        var speed = 5
+    def move(mut self, mut ctx: Context):
+        var speed = 10
         if ctx.input.is_key_down(119):  # w
             self.y -= speed
         if ctx.input.is_key_down(115):  # s
@@ -22,10 +19,29 @@ struct Game(Program, Movable, Deinitable):
         if ctx.input.is_key_down(100):  # d
             self.x += speed
 
+        self.x = clamp(self.x, self.width // 2, ctx.width - self.height // 2)
+        self.y = clamp(self.y, self.height // 2, ctx.height - self.height // 2)
+
+    def render_to(self, mut canvas: Canvas) raises:
+        canvas._fill = Color(220, 80, 80)
+        canvas._fill_enabled = True
+        canvas._stroke_enabled = False
+        Rect(self.x, self.y, self.width, self.height).render_to(canvas)
+
+
+@fieldwise_init
+struct Game(Program, Movable, Deinitable):
+    var player: Player
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> Game:
+        return Game(Player(ctx.width // 2, ctx.height // 2 - 50, 60, 100))
+
+    def update(mut self, mut ctx: Context) raises:
+        self.player.move(ctx)
+
         ctx.render(Background(Color(30, 30, 30)))
-        ctx.fill(Color(220, 80, 80))
-        ctx.no_stroke()
-        ctx.render(Rect(self.x, self.y, 60, 100))
+        ctx.render(self.player)
 
 
 def main() raises:
