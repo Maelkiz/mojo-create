@@ -18,7 +18,7 @@ struct App(Windowed, Movable, Deinitable):
         self.mouse = Circle(ctx.input.mouse_x, ctx.input.mouse_y, 100)
 
     def render(self, mut canvas: Canvas) raises:
-        if self.center.overlaps(self.mouse):
+        if overlaps(self.center, self.mouse):
             canvas.background(Color(40, 40, 60)) 
         else: 
             canvas.background(Color(20, 20, 30))
