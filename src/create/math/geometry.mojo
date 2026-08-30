@@ -1,6 +1,6 @@
 from std.math import min, max, sqrt
 from .vector2 import Vector2
-alias Point = Vector2
+comptime Point = Vector2
 
 
 def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:

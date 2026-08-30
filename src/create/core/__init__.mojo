@@ -1,6 +1,6 @@
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
-alias Point = Vector2
+comptime Point = Vector2
 from .color import Color
 from .time import Time
 from .input import Input
