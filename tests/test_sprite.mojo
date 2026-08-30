@@ -71,6 +71,13 @@ def test_load_with_dimensions() raises -> None:
     assert_equal(s.height, 4)
 
 
+def test_load_png() raises -> None:
+    var s = Sprite.load("examples/sprite_example/assets/sprite.png")
+    assert_equal(s.width, 500)
+    assert_equal(s.height, 500)
+    assert_equal(len(s.pixels), 500 * 500 * 4)
+
+
 def test_from_rgba_roundtrip() raises -> None:
     var data: List[UInt8] = [10, 20, 30, 128, 40, 50, 60, 200]
     var s = Sprite.from_rgba(2, 1, data)
