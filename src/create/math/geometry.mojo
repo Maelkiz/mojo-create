@@ -1,4 +1,6 @@
 from std.math import min, max, sqrt
+from .vector2 import Vector2
+alias Point = Vector2
 
 
 def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:
@@ -24,6 +26,12 @@ struct Rectangle:
         self.x = Float64(x); self.y = Float64(y)
         self.w = Float64(w); self.h = Float64(h)
 
+    def __init__(out self, pos: Point, w: Float64, h: Float64):
+        self.x = pos.x; self.y = pos.y; self.w = w; self.h = h
+
+    def __init__(out self, pos: Point, size: Vector2):
+        self.x = pos.x; self.y = pos.y; self.w = size.x; self.h = size.y
+
     def left(self) -> Float64:
         return self.x - self.w / 2.0
 
@@ -38,6 +46,9 @@ struct Rectangle:
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         return self.left() <= px <= self.right() and self.top() <= py <= self.bottom()
+
+    def contains(self, v: Point) -> Bool:
+        return self.contains(v.x, v.y)
 
     def overlaps(self, other: Rectangle) -> Bool:
         return (self.left() < other.right() and self.right() > other.left() and
@@ -60,10 +71,19 @@ struct Circle:
     def __init__(out self, x: Int, y: Int, r: Int):
         self.x = Float64(x); self.y = Float64(y); self.r = Float64(r)
 
+    def __init__(out self, pos: Point, r: Float64):
+        self.x = pos.x; self.y = pos.y; self.r = r
+
+    def __init__(out self, pos: Point, r: Int):
+        self.x = pos.x; self.y = pos.y; self.r = Float64(r)
+
     def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
         var dy = py - self.y
         return dx * dx + dy * dy <= self.r * self.r
+
+    def contains(self, v: Point) -> Bool:
+        return self.contains(v.x, v.y)
 
     def overlaps(self, other: Circle) -> Bool:
         var dx = self.x - other.x
@@ -85,6 +105,10 @@ struct Line:
     def __init__(out self, x0: Int, y0: Int, x1: Int, y1: Int):
         self.x0 = Float64(x0); self.y0 = Float64(y0)
         self.x1 = Float64(x1); self.y1 = Float64(y1)
+
+    def __init__(out self, start: Point, end: Point):
+        self.x0 = start.x; self.y0 = start.y
+        self.x1 = end.x; self.y1 = end.y
 
     def length_sq(self) -> Float64:
         var dx = self.x1 - self.x0
@@ -114,6 +138,14 @@ struct Triangle:
         self.x1 = Float64(x1); self.y1 = Float64(y1)
         self.x2 = Float64(x2); self.y2 = Float64(y2)
         self.x3 = Float64(x3); self.y3 = Float64(y3)
+
+    def __init__(out self, a: Point, b: Point, c: Point):
+        self.x1 = a.x; self.y1 = a.y
+        self.x2 = b.x; self.y2 = b.y
+        self.x3 = c.x; self.y3 = c.y
+
+    def contains(self, v: Point) -> Bool:
+        return self.contains(v.x, v.y)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         var d1 = (self.x2 - self.x1) * (py - self.y1) - (self.y2 - self.y1) * (px - self.x1)

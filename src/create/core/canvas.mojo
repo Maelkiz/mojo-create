@@ -3,6 +3,8 @@ from window.window import Window
 from window.event import Event
 from .color import Color
 from create.math.geometry import Rectangle, Circle, Line, Triangle
+from create.math.vector2 import Vector2
+alias Point = Vector2
 
 
 struct Canvas(Movable):
@@ -219,11 +221,29 @@ struct Canvas(Movable):
     def rect(mut self, r: Rectangle) raises:
         self.rect(r.x, r.y, r.w, r.h)
 
+    def rect(mut self, pos: Point, w: Float64, h: Float64) raises:
+        self.rect(pos.x, pos.y, w, h)
+
+    def rect(mut self, pos: Point, size: Vector2) raises:
+        self.rect(pos.x, pos.y, size.x, size.y)
+
     def circle(mut self, c: Circle) raises:
         self.circle(c.x, c.y, c.r)
+
+    def circle(mut self, pos: Point, r: Float64) raises:
+        self.circle(pos.x, pos.y, r)
+
+    def circle(mut self, pos: Point, r: Int) raises:
+        self.circle(pos.x, pos.y, Float64(r))
 
     def line(mut self, l: Line) raises:
         self.line(l.x0, l.y0, l.x1, l.y1)
 
+    def line(mut self, start: Point, end: Point) raises:
+        self.line(start.x, start.y, end.x, end.y)
+
     def triangle(mut self, t: Triangle) raises:
         self.triangle(t.x1, t.y1, t.x2, t.y2, t.x3, t.y3)
+
+    def triangle(mut self, a: Point, b: Point, c: Point) raises:
+        self.triangle(a.x, a.y, b.x, b.y, c.x, c.y)

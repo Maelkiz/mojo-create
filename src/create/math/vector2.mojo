@@ -9,6 +9,10 @@ struct Vector2(Writable, Copyable, Movable):
         self.x = x
         self.y = y
 
+    def __init__(out self, x: Int, y: Int):
+        self.x = Float64(x)
+        self.y = Float64(y)
+
     @staticmethod
     def zero() -> Vector2:
         return Vector2(0.0, 0.0)

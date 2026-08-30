@@ -1,6 +1,7 @@
 from .geometry import Rectangle, Circle, Line, Triangle
 from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
 from .vector2 import Vector2
+alias Point = Vector2
 from .random import Random
 from std.math import (
     clamp,
