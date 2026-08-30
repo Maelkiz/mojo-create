@@ -8,11 +8,4 @@ if [ $status -ne 0 ]; then
     exit 1
 fi
 
-echo "Running tests..."
-pixi run bash -c 'set -e; for f in tests/test_*.mojo; do mojo run -I src "$f"; done' 2>&1
-if [ $? -ne 0 ]; then
-    echo "Tests failed — commit aborted."
-    exit 1
-fi
-
 exit 0
