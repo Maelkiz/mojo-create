@@ -5,6 +5,7 @@ comptime Point = Vector2
 from .color import Color
 from .time import Time
 from .input import Input
+from .key import Key
 from .canvas import Canvas
 from .context import Context
 from .program import Headless, Windowed
