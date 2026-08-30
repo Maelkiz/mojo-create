@@ -19,7 +19,7 @@ struct Player(Renderable):
         if ctx.input.is_key_down(100):  # d
             self.x += speed
 
-        self.x = clamp(self.x, self.width // 2, ctx.width - self.height // 2)
+        self.x = clamp(self.x, self.width // 2, ctx.width - self.width // 2)
         self.y = clamp(self.y, self.height // 2, ctx.height - self.height // 2)
 
     def render_to(self, mut canvas: Canvas) raises:
@@ -35,7 +35,7 @@ struct Game(Program, Movable, Deinitable):
 
     @staticmethod
     def create(mut ctx: Context) raises -> Game:
-        return Game(Player(ctx.width // 2, ctx.height // 2 - 50, 60, 100))
+        return Game(Player(ctx.width // 2, ctx.height // 2, 60, 100))
 
     def update(mut self, mut ctx: Context) raises:
         self.player.move(ctx)

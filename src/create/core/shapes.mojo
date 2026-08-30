@@ -16,10 +16,12 @@ struct Rect(Renderable):
         var W = canvas._win.width()
         var H = canvas._win.height()
         var px = canvas._win.pixels()
+        var x0 = self.x - self.w // 2
+        var y0 = self.y - self.h // 2
         if canvas._fill_enabled:
             var c = canvas._fill
-            for row in range(max(self.y, 0), min(self.y + self.h, H)):
-                for col in range(max(self.x, 0), min(self.x + self.w, W)):
+            for row in range(max(y0, 0), min(y0 + self.h, H)):
+                for col in range(max(x0, 0), min(x0 + self.w, W)):
                     var off = (row * W + col) * 4
                     px[unsafe_offset=off] = c.r
                     px[unsafe_offset=off + 1] = c.g
@@ -28,22 +30,22 @@ struct Rect(Renderable):
         if canvas._stroke_enabled:
             var sw = canvas._stroke_width
             var c = canvas._stroke
-            for row in range(max(self.y, 0), min(self.y + sw, H)):
-                for col in range(max(self.x, 0), min(self.x + self.w, W)):
+            for row in range(max(y0, 0), min(y0 + sw, H)):
+                for col in range(max(x0, 0), min(x0 + self.w, W)):
                     var off = (row * W + col) * 4
                     px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
                     px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-            for row in range(max(self.y + self.h - sw, 0), min(self.y + self.h, H)):
-                for col in range(max(self.x, 0), min(self.x + self.w, W)):
+            for row in range(max(y0 + self.h - sw, 0), min(y0 + self.h, H)):
+                for col in range(max(x0, 0), min(x0 + self.w, W)):
                     var off = (row * W + col) * 4
                     px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
                     px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-            for row in range(max(self.y + sw, 0), min(self.y + self.h - sw, H)):
-                for col in range(max(self.x, 0), min(self.x + sw, W)):
+            for row in range(max(y0 + sw, 0), min(y0 + self.h - sw, H)):
+                for col in range(max(x0, 0), min(x0 + sw, W)):
                     var off = (row * W + col) * 4
                     px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
                     px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-                for col in range(max(self.x + self.w - sw, 0), min(self.x + self.w, W)):
+                for col in range(max(x0 + self.w - sw, 0), min(x0 + self.w, W)):
                     var off = (row * W + col) * 4
                     px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
                     px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
