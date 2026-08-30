@@ -47,6 +47,32 @@ struct Sprite(Movable):
             dst[unsafe_offset=i] = src[unsafe_offset=i]
         return s^
 
+    def resize(mut self, new_w: Int, new_h: Int):
+        """Resize pixel buffer in place using nearest-neighbour sampling."""
+        var dst = List[UInt8](length=new_w * new_h * 4, fill=0)
+        var src_ptr = self.pixels.unsafe_ptr()
+        var dst_ptr = dst.unsafe_ptr()
+        for row in range(new_h):
+            var src_row = row * self.height // new_h
+            for col in range(new_w):
+                var src_col = col * self.width // new_w
+                var s = (src_row * self.width + src_col) * 4
+                var d = (row * new_w + col) * 4
+                dst_ptr[unsafe_offset=d] = src_ptr[unsafe_offset=s]
+                dst_ptr[unsafe_offset=d + 1] = src_ptr[unsafe_offset=s + 1]
+                dst_ptr[unsafe_offset=d + 2] = src_ptr[unsafe_offset=s + 2]
+                dst_ptr[unsafe_offset=d + 3] = src_ptr[unsafe_offset=s + 3]
+        self.pixels = dst^
+        self.width = new_w
+        self.height = new_h
+
+    @staticmethod
+    def load(path: String, width: Int, height: Int) raises -> Sprite:
+        """Load a BMP file and resize to the given dimensions."""
+        var s = Sprite.load(path)
+        s.resize(width, height)
+        return s^
+
     @staticmethod
     def load(path: String) raises -> Sprite:
         """Load a BMP file. Supports 24-bit (BGR) and 32-bit (BGRA) uncompressed BMPs."""

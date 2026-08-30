@@ -47,6 +47,30 @@ def test_load_bmp_pixels() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=10]), 255)
 
 
+def test_resize_dimensions() raises -> None:
+    var s = Sprite.solid(4, 4, Color.red())
+    s.resize(2, 2)
+    assert_equal(s.width, 2)
+    assert_equal(s.height, 2)
+    assert_equal(len(s.pixels), 2 * 2 * 4)
+
+
+def test_resize_preserves_color() raises -> None:
+    var s = Sprite.solid(4, 4, Color.blue())
+    s.resize(2, 2)
+    var ptr = s.pixels.unsafe_ptr()
+    assert_equal(Int(ptr[unsafe_offset=0]), 0)    # R
+    assert_equal(Int(ptr[unsafe_offset=1]), 0)    # G
+    assert_equal(Int(ptr[unsafe_offset=2]), 255)  # B
+    assert_equal(Int(ptr[unsafe_offset=3]), 255)  # A
+
+
+def test_load_with_dimensions() raises -> None:
+    var s = Sprite.load("tests/fixtures/test_2x2.bmp", 4, 4)
+    assert_equal(s.width, 4)
+    assert_equal(s.height, 4)
+
+
 def test_from_rgba_roundtrip() raises -> None:
     var data: List[UInt8] = [10, 20, 30, 128, 40, 50, 60, 200]
     var s = Sprite.from_rgba(2, 1, data)
