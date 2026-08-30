@@ -1,60 +1,60 @@
 struct Key:
     # Modifier keys
-    alias LEFT_CTRL   = 1073742048
-    alias RIGHT_CTRL  = 1073742052
-    alias LEFT_SHIFT  = 1073742049
-    alias RIGHT_SHIFT = 1073742053
-    alias LEFT_ALT    = 1073742050
-    alias RIGHT_ALT   = 1073742054
-    alias LEFT_SUPER  = 1073742051
-    alias RIGHT_SUPER = 1073742055
+    comptime LEFT_CTRL   = 1073742048
+    comptime RIGHT_CTRL  = 1073742052
+    comptime LEFT_SHIFT  = 1073742049
+    comptime RIGHT_SHIFT = 1073742053
+    comptime LEFT_ALT    = 1073742050
+    comptime RIGHT_ALT   = 1073742054
+    comptime LEFT_SUPER  = 1073742051
+    comptime RIGHT_SUPER = 1073742055
 
     # Arrow keys
-    alias UP    = 1073741906
-    alias DOWN  = 1073741905
-    alias LEFT  = 1073741904
-    alias RIGHT = 1073741903
+    comptime UP    = 1073741906
+    comptime DOWN  = 1073741905
+    comptime LEFT  = 1073741904
+    comptime RIGHT = 1073741903
 
     # Navigation
-    alias INSERT    = 1073741897
-    alias HOME      = 1073741898
-    alias PAGE_UP   = 1073741899
-    alias PAGE_DOWN = 1073741902
-    alias END       = 1073741901
+    comptime INSERT    = 1073741897
+    comptime HOME      = 1073741898
+    comptime PAGE_UP   = 1073741899
+    comptime PAGE_DOWN = 1073741902
+    comptime END       = 1073741901
 
     # Common keys
-    alias ENTER     = 13
-    alias ESCAPE    = 27
-    alias BACKSPACE = 8
-    alias TAB       = 9
-    alias SPACE     = 32
-    alias DELETE    = 127
-    alias CAPS_LOCK = 1073741881
+    comptime ENTER     = 13
+    comptime ESCAPE    = 27
+    comptime BACKSPACE = 8
+    comptime TAB       = 9
+    comptime SPACE     = 32
+    comptime DELETE    = 127
+    comptime CAPS_LOCK = 1073741881
 
     # Function keys
-    alias F1  = 1073741882
-    alias F2  = 1073741883
-    alias F3  = 1073741884
-    alias F4  = 1073741885
-    alias F5  = 1073741886
-    alias F6  = 1073741887
-    alias F7  = 1073741888
-    alias F8  = 1073741889
-    alias F9  = 1073741890
-    alias F10 = 1073741891
-    alias F11 = 1073741892
-    alias F12 = 1073741893
+    comptime F1  = 1073741882
+    comptime F2  = 1073741883
+    comptime F3  = 1073741884
+    comptime F4  = 1073741885
+    comptime F5  = 1073741886
+    comptime F6  = 1073741887
+    comptime F7  = 1073741888
+    comptime F8  = 1073741889
+    comptime F9  = 1073741890
+    comptime F10 = 1073741891
+    comptime F11 = 1073741892
+    comptime F12 = 1073741893
 
     # Letter keys (SDL keycodes match lowercase ASCII)
-    alias A = 97;  alias B = 98;  alias C = 99;  alias D = 100
-    alias E = 101; alias F = 102; alias G = 103; alias H = 104
-    alias I = 105; alias J = 106; alias K = 107; alias L = 108
-    alias M = 109; alias N = 110; alias O = 111; alias P = 112
-    alias Q = 113; alias R = 114; alias S = 115; alias T = 116
-    alias U = 117; alias V = 118; alias W = 119; alias X = 120
-    alias Y = 121; alias Z = 122
+    comptime A = 97;  comptime B = 98;  comptime C = 99;  comptime D = 100
+    comptime E = 101; comptime F = 102; comptime G = 103; comptime H = 104
+    comptime I = 105; comptime J = 106; comptime K = 107; comptime L = 108
+    comptime M = 109; comptime N = 110; comptime O = 111; comptime P = 112
+    comptime Q = 113; comptime R = 114; comptime S = 115; comptime T = 116
+    comptime U = 117; comptime V = 118; comptime W = 119; comptime X = 120
+    comptime Y = 121; comptime Z = 122
 
     # Number keys
-    alias NUM_0 = 48; alias NUM_1 = 49; alias NUM_2 = 50; alias NUM_3 = 51
-    alias NUM_4 = 52; alias NUM_5 = 53; alias NUM_6 = 54; alias NUM_7 = 55
-    alias NUM_8 = 56; alias NUM_9 = 57
+    comptime NUM_0 = 48; comptime NUM_1 = 49; comptime NUM_2 = 50; comptime NUM_3 = 51
+    comptime NUM_4 = 52; comptime NUM_5 = 53; comptime NUM_6 = 54; comptime NUM_7 = 55
+    comptime NUM_8 = 56; comptime NUM_9 = 57
