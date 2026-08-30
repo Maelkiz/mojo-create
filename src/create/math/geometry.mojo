@@ -1,38 +1,38 @@
 from std.math import min, max, sqrt
 
 
-def _ccw(ax: Int, ay: Int, bx: Int, by: Int, cx: Int, cy: Int) -> Bool:
+def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
 
 
-def _project_min(nx: Int, ny: Int, ax: Int, ay: Int, bx: Int, by: Int, cx: Int, cy: Int) -> Int:
+def _project_min(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Float64:
     return min(nx * ax + ny * ay, min(nx * bx + ny * by, nx * cx + ny * cy))
 
 
-def _project_max(nx: Int, ny: Int, ax: Int, ay: Int, bx: Int, by: Int, cx: Int, cy: Int) -> Int:
+def _project_max(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Float64:
     return max(nx * ax + ny * ay, max(nx * bx + ny * by, nx * cx + ny * cy))
 
 
 @fieldwise_init
 struct Rectangle:
-    var x: Int
-    var y: Int
-    var w: Int
-    var h: Int
+    var x: Float64
+    var y: Float64
+    var w: Float64
+    var h: Float64
 
-    def left(self) -> Int:
-        return self.x - self.w // 2
+    def left(self) -> Float64:
+        return self.x - self.w / 2.0
 
-    def right(self) -> Int:
-        return self.x + self.w // 2
+    def right(self) -> Float64:
+        return self.x + self.w / 2.0
 
-    def top(self) -> Int:
-        return self.y - self.h // 2
+    def top(self) -> Float64:
+        return self.y - self.h / 2.0
 
-    def bottom(self) -> Int:
-        return self.y + self.h // 2
+    def bottom(self) -> Float64:
+        return self.y + self.h / 2.0
 
-    def contains(self, px: Int, py: Int) -> Bool:
+    def contains(self, px: Float64, py: Float64) -> Bool:
         return self.left() <= px <= self.right() and self.top() <= py <= self.bottom()
 
     def overlaps(self, other: Rectangle) -> Bool:
@@ -49,11 +49,11 @@ struct Rectangle:
 
 @fieldwise_init
 struct Circle:
-    var x: Int
-    var y: Int
-    var r: Int
+    var x: Float64
+    var y: Float64
+    var r: Float64
 
-    def contains(self, px: Int, py: Int) -> Bool:
+    def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
         var dy = py - self.y
         return dx * dx + dy * dy <= self.r * self.r
@@ -70,18 +70,18 @@ struct Circle:
 
 @fieldwise_init
 struct Line:
-    var x0: Int
-    var y0: Int
-    var x1: Int
-    var y1: Int
+    var x0: Float64
+    var y0: Float64
+    var x1: Float64
+    var y1: Float64
 
-    def length_sq(self) -> Int:
+    def length_sq(self) -> Float64:
         var dx = self.x1 - self.x0
         var dy = self.y1 - self.y0
         return dx * dx + dy * dy
 
     def length(self) -> Float64:
-        return sqrt(Float64(self.length_sq()))
+        return sqrt(self.length_sq())
 
     def intersects(self, other: Line) -> Bool:
         return (_ccw(self.x0, self.y0, other.x0, other.y0, other.x1, other.y1) !=
@@ -92,14 +92,14 @@ struct Line:
 
 @fieldwise_init
 struct Triangle:
-    var x1: Int
-    var y1: Int
-    var x2: Int
-    var y2: Int
-    var x3: Int
-    var y3: Int
+    var x1: Float64
+    var y1: Float64
+    var x2: Float64
+    var y2: Float64
+    var x3: Float64
+    var y3: Float64
 
-    def contains(self, px: Int, py: Int) -> Bool:
+    def contains(self, px: Float64, py: Float64) -> Bool:
         var d1 = (self.x2 - self.x1) * (py - self.y1) - (self.y2 - self.y1) * (px - self.x1)
         var d2 = (self.x3 - self.x2) * (py - self.y2) - (self.y3 - self.y2) * (px - self.x2)
         var d3 = (self.x1 - self.x3) * (py - self.y3) - (self.y1 - self.y3) * (px - self.x3)
@@ -107,7 +107,7 @@ struct Triangle:
         var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
         return not (has_neg and has_pos)
 
-    def _separates(self, nx: Int, ny: Int, other: Triangle) -> Bool:
+    def _separates(self, nx: Float64, ny: Float64, other: Triangle) -> Bool:
         var min1 = _project_min(nx, ny, self.x1, self.y1, self.x2, self.y2, self.x3, self.y3)
         var max1 = _project_max(nx, ny, self.x1, self.y1, self.x2, self.y2, self.x3, self.y3)
         var min2 = _project_min(nx, ny, other.x1, other.y1, other.x2, other.y2, other.x3, other.y3)
