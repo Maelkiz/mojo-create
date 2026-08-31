@@ -24,11 +24,11 @@ struct Input(Movable):
         self._just_released = List[Int]()
 
     def _check(self, key: String, list: List[Int]) -> Bool:
+        var k = key.lower()
+        
         # Single printable char — SDL keycode == ASCII for a-z, 0-9, punctuation
         if key.byte_length() == 1:
             return _in_list(ord(key), list)
-
-        var k = key.lower()
 
         # Modifier keys — bare name matches either side
         if k == "ctrl":         return _in_list(1073742048, list) or _in_list(1073742052, list)
