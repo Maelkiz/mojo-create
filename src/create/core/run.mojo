@@ -13,7 +13,7 @@ from .canvas import Canvas
 from .input import Input
 from .time import Time
 from .context import Context
-from .program import Headless, Windowed
+from .program import NonInteractable, Headless, Windowed
 from create.math.vector2 import Vector2
 
 
@@ -31,9 +31,19 @@ def _wait_for_dimensions(mut ctx: Context) raises:
         ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
 
 
-def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
-    ctx.input._just_pressed = List[Int]()
-    ctx.input._just_released = List[Int]()
+def _process_noninteractable_events[P: NonInteractable](mut program: P, mut ctx: Context) raises:
+    var events = ctx._canvas.events()
+    for event in events:
+        if event.isa[Quit]():
+            ctx._canvas.close()
+        elif event.isa[Resized]():
+            var e = event[Resized]
+            program.on_resize(e.width, e.height)
+
+
+def _process_events[P: Headless](mut program: P, mut ctx: Context, mut input: Input) raises:
+    input._just_pressed = List[Int]()
+    input._just_released = List[Int]()
     var events = ctx._canvas.events()
     for event in events:
         if event.isa[Quit]():
@@ -42,35 +52,35 @@ def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
             var keycode = event[KeyDown].keycode
             if keycode == 27 and ctx.exit_on_escape:
                 ctx._canvas.close()
-            if not ctx.input.is_key_down(keycode):
-                ctx.input._held_keys.append(keycode)
-                ctx.input._just_pressed.append(keycode)
+            if not input.is_key_down(keycode):
+                input._held_keys.append(keycode)
+                input._just_pressed.append(keycode)
                 program.on_key_down(keycode)
         elif event.isa[KeyUp]():
             var keycode = event[KeyUp].keycode
-            for i in range(len(ctx.input._held_keys)):
-                if ctx.input._held_keys[i] == keycode:
-                    _ = ctx.input._held_keys.pop(i)
+            for i in range(len(input._held_keys)):
+                if input._held_keys[i] == keycode:
+                    _ = input._held_keys.pop(i)
                     break
-            ctx.input._just_released.append(keycode)
+            input._just_released.append(keycode)
             program.on_key_up(keycode)
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
-            ctx.input.mouse_x = e.x
-            ctx.input.mouse_y = e.y
-            ctx.input.mouse = Vector2(e.x, e.y)
+            input.mouse_x = e.x
+            input.mouse_y = e.y
+            input.mouse = Vector2(e.x, e.y)
             program.on_mouse_moved(e.x, e.y)
         elif event.isa[MouseButtonDown]():
             var e = event[MouseButtonDown]
-            ctx.input.mouse_pressed = True
-            ctx.input.mouse_button = e.button
-            ctx.input.mouse_x = e.x
-            ctx.input.mouse_y = e.y
-            ctx.input.mouse = Vector2(e.x, e.y)
+            input.mouse_pressed = True
+            input.mouse_button = e.button
+            input.mouse_x = e.x
+            input.mouse_y = e.y
+            input.mouse = Vector2(e.x, e.y)
             program.on_mouse_down(e.button, e.x, e.y)
         elif event.isa[MouseButtonUp]():
             var e = event[MouseButtonUp]
-            ctx.input.mouse_pressed = False
+            input.mouse_pressed = False
             program.on_mouse_up(e.button, e.x, e.y)
         elif event.isa[MouseWheel]():
             var e = event[MouseWheel]
@@ -94,54 +104,81 @@ def _update_dimensions(mut ctx: Context):
     ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
 
 
-def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context) raises:
+def _run_noninteractable_loop[P: NonInteractable](mut program: P, mut ctx: Context) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
-        _process_events(program, ctx)
+        _process_noninteractable_events(program, ctx)
         _update_dimensions(ctx)
         _tick_time(ctx, last_ticks)
         program.update(ctx)
 
 
-def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context) raises:
+def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context, mut input: Input) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
-        _process_events(program, ctx)
+        _process_events(program, ctx, input)
         _update_dimensions(ctx)
         _tick_time(ctx, last_ticks)
-        program.update(ctx)
+        program.update(ctx, input)
+
+
+def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context, mut input: Input) raises:
+    var last_ticks = ctx._canvas.ticks()
+    while ctx._canvas.is_open():
+        _process_events(program, ctx, input)
+        _update_dimensions(ctx)
+        _tick_time(ctx, last_ticks)
+        program.update(ctx, input)
         program.render(ctx._canvas)
         ctx._canvas.present()
 
 
 def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     var canvas = Canvas(title, width, height)
-    return Context(canvas^, Input(), Time(0, 0.0, 0), width, height)
+    return Context(canvas^, Time(0, 0.0, 0), width, height)
+
+
+def run_noninteractable[P: NonInteractable](title: String) raises:
+    var ctx = _make_ctx(title, 0, 0)
+    _wait_for_dimensions(ctx)
+    var program = P.create(ctx)
+    _run_noninteractable_loop(program, ctx)
+
+
+def run_noninteractable[P: NonInteractable](title: String, width: Int, height: Int) raises:
+    var ctx = _make_ctx(title, width, height)
+    _wait_for_dimensions(ctx)
+    var program = P.create(ctx)
+    _run_noninteractable_loop(program, ctx)
 
 
 def run_headless[P: Headless](title: String) raises:
     var ctx = _make_ctx(title, 0, 0)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    _run_headless_loop(program, ctx)
+    var input = Input()
+    _run_headless_loop(program, ctx, input)
 
 
 def run_headless[P: Headless](title: String, width: Int, height: Int) raises:
     var ctx = _make_ctx(title, width, height)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    _run_headless_loop(program, ctx)
+    var input = Input()
+    _run_headless_loop(program, ctx, input)
 
 
 def run[P: Windowed](title: String) raises:
     var ctx = _make_ctx(title, 0, 0)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    _run_windowed_loop(program, ctx)
+    var input = Input()
+    _run_windowed_loop(program, ctx, input)
 
 
 def run[P: Windowed](title: String, width: Int, height: Int) raises:
     var ctx = _make_ctx(title, width, height)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    _run_windowed_loop(program, ctx)
+    var input = Input()
+    _run_windowed_loop(program, ctx, input)

@@ -13,9 +13,9 @@ struct App(Windowed, Movable, Deinitable):
             mouse = Circle(0, 0, 100),
         )
 
-    def update(mut self, mut ctx: Context) raises:
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
         self.center.move_to(ctx.center)
-        self.mouse.move_to(ctx.input.mouse)
+        self.mouse.move_to(input.mouse)
 
     def render(self, mut canvas: Canvas) raises:
         if overlaps(self.center, self.mouse):

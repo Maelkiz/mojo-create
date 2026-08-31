@@ -1,5 +1,18 @@
 from .canvas import Canvas
 from .context import Context
+from .input import Input
+
+
+trait NonInteractable(Movable, Deinitable):
+    @staticmethod
+    def create(mut ctx: Context) raises -> Self:
+        ...
+
+    def update(mut self, mut ctx: Context) raises:
+        pass
+
+    def on_resize(mut self, width: Int, height: Int) raises:
+        pass
 
 
 trait Headless(Movable, Deinitable):
@@ -7,7 +20,7 @@ trait Headless(Movable, Deinitable):
     def create(mut ctx: Context) raises -> Self:
         ...
 
-    def update(mut self, mut ctx: Context) raises:
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
         pass
 
     def on_key_down(mut self, keycode: Int) raises:

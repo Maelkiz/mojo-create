@@ -14,15 +14,15 @@ struct Game(Windowed, Movable, Deinitable):
         var sprite = Sprite.load(script_dir() + "/../assets/sprite.jpeg", 120, 120)
         return Game(sprite^, ctx.width // 2, ctx.height // 2)
 
-    def update(mut self, mut ctx: Context) raises:
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
         var speed = 15
-        if ctx.input.is_key_down("w"):
+        if input.is_key_down("w"):
             self.y -= speed
-        if ctx.input.is_key_down("s"):
+        if input.is_key_down("s"):
             self.y += speed
-        if ctx.input.is_key_down("a"):
+        if input.is_key_down("a"):
             self.x -= speed
-        if ctx.input.is_key_down("d"):
+        if input.is_key_down("d"):
             self.x += speed
 
         var hw = (self.sprite.width) // 2

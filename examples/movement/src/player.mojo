@@ -16,17 +16,17 @@ struct Player:
     var on_ground: Bool
     var jumps_left: Int
 
-    def update(mut self, mut ctx: Context):
-        if ctx.input.is_key_down("a"):
+    def update(mut self, mut ctx: Context, mut input: Input):
+        if input.is_key_down("a"):
             self.x -= self.SPEED
-        if ctx.input.is_key_down("d"):
+        if input.is_key_down("d"):
             self.x += self.SPEED
 
-        if ctx.input.just_pressed("w") and self.jumps_left > 0:
+        if input.just_pressed("w") and self.jumps_left > 0:
             self.vel_y = self.JUMP_FORCE
             self.jumps_left -= 1
 
-        if ctx.input.is_key_down("w") and self.vel_y < 0:
+        if input.is_key_down("w") and self.vel_y < 0:
             self.vel_y += self.JUMP_HOLD_FORCE
 
         self.vel_y += self.GRAVITY

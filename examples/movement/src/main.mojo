@@ -12,8 +12,8 @@ struct Game(Windowed, Movable, Deinitable):
         var h: Float64 = 80
         return Game(Player(Float64(ctx.width) / 2, Float64(ctx.height) / 2, w, h, 0.0, False, 2))
 
-    def update(mut self, mut ctx: Context) raises:
-        self.player.update(ctx)
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
+        self.player.update(ctx, input)
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color(30, 30, 30))

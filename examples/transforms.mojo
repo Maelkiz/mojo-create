@@ -20,10 +20,10 @@ struct Transforms(Windowed, Movable, Deinitable):
             mouse_y=0,
         )
 
-    def update(mut self, mut ctx: Context) raises:
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
         self.elapsed += ctx.time.delta_time
-        self.mouse_x = ctx.input.mouse_x
-        self.mouse_y = ctx.input.mouse_y
+        self.mouse_x = input.mouse_x
+        self.mouse_y = input.mouse_y
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color(8, 8, 20))
