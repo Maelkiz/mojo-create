@@ -6,16 +6,16 @@ from create.math import clamp
 @fieldwise_init
 struct Game(Windowed, Movable, Deinitable):
     var sprite: Sprite
-    var x: Float64
-    var y: Float64
+    var x: Int
+    var y: Int
 
     @staticmethod
     def create(mut ctx: Context) raises -> Game:
         var sprite = Sprite.load(script_dir() + "/../assets/sprite.jpeg", 120, 120)
-        return Game(sprite^, Float64(ctx.width // 2), Float64(ctx.height // 2))
+        return Game(sprite^, ctx.width // 2, ctx.height // 2)
 
     def update(mut self, mut ctx: Context) raises:
-        var speed = 15.0
+        var speed = 15
         if ctx.input.is_key_down("w"):
             self.y -= speed
         if ctx.input.is_key_down("s"):
@@ -25,10 +25,10 @@ struct Game(Windowed, Movable, Deinitable):
         if ctx.input.is_key_down("d"):
             self.x += speed
 
-        var hw = Float64(self.sprite.width) / 2.0
-        var hh = Float64(self.sprite.height) / 2.0
-        self.x = clamp(self.x, hw, Float64(ctx.width) - hw)
-        self.y = clamp(self.y, hh, Float64(ctx.height) - hh)
+        var hw = (self.sprite.width) // 2
+        var hh = (self.sprite.height) // 2
+        self.x = clamp(self.x, hw, (ctx.width) - hw)
+        self.y = clamp(self.y, hh, (ctx.height) - hh)
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color(30, 30, 30))
