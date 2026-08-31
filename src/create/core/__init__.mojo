@@ -8,7 +8,7 @@ from .font_weight import FontWeight
 from .time import Time
 from .input import Input
 from .key import Key
-from .canvas import Canvas
+from .canvas import Canvas, TransformGuard
 from .context import Context
 from .program import Headless, Windowed
 from .run import run, run_headless

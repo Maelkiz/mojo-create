@@ -8,7 +8,21 @@ from .font import Font, FONT_DEFAULT_PATH
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
 from create.math.point import Point
+from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
 from create.graphics.sprite import Sprite
+
+
+struct TransformGuard(Movable):
+    var _canvas: Pointer[Canvas, MutUntrackedOrigin]
+
+    def __init__(out self, canvas: Pointer[Canvas, MutUntrackedOrigin]):
+        self._canvas = canvas
+
+    def __enter__(mut self):
+        pass
+
+    def __exit__(mut self):
+        self._canvas[]._pop_transform()
 
 
 struct Canvas(Movable):
@@ -23,6 +37,9 @@ struct Canvas(Movable):
     var _text_align: Int
     var _text_baseline: Int
     var _font: Font
+    var _transform: Matrix[3, 3]
+    var _transform_inv: Matrix[3, 3]
+    var _transform_stack: List[Matrix[3, 3]]
 
     def __init__(out self, title: String, width: Int, height: Int) raises:
         var fullscreen = width == 0 and height == 0
@@ -37,6 +54,9 @@ struct Canvas(Movable):
         self._text_align = Align.LEFT
         self._text_baseline = Align.TOP
         self._font = Font(FONT_DEFAULT_PATH, 16)
+        self._transform = identity[3]()
+        self._transform_inv = identity[3]()
+        self._transform_stack = List[Matrix[3, 3]]()
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -53,106 +73,27 @@ struct Canvas(Movable):
     def ticks(self) raises -> Int:
         return self._win.ticks()
 
-    def fill(mut self, color: Color):
-        self._fill = color
-        self._fill_enabled = True
+    def transform(mut self, m: Matrix[3, 3]) -> TransformGuard:
+        self._push_transform(m)
+        return TransformGuard(Pointer.address_of(self))
 
-    def no_fill(mut self):
-        self._fill_enabled = False
+    def _push_transform(mut self, m: Matrix[3, 3]):
+        self._transform_stack.append(self._transform)
+        self._transform = m @ self._transform
+        self._transform_inv = inverse(self._transform)
 
-    def stroke(mut self, color: Color):
-        self._stroke = color
-        self._stroke_enabled = True
+    def _pop_transform(mut self):
+        if len(self._transform_stack) > 0:
+            self._transform = self._transform_stack.pop()
+            self._transform_inv = inverse(self._transform)
 
-    def no_stroke(mut self):
-        self._stroke_enabled = False
+    def to_world(self, x: Float64, y: Float64) -> Tuple[Float64, Float64]:
+        return mat_apply(self._transform, x, y)
 
-    def stroke_width(mut self, w: Int):
-        self._stroke_width = w
+    def to_local(self, x: Float64, y: Float64) -> Tuple[Float64, Float64]:
+        return mat_apply(self._transform_inv, x, y)
 
-    def background(mut self, color: Color) raises:
-        var W = self._win.width()
-        var H = self._win.height()
-        var px = self._win.pixels()
-        for i in range(W * H):
-            var off = i * 4
-            px[unsafe_offset=off] = color.r
-            px[unsafe_offset=off + 1] = color.g
-            px[unsafe_offset=off + 2] = color.b
-            px[unsafe_offset=off + 3] = color.a
-
-    def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
-        var W = self._win.width()
-        var H = self._win.height()
-        var px = self._win.pixels()
-        var x0 = Int(x - w / 2.0)
-        var y0 = Int(y - h / 2.0)
-        var iw = Int(w)
-        var ih = Int(h)
-        if self._fill_enabled:
-            var c = self._fill
-            for row in range(max(y0, 0), min(y0 + ih, H)):
-                for col in range(max(x0, 0), min(x0 + iw, W)):
-                    var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = c.r
-                    px[unsafe_offset=off + 1] = c.g
-                    px[unsafe_offset=off + 2] = c.b
-                    px[unsafe_offset=off + 3] = c.a
-        if self._stroke_enabled:
-            var sw = self._stroke_width
-            var c = self._stroke
-            for row in range(max(y0, 0), min(y0 + sw, H)):
-                for col in range(max(x0, 0), min(x0 + iw, W)):
-                    var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
-                    px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-            for row in range(max(y0 + ih - sw, 0), min(y0 + ih, H)):
-                for col in range(max(x0, 0), min(x0 + iw, W)):
-                    var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
-                    px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-            for row in range(max(y0 + sw, 0), min(y0 + ih - sw, H)):
-                for col in range(max(x0, 0), min(x0 + sw, W)):
-                    var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
-                    px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-                for col in range(max(x0 + iw - sw, 0), min(x0 + iw, W)):
-                    var off = (row * W + col) * 4
-                    px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
-                    px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
-
-    def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
-        var W = self._win.width()
-        var H = self._win.height()
-        var px = self._win.pixels()
-        var x0 = max(Int(cx - r), 0)
-        var y0 = max(Int(cy - r), 0)
-        var x1 = min(Int(cx + r) + 1, W)
-        var y1 = min(Int(cy + r) + 1, H)
-        var r2 = r * r
-        var r_inner = r - Float64(self._stroke_width)
-        var r_inner2 = r_inner * r_inner
-        for row in range(y0, y1):
-            var dy = Float64(row) - cy
-            for col in range(x0, x1):
-                var dx = Float64(col) - cx
-                var d2 = dx * dx + dy * dy
-                if d2 <= r2:
-                    var off = (row * W + col) * 4
-                    if self._fill_enabled and (not self._stroke_enabled or r_inner <= 0.0 or d2 <= r_inner2):
-                        px[unsafe_offset=off] = self._fill.r
-                        px[unsafe_offset=off + 1] = self._fill.g
-                        px[unsafe_offset=off + 2] = self._fill.b
-                        px[unsafe_offset=off + 3] = self._fill.a
-                    elif self._stroke_enabled and d2 > r_inner2:
-                        px[unsafe_offset=off] = self._stroke.r
-                        px[unsafe_offset=off + 1] = self._stroke.g
-                        px[unsafe_offset=off + 2] = self._stroke.b
-                        px[unsafe_offset=off + 3] = self._stroke.a
-
-    def line(mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64) raises:
-        if not self._stroke_enabled:
-            return
+    def _line_pixels(mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64) raises:
         var W = self._win.width()
         var H = self._win.height()
         var px = self._win.pixels()
@@ -192,21 +133,202 @@ struct Canvas(Movable):
                 err += dx
                 y += sy
 
+    def fill(mut self, color: Color):
+        self._fill = color
+        self._fill_enabled = True
+
+    def no_fill(mut self):
+        self._fill_enabled = False
+
+    def stroke(mut self, color: Color):
+        self._stroke = color
+        self._stroke_enabled = True
+
+    def no_stroke(mut self):
+        self._stroke_enabled = False
+
+    def stroke_width(mut self, w: Int):
+        self._stroke_width = w
+
+    def background(mut self, color: Color) raises:
+        var W = self._win.width()
+        var H = self._win.height()
+        var px = self._win.pixels()
+        for i in range(W * H):
+            var off = i * 4
+            px[unsafe_offset=off] = color.r
+            px[unsafe_offset=off + 1] = color.g
+            px[unsafe_offset=off + 2] = color.b
+            px[unsafe_offset=off + 3] = color.a
+
+    def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
+        var W = self._win.width()
+        var H = self._win.height()
+        var px = self._win.pixels()
+        var lx0 = x - w / 2.0
+        var ly0 = y - h / 2.0
+        var lx1 = x + w / 2.0
+        var ly1 = y + h / 2.0
+
+        if len(self._transform_stack) == 0:
+            var x0 = Int(lx0)
+            var y0 = Int(ly0)
+            var iw = Int(w)
+            var ih = Int(h)
+            if self._fill_enabled:
+                var c = self._fill
+                for row in range(max(y0, 0), min(y0 + ih, H)):
+                    for col in range(max(x0, 0), min(x0 + iw, W)):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r
+                        px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b
+                        px[unsafe_offset=off + 3] = c.a
+            if self._stroke_enabled:
+                var sw = self._stroke_width
+                var c = self._stroke
+                for row in range(max(y0, 0), min(y0 + sw, H)):
+                    for col in range(max(x0, 0), min(x0 + iw, W)):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
+                for row in range(max(y0 + ih - sw, 0), min(y0 + ih, H)):
+                    for col in range(max(x0, 0), min(x0 + iw, W)):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
+                for row in range(max(y0 + sw, 0), min(y0 + ih - sw, H)):
+                    for col in range(max(x0, 0), min(x0 + sw, W)):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
+                    for col in range(max(x0 + iw - sw, 0), min(x0 + iw, W)):
+                        var off = (row * W + col) * 4
+                        px[unsafe_offset=off] = c.r; px[unsafe_offset=off + 1] = c.g
+                        px[unsafe_offset=off + 2] = c.b; px[unsafe_offset=off + 3] = c.a
+        else:
+            var c0 = mat_apply(self._transform, lx0, ly0)
+            var c1 = mat_apply(self._transform, lx1, ly0)
+            var c2 = mat_apply(self._transform, lx1, ly1)
+            var c3 = mat_apply(self._transform, lx0, ly1)
+            var sx_min = max(Int(min(min(c0[0], c1[0]), min(c2[0], c3[0]))), 0)
+            var sx_max = min(Int(max(max(c0[0], c1[0]), max(c2[0], c3[0]))) + 1, W)
+            var sy_min = max(Int(min(min(c0[1], c1[1]), min(c2[1], c3[1]))), 0)
+            var sy_max = min(Int(max(max(c0[1], c1[1]), max(c2[1], c3[1]))) + 1, H)
+            var sw_f = Float64(self._stroke_width)
+            for row in range(sy_min, sy_max):
+                for col in range(sx_min, sx_max):
+                    var local = mat_apply(self._transform_inv, Float64(col), Float64(row))
+                    var lx = local[0]
+                    var ly = local[1]
+                    if lx < lx0 or lx > lx1 or ly < ly0 or ly > ly1:
+                        continue
+                    var off = (row * W + col) * 4
+                    var in_inner = lx >= lx0 + sw_f and lx <= lx1 - sw_f and ly >= ly0 + sw_f and ly <= ly1 - sw_f
+                    if self._fill_enabled and (not self._stroke_enabled or in_inner):
+                        px[unsafe_offset=off] = self._fill.r
+                        px[unsafe_offset=off + 1] = self._fill.g
+                        px[unsafe_offset=off + 2] = self._fill.b
+                        px[unsafe_offset=off + 3] = self._fill.a
+                    elif self._stroke_enabled and not in_inner:
+                        px[unsafe_offset=off] = self._stroke.r
+                        px[unsafe_offset=off + 1] = self._stroke.g
+                        px[unsafe_offset=off + 2] = self._stroke.b
+                        px[unsafe_offset=off + 3] = self._stroke.a
+
+    def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
+        var W = self._win.width()
+        var H = self._win.height()
+        var px = self._win.pixels()
+        var r2 = r * r
+        var r_inner = r - Float64(self._stroke_width)
+        var r_inner2 = r_inner * r_inner
+
+        if len(self._transform_stack) == 0:
+            var x0 = max(Int(cx - r), 0)
+            var y0 = max(Int(cy - r), 0)
+            var x1 = min(Int(cx + r) + 1, W)
+            var y1 = min(Int(cy + r) + 1, H)
+            for row in range(y0, y1):
+                var dy = Float64(row) - cy
+                for col in range(x0, x1):
+                    var dx = Float64(col) - cx
+                    var d2 = dx * dx + dy * dy
+                    if d2 <= r2:
+                        var off = (row * W + col) * 4
+                        if self._fill_enabled and (not self._stroke_enabled or r_inner <= 0.0 or d2 <= r_inner2):
+                            px[unsafe_offset=off] = self._fill.r
+                            px[unsafe_offset=off + 1] = self._fill.g
+                            px[unsafe_offset=off + 2] = self._fill.b
+                            px[unsafe_offset=off + 3] = self._fill.a
+                        elif self._stroke_enabled and d2 > r_inner2:
+                            px[unsafe_offset=off] = self._stroke.r
+                            px[unsafe_offset=off + 1] = self._stroke.g
+                            px[unsafe_offset=off + 2] = self._stroke.b
+                            px[unsafe_offset=off + 3] = self._stroke.a
+        else:
+            var p0 = mat_apply(self._transform, cx - r, cy)
+            var p1 = mat_apply(self._transform, cx + r, cy)
+            var p2 = mat_apply(self._transform, cx, cy - r)
+            var p3 = mat_apply(self._transform, cx, cy + r)
+            var sx_min = max(Int(min(min(p0[0], p1[0]), min(p2[0], p3[0]))), 0)
+            var sx_max = min(Int(max(max(p0[0], p1[0]), max(p2[0], p3[0]))) + 1, W)
+            var sy_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
+            var sy_max = min(Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1, H)
+            for row in range(sy_min, sy_max):
+                for col in range(sx_min, sx_max):
+                    var local = mat_apply(self._transform_inv, Float64(col), Float64(row))
+                    var dx = local[0] - cx
+                    var dy = local[1] - cy
+                    var d2 = dx * dx + dy * dy
+                    if d2 <= r2:
+                        var off = (row * W + col) * 4
+                        if self._fill_enabled and (not self._stroke_enabled or r_inner <= 0.0 or d2 <= r_inner2):
+                            px[unsafe_offset=off] = self._fill.r
+                            px[unsafe_offset=off + 1] = self._fill.g
+                            px[unsafe_offset=off + 2] = self._fill.b
+                            px[unsafe_offset=off + 3] = self._fill.a
+                        elif self._stroke_enabled and d2 > r_inner2:
+                            px[unsafe_offset=off] = self._stroke.r
+                            px[unsafe_offset=off + 1] = self._stroke.g
+                            px[unsafe_offset=off + 2] = self._stroke.b
+                            px[unsafe_offset=off + 3] = self._stroke.a
+
+    def line(mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64) raises:
+        if not self._stroke_enabled:
+            return
+        var sx0 = x0; var sy0 = y0; var sx1 = x1; var sy1 = y1
+        if len(self._transform_stack) > 0:
+            var p0 = mat_apply(self._transform, x0, y0)
+            var p1 = mat_apply(self._transform, x1, y1)
+            sx0 = p0[0]; sy0 = p0[1]; sx1 = p1[0]; sy1 = p1[1]
+        self._line_pixels(sx0, sy0, sx1, sy1)
+
     def triangle(mut self, x1: Float64, y1: Float64, x2: Float64, y2: Float64, x3: Float64, y3: Float64) raises:
         var W = self._win.width()
         var H = self._win.height()
         var px = self._win.pixels()
+        var sx1 = x1; var sy1 = y1
+        var sx2 = x2; var sy2 = y2
+        var sx3 = x3; var sy3 = y3
+        if len(self._transform_stack) > 0:
+            var p1 = mat_apply(self._transform, x1, y1)
+            var p2 = mat_apply(self._transform, x2, y2)
+            var p3 = mat_apply(self._transform, x3, y3)
+            sx1 = p1[0]; sy1 = p1[1]
+            sx2 = p2[0]; sy2 = p2[1]
+            sx3 = p3[0]; sy3 = p3[1]
         if self._fill_enabled:
-            var min_x = max(Int(min(x1, min(x2, x3))), 0)
-            var max_x = min(Int(max(x1, max(x2, x3))), W - 1)
-            var min_y = max(Int(min(y1, min(y2, y3))), 0)
-            var max_y = min(Int(max(y1, max(y2, y3))), H - 1)
+            var min_x = max(Int(min(sx1, min(sx2, sx3))), 0)
+            var max_x = min(Int(max(sx1, max(sx2, sx3))), W - 1)
+            var min_y = max(Int(min(sy1, min(sy2, sy3))), 0)
+            var max_y = min(Int(max(sy1, max(sy2, sy3))), H - 1)
             var c = self._fill
             for row in range(min_y, max_y + 1):
                 for col in range(min_x, max_x + 1):
-                    var d1 = (x2 - x1) * (Float64(row) - y1) - (y2 - y1) * (Float64(col) - x1)
-                    var d2 = (x3 - x2) * (Float64(row) - y2) - (y3 - y2) * (Float64(col) - x2)
-                    var d3 = (x1 - x3) * (Float64(row) - y3) - (y1 - y3) * (Float64(col) - x3)
+                    var d1 = (sx2 - sx1) * (Float64(row) - sy1) - (sy2 - sy1) * (Float64(col) - sx1)
+                    var d2 = (sx3 - sx2) * (Float64(row) - sy2) - (sy3 - sy2) * (Float64(col) - sx2)
+                    var d3 = (sx1 - sx3) * (Float64(row) - sy3) - (sy1 - sy3) * (Float64(col) - sx3)
                     var has_neg = (d1 < 0.0) or (d2 < 0.0) or (d3 < 0.0)
                     var has_pos = (d1 > 0.0) or (d2 > 0.0) or (d3 > 0.0)
                     if not (has_neg and has_pos):
@@ -216,9 +338,9 @@ struct Canvas(Movable):
                         px[unsafe_offset=off + 2] = c.b
                         px[unsafe_offset=off + 3] = c.a
         if self._stroke_enabled:
-            self.line(x1, y1, x2, y2)
-            self.line(x2, y2, x3, y3)
-            self.line(x3, y3, x1, y1)
+            self._line_pixels(sx1, sy1, sx2, sy2)
+            self._line_pixels(sx2, sy2, sx3, sy3)
+            self._line_pixels(sx3, sy3, sx1, sy1)
 
     def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
         self.rect(Float64(x), Float64(y), Float64(w), Float64(h))
@@ -366,6 +488,10 @@ struct Canvas(Movable):
     def text(mut self, s: String, x: Float64, y: Float64) raises:
         if not self._fill_enabled:
             return
+        var tx = x; var ty = y
+        if len(self._transform_stack) > 0:
+            var p = mat_apply(self._transform, x, y)
+            tx = p[0]; ty = p[1]
         var W = self._win.width()
         var H = self._win.height()
         var px = self._win.pixels()
@@ -382,8 +508,8 @@ struct Canvas(Movable):
             var g = self._font.render(Int(sp[unsafe_offset=i]), size)
             tw += g.advance_x
 
-        var draw_x = Int(x)
-        var draw_y = Int(y)
+        var draw_x = Int(tx)
+        var draw_y = Int(ty)
         if self._text_align == Align.CENTER:
             draw_x -= tw // 2
         elif self._text_align == Align.RIGHT:
