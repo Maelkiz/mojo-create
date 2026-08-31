@@ -12,5 +12,8 @@ setup = "git config core.hooksPath .githooks"
 
 [dependencies]
 mojo = ">=1.0.0,<2"
-mojo-window = "*"
+mojo-window = ">=0.1.1,<1"
 sdl3 = ">=3.4,<4"
+freetype = ">=2.13,<3"
+libpng = ">=1.6,<2"
+libjpeg-turbo = ">=3,<4"
