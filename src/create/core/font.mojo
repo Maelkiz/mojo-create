@@ -10,9 +10,20 @@ comptime _FACE_SIZE  = 160  # FT_Size* pointer
 
 # FT_SizeRec: face(8) + generic(16) = metrics at offset 24
 # FT_Size_Metrics: x_ppem(2)+y_ppem(2)+pad(4)+x_scale(8)+y_scale(8) = ascender at +24, descender at +32
-comptime _SIZE_METRICS   = 24
-comptime _METRICS_ASC    = 24
-comptime _METRICS_DESC   = 32
+comptime _SIZE_METRICS = 24
+comptime _METRICS_ASC  = 24
+comptime _METRICS_DESC = 32
+
+# FT_MM_Var offsets (64-bit layout: 3×UInt(4)+pad(4)+pointer(8))
+comptime _MM_NUM_AXIS = 0
+comptime _MM_AXIS     = 16
+
+# FT_Var_Axis offsets (64-bit layout: ptr(8)+3×Fixed(8)+ULong(8)+UInt(4)+pad(4) = 48 bytes)
+comptime _AXIS_DEF  = 16   # FT_Fixed default design value (16.16)
+comptime _AXIS_TAG  = 32   # FT_ULong 4-char tag
+comptime _AXIS_SIZE = 48   # sizeof(FT_Var_Axis)
+
+comptime _TAG_WGHT = 0x77676874  # 'wght'
 
 # FT_GlyphSlotRec offsets
 comptime _GLYPH_ADVANCE  = 128  # FT_Vector: x = first FT_Pos (8 bytes)
@@ -72,10 +83,11 @@ struct Font(Movable):
     var _lib: Int       # FT_Library opaque pointer
     var _face: Int      # FT_Face opaque pointer
     var _size: Int      # last set pixel height
+    var _weight: Int    # last set design-space weight (100–900)
     var ascender: Int   # pixels above baseline (positive)
     var descender: Int  # pixels below baseline (negative)
 
-    def __init__(out self, path: String, size: Int) raises:
+    def __init__(out self, path: String, size: Int, weight: Int = 400) raises:
         var ft = _DLHandle("libfreetype.so.6")
 
         var lib_buf = InlineArray[UInt8, 8](fill=0)
@@ -91,9 +103,11 @@ struct Font(Movable):
             raise Error("FT_New_Face failed — font not found: " + path)
         self._face = _read_ptr(Int(face_buf.unsafe_ptr()))
         self._size = 0
+        self._weight = 0
         self.ascender = 0
         self.descender = 0
         self._set_size(ft, size)
+        self._set_weight(weight)
 
     def _set_size(mut self, ft: _DLHandle, size: Int) raises:
         if size == self._size:
@@ -105,28 +119,50 @@ struct Font(Movable):
         self.ascender  = _read_ptr(m + _METRICS_ASC)  >> 6
         self.descender = _read_ptr(m + _METRICS_DESC) >> 6
 
-    def render(mut self, codepoint: Int, size: Int, bold: Bool) raises -> GlyphInfo:
+    def _set_weight(mut self, weight: Int) raises:
+        if weight == self._weight:
+            return
+        var ft = _DLHandle("libfreetype.so.6")
+        var master_buf = InlineArray[UInt8, 8](fill=0)
+        if ft.call["FT_Get_MM_Var", Int32](self._face, master_buf.unsafe_ptr()) != 0:
+            return
+        var master = _read_ptr(Int(master_buf.unsafe_ptr()))
+        var num_axis = _read_u32(master + _MM_NUM_AXIS)
+        var axis_ptr = _read_ptr(master + _MM_AXIS)
+
+        # Build coord array: num_axis FT_Fixed values (8 bytes each, little-endian)
+        var coords = List[UInt8](length=num_axis * 8, fill=0)
+        for i in range(num_axis):
+            var a = axis_ptr + i * _AXIS_SIZE
+            var tag = _read_ptr(a + _AXIS_TAG)
+            var val = weight << 16 if tag == _TAG_WGHT else _read_ptr(a + _AXIS_DEF)
+            var v = val
+            for b in range(8):
+                coords[i * 8 + b] = UInt8(v & 0xFF)
+                v >>= 8
+
+        _ = ft.call["FT_Set_Var_Design_Coordinates", Int32](
+            self._face, UInt32(num_axis), coords.unsafe_ptr()
+        )
+        self._weight = weight
+        _ = ft.call["FT_Done_MM_Var", Int32](self._lib, master)
+
+    def render(mut self, codepoint: Int, size: Int) raises -> GlyphInfo:
         var ft = _DLHandle("libfreetype.so.6")
         self._set_size(ft, size)
 
-        # Load outlines first so embolden can thicken before rasterising
         if ft.call["FT_Load_Char", Int32](
             self._face, codepoint, Int32(_FT_LOAD_DEFAULT)
         ) != 0:
             return GlyphInfo(0, 0, 0, 0, size)
 
-        var glyph = _read_ptr(self._face + _FACE_GLYPH)
-
-        if bold:
-            ft.call["FT_GlyphSlot_Embolden"](glyph)
-
-        if ft.call["FT_Render_Glyph", Int32](glyph, Int32(_FT_RENDER_MODE_NORMAL)) != 0:
+        if ft.call["FT_Render_Glyph", Int32](
+            _read_ptr(self._face + _FACE_GLYPH), Int32(_FT_RENDER_MODE_NORMAL)
+        ) != 0:
             return GlyphInfo(0, 0, 0, 0, size)
 
-        # Re-read after embolden may have reallocated the slot
-        glyph = _read_ptr(self._face + _FACE_GLYPH)
-        var bmp = glyph + _GLYPH_BITMAP
-
+        var glyph   = _read_ptr(self._face + _FACE_GLYPH)
+        var bmp     = glyph + _GLYPH_BITMAP
         var rows      = _read_u32(bmp + _BMP_ROWS)
         var width     = _read_u32(bmp + _BMP_WIDTH)
         var pitch     = _read_i32(bmp + _BMP_PITCH)

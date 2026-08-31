@@ -33,7 +33,7 @@ struct Canvas(Movable):
         self._stroke_width = 1
         self._stroke_enabled = True
         self._font_size = 16
-        self._font_weight = FontWeight.NORMAL
+        self._font_weight = FontWeight.REGULAR
         self._text_align = Align.LEFT
         self._text_baseline = Align.TOP
         self._font = Font(FONT_DEFAULT_PATH, 16)
@@ -370,7 +370,7 @@ struct Canvas(Movable):
         var H = self._win.height()
         var px = self._win.pixels()
         var size = self._font_size
-        var bold = self._font_weight == FontWeight.BOLD
+        self._font._set_weight(self._font_weight)
         var c = self._fill
         var cr = Int(c.r); var cg = Int(c.g); var cb = Int(c.b)
         var sp = s.unsafe_ptr()
@@ -379,7 +379,7 @@ struct Canvas(Movable):
         # First pass: measure
         var tw = 0
         for i in range(s.byte_length()):
-            var g = self._font.render(Int(sp[unsafe_offset=i]), size, bold)
+            var g = self._font.render(Int(sp[unsafe_offset=i]), size)
             tw += g.advance_x
 
         var draw_x = Int(x)
@@ -402,7 +402,7 @@ struct Canvas(Movable):
         # Second pass: render
         var cx = draw_x
         for i in range(s.byte_length()):
-            var g = self._font.render(Int(sp[unsafe_offset=i]), size, bold)
+            var g = self._font.render(Int(sp[unsafe_offset=i]), size)
             if g.width > 0 and g.height > 0:
                 var glyph_x0 = cx + g.bearing_x
                 var glyph_y0 = baseline_y - g.bearing_y
