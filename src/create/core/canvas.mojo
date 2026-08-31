@@ -389,12 +389,15 @@ struct Canvas(Movable):
         elif self._text_align == Align.RIGHT:
             draw_x -= tw
 
-        # baseline_y is the FreeType baseline (bearing_y measured upward from it)
+        var asc  = self._font.ascender
+        var desc = self._font.descender
         var baseline_y = draw_y
         if self._text_baseline == Align.TOP:
-            baseline_y += size  # approximate ascender
+            baseline_y += asc
         elif self._text_baseline == Align.MIDDLE:
-            baseline_y += size // 2
+            baseline_y += (asc + desc) // 2
+        elif self._text_baseline == Align.BOTTOM:
+            baseline_y += desc
 
         # Second pass: render
         var cx = draw_x

@@ -25,10 +25,7 @@ struct Sketch(Windowed, Movable, Deinitable):
         canvas.line((200, 200), (400, 400))
 
         canvas.fill(Color.BLACK)
-        canvas.fontSize(24)
-        canvas.fontWeight(FontWeight.BOLD)
-        canvas.textAlign(Align.CENTER)
-        canvas.textBaseline(Align.MIDDLE)
+        canvas.fontSize(54)
         canvas.text("Create!", 450, 200)
 
 

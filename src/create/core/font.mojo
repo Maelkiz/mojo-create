@@ -6,6 +6,13 @@ comptime FONT_DEFAULT_PATH = "defaults/fonts/NotoSans.ttf"
 
 # FT_FaceRec offsets
 comptime _FACE_GLYPH = 152
+comptime _FACE_SIZE  = 160  # FT_Size* pointer
+
+# FT_SizeRec: face(8) + generic(16) = metrics at offset 24
+# FT_Size_Metrics: x_ppem(2)+y_ppem(2)+pad(4)+x_scale(8)+y_scale(8) = ascender at +24, descender at +32
+comptime _SIZE_METRICS   = 24
+comptime _METRICS_ASC    = 24
+comptime _METRICS_DESC   = 32
 
 # FT_GlyphSlotRec offsets
 comptime _GLYPH_ADVANCE  = 128  # FT_Vector: x = first FT_Pos (8 bytes)
@@ -62,9 +69,11 @@ struct GlyphInfo(Movable):
 
 
 struct Font(Movable):
-    var _lib: Int    # FT_Library opaque pointer
-    var _face: Int   # FT_Face opaque pointer
-    var _size: Int   # last set pixel height
+    var _lib: Int       # FT_Library opaque pointer
+    var _face: Int      # FT_Face opaque pointer
+    var _size: Int      # last set pixel height
+    var ascender: Int   # pixels above baseline (positive)
+    var descender: Int  # pixels below baseline (negative)
 
     def __init__(out self, path: String, size: Int) raises:
         var ft = _DLHandle("libfreetype.so.6")
@@ -82,13 +91,19 @@ struct Font(Movable):
             raise Error("FT_New_Face failed — font not found: " + path)
         self._face = _read_ptr(Int(face_buf.unsafe_ptr()))
         self._size = 0
+        self.ascender = 0
+        self.descender = 0
         self._set_size(ft, size)
 
-    def _set_size(mut self, ft: _DLHandle, size: Int):
+    def _set_size(mut self, ft: _DLHandle, size: Int) raises:
         if size == self._size:
             return
         _ = ft.call["FT_Set_Pixel_Sizes", Int32](self._face, UInt32(0), UInt32(size))
         self._size = size
+        var size_ptr = _read_ptr(self._face + _FACE_SIZE)
+        var m = size_ptr + _SIZE_METRICS
+        self.ascender  = _read_ptr(m + _METRICS_ASC)  >> 6
+        self.descender = _read_ptr(m + _METRICS_DESC) >> 6
 
     def render(mut self, codepoint: Int, size: Int, bold: Bool) raises -> GlyphInfo:
         var ft = _DLHandle("libfreetype.so.6")
