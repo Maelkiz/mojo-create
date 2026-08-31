@@ -30,6 +30,8 @@ def _wait_for_dimensions(mut ctx: Context) raises:
 
 
 def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
+    ctx.input._just_pressed = List[Int]()
+    ctx.input._just_released = List[Int]()
     var events = ctx._canvas.events()
     for event in events:
         if event.isa[Quit]():
@@ -40,6 +42,7 @@ def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
                 ctx._canvas.close()
             if not ctx.input.is_key_down(keycode):
                 ctx.input._held_keys.append(keycode)
+                ctx.input._just_pressed.append(keycode)
                 program.on_key_down(keycode)
         elif event.isa[KeyUp]():
             var keycode = event[KeyUp].keycode
@@ -47,6 +50,7 @@ def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
                 if ctx.input._held_keys[i] == keycode:
                     _ = ctx.input._held_keys.pop(i)
                     break
+            ctx.input._just_released.append(keycode)
             program.on_key_up(keycode)
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
