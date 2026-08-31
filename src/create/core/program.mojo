@@ -23,6 +23,18 @@ trait Headless(Movable, Deinitable):
     def update(mut self, mut ctx: Context, mut input: Input) raises:
         pass
 
+
+trait Windowed(Movable, Deinitable):
+    @staticmethod
+    def create(mut ctx: Context) raises -> Self:
+        ...
+
+    def update(mut self, mut ctx: Context, mut input: Input) raises:
+        pass
+
+    def render(self, mut canvas: Canvas) raises:
+        pass
+
     def on_key_down(mut self, keycode: Int) raises:
         pass
 
@@ -42,9 +54,4 @@ trait Headless(Movable, Deinitable):
         pass
 
     def on_resize(mut self, width: Int, height: Int) raises:
-        pass
-
-
-trait Windowed(Headless):
-    def render(self, mut canvas: Canvas) raises:
         pass

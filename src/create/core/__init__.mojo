@@ -10,4 +10,4 @@ from .key import Key
 from .canvas import Canvas, TransformGuard as TransformGuard
 from .context import Context
 from .program import NonInteractable, Headless, Windowed
-from .run import run, run_headless, run_noninteractable
+from .run import run
