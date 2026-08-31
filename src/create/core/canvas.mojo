@@ -499,13 +499,12 @@ struct Canvas(Movable):
         self._font._set_weight(self._font_weight)
         var c = self._fill
         var cr = Int(c.r); var cg = Int(c.g); var cb = Int(c.b)
-        var sp = s.unsafe_ptr()
 
         # Two-pass: measure total advance for alignment, then render.
-        # First pass: measure
+        # First pass: measure (iterate codepoints for correct Unicode handling)
         var tw = 0
-        for i in range(s.byte_length()):
-            var g = self._font.render(Int(sp[unsafe_offset=i]), size)
+        for cp in s.codepoints():
+            var g = self._font.render(Int(cp), size)
             tw += g.advance_x
 
         var draw_x = Int(tx)
@@ -527,8 +526,8 @@ struct Canvas(Movable):
 
         # Second pass: render
         var cx = draw_x
-        for i in range(s.byte_length()):
-            var g = self._font.render(Int(sp[unsafe_offset=i]), size)
+        for cp in s.codepoints():
+            var g = self._font.render(Int(cp), size)
             if g.width > 0 and g.height > 0:
                 var glyph_x0 = cx + g.bearing_x
                 var glyph_y0 = baseline_y - g.bearing_y
