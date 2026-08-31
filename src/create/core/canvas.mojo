@@ -4,7 +4,7 @@ from window.event import Event
 from .color import Color
 from .align import Align
 from .font_weight import FontWeight
-from .font import Font, FONT_DEFAULT_PATH
+from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
 from create.math.point import Point
@@ -37,6 +37,7 @@ struct Canvas(Movable):
     var _text_align: Int
     var _text_baseline: Int
     var _font: Font
+    var _fallback_font: List[Font]
     var _transform: Matrix[3, 3]
     var _transform_inv: Matrix[3, 3]
     var _transform_stack: List[Matrix[3, 3]]
@@ -54,6 +55,11 @@ struct Canvas(Movable):
         self._text_align = Align.LEFT
         self._text_baseline = Align.TOP
         self._font = Font(FONT_DEFAULT_PATH, 16)
+        self._fallback_font = List[Font]()
+        try:
+            self._fallback_font.append(Font(FONT_FALLBACK_PATH, 16))
+        except:
+            pass
         self._transform = identity[3]()
         self._transform_inv = identity[3]()
         self._transform_stack = List[Matrix[3, 3]]()
@@ -504,7 +510,12 @@ struct Canvas(Movable):
         # First pass: measure (iterate codepoints for correct Unicode handling)
         var tw = 0
         for cp in s.codepoints():
-            var g = self._font.render(Int(cp), size)
+            var cpi = Int(cp)
+            var g: GlyphInfo
+            if len(self._fallback_font) > 0 and not self._font.has_glyph(cpi):
+                g = self._fallback_font[0].render(cpi, size)
+            else:
+                g = self._font.render(cpi, size)
             tw += g.advance_x
 
         var draw_x = Int(tx)
@@ -527,7 +538,12 @@ struct Canvas(Movable):
         # Second pass: render
         var cx = draw_x
         for cp in s.codepoints():
-            var g = self._font.render(Int(cp), size)
+            var cpi = Int(cp)
+            var g: GlyphInfo
+            if len(self._fallback_font) > 0 and not self._font.has_glyph(cpi):
+                g = self._fallback_font[0].render(cpi, size)
+            else:
+                g = self._font.render(cpi, size)
             if g.width > 0 and g.height > 0:
                 var glyph_x0 = cx + g.bearing_x
                 var glyph_y0 = baseline_y - g.bearing_y

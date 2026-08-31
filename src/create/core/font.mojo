@@ -2,7 +2,8 @@ from std.ffi import _DLHandle
 from std.math import abs
 from .color import Color
 
-comptime FONT_DEFAULT_PATH = "defaults/fonts/NotoSans.ttf"
+comptime FONT_DEFAULT_PATH   = "defaults/fonts/NotoSans.ttf"
+comptime FONT_FALLBACK_PATH  = "defaults/fonts/NotoSansSymbols.ttf"
 
 # FT_FaceRec offsets
 comptime _FACE_GLYPH = 152
@@ -146,6 +147,10 @@ struct Font(Movable):
         )
         self._weight = weight
         _ = ft.call["FT_Done_MM_Var", Int32](self._lib, master)
+
+    def has_glyph(self, codepoint: Int) raises -> Bool:
+        var ft = _DLHandle("libfreetype.so.6")
+        return ft.call["FT_Get_Char_Index", UInt32](self._face, Int(codepoint)) != 0
 
     def render(mut self, codepoint: Int, size: Int) raises -> GlyphInfo:
         var ft = _DLHandle("libfreetype.so.6")
