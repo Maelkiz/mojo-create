@@ -12,11 +12,11 @@ from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
 from create.graphics.sprite import Sprite
 
 
-struct TransformGuard(Movable):
-    var _canvas: Pointer[Canvas, MutUntrackedOrigin]
+struct TransformGuard[origin: Origin[mut=True]](Movable):
+    var _canvas: Pointer[Canvas, Self.origin]
 
-    def __init__(out self, canvas: Pointer[Canvas, MutUntrackedOrigin]):
-        self._canvas = canvas
+    def __init__(out self, ref [Self.origin] canvas: Canvas):
+        self._canvas = Pointer[Canvas, Self.origin](to=canvas)
 
     def __enter__(mut self):
         pass
@@ -73,9 +73,9 @@ struct Canvas(Movable):
     def ticks(self) raises -> Int:
         return self._win.ticks()
 
-    def transform(mut self, m: Matrix[3, 3]) -> TransformGuard:
+    def transform(mut self, m: Matrix[3, 3]) -> TransformGuard[origin_of(self)]:
         self._push_transform(m)
-        return TransformGuard(Pointer.address_of(self))
+        return TransformGuard[origin_of(self)](self)
 
     def _push_transform(mut self, m: Matrix[3, 3]):
         self._transform_stack.append(self._transform)
