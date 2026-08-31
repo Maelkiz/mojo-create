@@ -24,6 +24,13 @@ struct Sketch(Windowed, Movable, Deinitable):
         canvas.stroke_width(3)
         canvas.line((200, 200), (400, 400))
 
+        canvas.fill(Color.BLACK)
+        canvas.fontSize(24)
+        canvas.fontWeight(FontWeight.BOLD)
+        canvas.textAlign(Align.CENTER)
+        canvas.textBaseline(Align.MIDDLE)
+        canvas.text("Create!", 450, 200)
+
 
 def main() raises:
     run[Sketch]("Example Sketch", 800, 600)
