@@ -13,6 +13,16 @@ struct Vector2(Writable, Copyable, ImplicitlyCopyable, Movable):
         self.x = Float64(x)
         self.y = Float64(y)
 
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Float64]):
+        self.x = t[0]
+        self.y = t[1]
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Int]):
+        self.x = Float64(t[0])
+        self.y = Float64(t[1])
+
     @staticmethod
     def zero() -> Vector2:
         return Vector2(0.0, 0.0)

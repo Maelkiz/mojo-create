@@ -11,6 +11,23 @@ struct Vector3(Writable, Copyable, ImplicitlyCopyable, Movable):
         self.y = y
         self.z = z
 
+    def __init__(out self, x: Int, y: Int, z: Int):
+        self.x = Float64(x)
+        self.y = Float64(y)
+        self.z = Float64(z)
+
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Float64, Float64]):
+        self.x = t[0]
+        self.y = t[1]
+        self.z = t[2]
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Int, Int]):
+        self.x = Float64(t[0])
+        self.y = Float64(t[1])
+        self.z = Float64(t[2])
+
     @staticmethod
     def zero() -> Vector3:
         return Vector3(0.0, 0.0, 0.0)

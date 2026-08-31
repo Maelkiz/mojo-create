@@ -1,11 +1,10 @@
 from std.math import min, max, sqrt
 from .vector2 import Vector2
-from .point import Point
 
 
 trait Convex:
-    def center(self) -> Point: ...
-    def closest_point(self, px: Float64, py: Float64) -> Point: ...
+    def center(self) -> Vector2: ...
+    def closest_point(self, px: Float64, py: Float64) -> Vector2: ...
     def contains(self, px: Float64, py: Float64) -> Bool: ...
 
 
@@ -15,14 +14,14 @@ def overlaps[A: Convex, B: Convex](a: A, b: B) -> Bool:
     return a.contains(p.x, p.y)
 
 
-def _closest_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Point:
+def _closest_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Vector2:
     var dx = bx - ax
     var dy = by - ay
     var len_sq = dx * dx + dy * dy
     if len_sq == 0.0:
-        return Point(ax, ay)
+        return Vector2(ax, ay)
     var t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / len_sq))
-    return Point(ax + t * dx, ay + t * dy)
+    return Vector2(ax + t * dx, ay + t * dy)
 
 
 def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:
@@ -48,17 +47,17 @@ struct Rectangle(Convex):
         self.x = Float64(x); self.y = Float64(y)
         self.w = Float64(w); self.h = Float64(h)
 
-    def __init__(out self, pos: Point, w: Float64, h: Float64):
+    def __init__(out self, pos: Vector2, w: Float64, h: Float64):
         self.x = pos.x; self.y = pos.y; self.w = w; self.h = h
 
-    def __init__(out self, pos: Point, size: Vector2):
+    def __init__(out self, pos: Vector2, size: Vector2):
         self.x = pos.x; self.y = pos.y; self.w = size.x; self.h = size.y
 
-    def center(self) -> Point:
-        return Point(self.x, self.y)
+    def center(self) -> Vector2:
+        return Vector2(self.x, self.y)
 
-    def closest_point(self, px: Float64, py: Float64) -> Point:
-        return Point(max(self.left(), min(px, self.right())),
+    def closest_point(self, px: Float64, py: Float64) -> Vector2:
+        return Vector2(max(self.left(), min(px, self.right())),
                      max(self.top(), min(py, self.bottom())))
 
     def left(self) -> Float64:
@@ -76,7 +75,7 @@ struct Rectangle(Convex):
     def contains(self, px: Float64, py: Float64) -> Bool:
         return self.left() <= px <= self.right() and self.top() <= py <= self.bottom()
 
-    def contains(self, v: Point) -> Bool:
+    def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
 
     def move_to(mut self, x: Float64, y: Float64):
@@ -85,7 +84,7 @@ struct Rectangle(Convex):
     def move_to(mut self, x: Int, y: Int):
         self.x = Float64(x); self.y = Float64(y)
 
-    def move_to(mut self, pos: Point):
+    def move_to(mut self, pos: Vector2):
         self.x = pos.x; self.y = pos.y
 
     def translate(mut self, dx: Float64, dy: Float64):
@@ -118,30 +117,30 @@ struct Circle(Convex):
     def __init__(out self, x: Int, y: Int, r: Int):
         self.x = Float64(x); self.y = Float64(y); self.r = Float64(r)
 
-    def __init__(out self, pos: Point, r: Float64):
+    def __init__(out self, pos: Vector2, r: Float64):
         self.x = pos.x; self.y = pos.y; self.r = r
 
-    def __init__(out self, pos: Point, r: Int):
+    def __init__(out self, pos: Vector2, r: Int):
         self.x = pos.x; self.y = pos.y; self.r = Float64(r)
 
-    def center(self) -> Point:
-        return Point(self.x, self.y)
+    def center(self) -> Vector2:
+        return Vector2(self.x, self.y)
 
-    def closest_point(self, px: Float64, py: Float64) -> Point:
+    def closest_point(self, px: Float64, py: Float64) -> Vector2:
         var dx = px - self.x
         var dy = py - self.y
         var dist_sq = dx * dx + dy * dy
         if dist_sq == 0.0 or dist_sq <= self.r * self.r:
-            return Point(px, py)
+            return Vector2(px, py)
         var dist = sqrt(dist_sq)
-        return Point(self.x + dx / dist * self.r, self.y + dy / dist * self.r)
+        return Vector2(self.x + dx / dist * self.r, self.y + dy / dist * self.r)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
         var dy = py - self.y
         return dx * dx + dy * dy <= self.r * self.r
 
-    def contains(self, v: Point) -> Bool:
+    def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
 
     def overlaps(self, other: Circle) -> Bool:
@@ -159,7 +158,7 @@ struct Circle(Convex):
     def move_to(mut self, x: Int, y: Int):
         self.x = Float64(x); self.y = Float64(y)
 
-    def move_to(mut self, pos: Point):
+    def move_to(mut self, pos: Vector2):
         self.x = pos.x; self.y = pos.y
 
     def translate(mut self, dx: Float64, dy: Float64):
@@ -183,7 +182,7 @@ struct Line:
         self.x0 = Float64(x0); self.y0 = Float64(y0)
         self.x1 = Float64(x1); self.y1 = Float64(y1)
 
-    def __init__(out self, start: Point, end: Point):
+    def __init__(out self, start: Vector2, end: Vector2):
         self.x0 = start.x; self.y0 = start.y
         self.x1 = end.x; self.y1 = end.y
 
@@ -216,18 +215,18 @@ struct Triangle(Convex):
         self.x2 = Float64(x2); self.y2 = Float64(y2)
         self.x3 = Float64(x3); self.y3 = Float64(y3)
 
-    def __init__(out self, a: Point, b: Point, c: Point):
+    def __init__(out self, a: Vector2, b: Vector2, c: Vector2):
         self.x1 = a.x; self.y1 = a.y
         self.x2 = b.x; self.y2 = b.y
         self.x3 = c.x; self.y3 = c.y
 
-    def center(self) -> Point:
-        return Point((self.x1 + self.x2 + self.x3) / 3.0,
+    def center(self) -> Vector2:
+        return Vector2((self.x1 + self.x2 + self.x3) / 3.0,
                      (self.y1 + self.y2 + self.y3) / 3.0)
 
-    def closest_point(self, px: Float64, py: Float64) -> Point:
+    def closest_point(self, px: Float64, py: Float64) -> Vector2:
         if self.contains(px, py):
-            return Point(px, py)
+            return Vector2(px, py)
         var p1 = _closest_on_segment(px, py, self.x1, self.y1, self.x2, self.y2)
         var p2 = _closest_on_segment(px, py, self.x2, self.y2, self.x3, self.y3)
         var p3 = _closest_on_segment(px, py, self.x3, self.y3, self.x1, self.y1)
@@ -238,7 +237,7 @@ struct Triangle(Convex):
         if d2 <= d3: return p2
         return p3
 
-    def contains(self, v: Point) -> Bool:
+    def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
@@ -267,7 +266,7 @@ struct Triangle(Convex):
     def move_to(mut self, x: Int, y: Int):
         self.move_to(Float64(x), Float64(y))
 
-    def move_to(mut self, pos: Point):
+    def move_to(mut self, pos: Vector2):
         self.move_to(pos.x, pos.y)
 
     def translate(mut self, dx: Float64, dy: Float64):

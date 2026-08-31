@@ -7,7 +7,6 @@ from .font_weight import FontWeight
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
-from create.math.point import Point
 from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
 from create.graphics.sprite import Sprite
 
@@ -363,31 +362,31 @@ struct Canvas(Movable):
     def rect(mut self, r: Rectangle) raises:
         self.rect(r.x, r.y, r.w, r.h)
 
-    def rect(mut self, pos: Point, w: Float64, h: Float64) raises:
+    def rect(mut self, pos: Vector2, w: Float64, h: Float64) raises:
         self.rect(pos.x, pos.y, w, h)
 
-    def rect(mut self, pos: Point, size: Vector2) raises:
+    def rect(mut self, pos: Vector2, size: Vector2) raises:
         self.rect(pos.x, pos.y, size.x, size.y)
 
     def circle(mut self, c: Circle) raises:
         self.circle(c.x, c.y, c.r)
 
-    def circle(mut self, pos: Point, r: Float64) raises:
+    def circle(mut self, pos: Vector2, r: Float64) raises:
         self.circle(pos.x, pos.y, r)
 
-    def circle(mut self, pos: Point, r: Int) raises:
+    def circle(mut self, pos: Vector2, r: Int) raises:
         self.circle(pos.x, pos.y, Float64(r))
 
     def line(mut self, l: Line) raises:
         self.line(l.x0, l.y0, l.x1, l.y1)
 
-    def line(mut self, start: Point, end: Point) raises:
+    def line(mut self, start: Vector2, end: Vector2) raises:
         self.line(start.x, start.y, end.x, end.y)
 
     def triangle(mut self, t: Triangle) raises:
         self.triangle(t.x1, t.y1, t.x2, t.y2, t.x3, t.y3)
 
-    def triangle(mut self, a: Point, b: Point, c: Point) raises:
+    def triangle(mut self, a: Vector2, b: Vector2, c: Vector2) raises:
         self.triangle(a.x, a.y, b.x, b.y, c.x, c.y)
 
     def sprite(mut self, s: Sprite, cx: Int, cy: Int) raises:
@@ -426,7 +425,7 @@ struct Canvas(Movable):
                     px[unsafe_offset=dst_off + 2] = UInt8((Int(sp[unsafe_offset=src_off + 2]) * a + Int(px[unsafe_offset=dst_off + 2]) * ia) // 255)
                     px[unsafe_offset=dst_off + 3] = 255
 
-    def sprite(mut self, s: Sprite, pos: Point) raises:
+    def sprite(mut self, s: Sprite, pos: Vector2) raises:
         self.sprite(s, pos.x, pos.y)
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int) raises:
@@ -467,7 +466,7 @@ struct Canvas(Movable):
     def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int) raises:
         self.sprite(s, Float64(cx), Float64(cy), w, h)
 
-    def sprite(mut self, s: Sprite, pos: Point, w: Int, h: Int) raises:
+    def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int) raises:
         self.sprite(s, pos.x, pos.y, w, h)
 
     def fontSize(mut self, size: Int):
@@ -485,7 +484,7 @@ struct Canvas(Movable):
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))
 
-    def text(mut self, s: String, pos: Point) raises:
+    def text(mut self, s: String, pos: Vector2) raises:
         self.text(s, pos.x, pos.y)
 
     def setFont(mut self, path: String) raises:

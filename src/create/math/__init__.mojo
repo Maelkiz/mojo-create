@@ -3,7 +3,6 @@ from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radia
 from .vector2 import Vector2
 from .vector3 import Vector3
 from .matrix import Matrix, identity, inverse, apply, translate, rotate, scale, perspective
-from .point import Point
 from .random import Random
 from std.math import (
     clamp,

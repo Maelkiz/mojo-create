@@ -1,7 +1,6 @@
 from .path import script_dir
 from create.math.geometry import Convex, overlaps, Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
-from create.math.point import Point
 from .color import Color
 from .align import Align
 from .font_weight import FontWeight
