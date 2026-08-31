@@ -2,6 +2,9 @@ from std.math import max, min, abs
 from window.window import Window
 from window.event import Event
 from .color import Color
+from .align import Align
+from .font_weight import FontWeight
+from .font import Font, FONT_DEFAULT_PATH
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
 from create.math.point import Point
@@ -15,6 +18,11 @@ struct Canvas(Movable):
     var _stroke: Color
     var _stroke_width: Int
     var _stroke_enabled: Bool
+    var _font_size: Int
+    var _font_weight: Int
+    var _text_align: Int
+    var _text_baseline: Int
+    var _font: Font
 
     def __init__(out self, title: String, width: Int, height: Int) raises:
         var fullscreen = width == 0 and height == 0
@@ -24,6 +32,11 @@ struct Canvas(Movable):
         self._stroke = Color.BLACK
         self._stroke_width = 1
         self._stroke_enabled = True
+        self._font_size = 16
+        self._font_weight = FontWeight.NORMAL
+        self._text_align = Align.LEFT
+        self._text_baseline = Align.TOP
+        self._font = Font(FONT_DEFAULT_PATH, 16)
 
     def is_open(self) -> Bool:
         return self._win.is_open()
@@ -328,3 +341,87 @@ struct Canvas(Movable):
 
     def sprite(mut self, s: Sprite, pos: Point, w: Int, h: Int) raises:
         self.sprite(s, pos.x, pos.y, w, h)
+
+    def fontSize(mut self, size: Int):
+        self._font_size = size
+
+    def fontWeight(mut self, weight: Int):
+        self._font_weight = weight
+
+    def textAlign(mut self, align: Int):
+        self._text_align = align
+
+    def textBaseline(mut self, baseline: Int):
+        self._text_baseline = baseline
+
+    def text(mut self, s: String, x: Int, y: Int) raises:
+        self.text(s, Float64(x), Float64(y))
+
+    def text(mut self, s: String, pos: Point) raises:
+        self.text(s, pos.x, pos.y)
+
+    def setFont(mut self, path: String) raises:
+        self._font = Font(path, self._font_size)
+
+    def text(mut self, s: String, x: Float64, y: Float64) raises:
+        if not self._fill_enabled:
+            return
+        var W = self._win.width()
+        var H = self._win.height()
+        var px = self._win.pixels()
+        var size = self._font_size
+        var bold = self._font_weight == FontWeight.BOLD
+        var c = self._fill
+        var cr = Int(c.r); var cg = Int(c.g); var cb = Int(c.b)
+        var sp = s.unsafe_ptr()
+
+        # Two-pass: measure total advance for alignment, then render.
+        # First pass: measure
+        var tw = 0
+        for i in range(s.byte_length()):
+            var g = self._font.render(Int(sp[unsafe_offset=i]), size, bold)
+            tw += g.advance_x
+
+        var draw_x = Int(x)
+        var draw_y = Int(y)
+        if self._text_align == Align.CENTER:
+            draw_x -= tw // 2
+        elif self._text_align == Align.RIGHT:
+            draw_x -= tw
+
+        # baseline_y is the FreeType baseline (bearing_y measured upward from it)
+        var baseline_y = draw_y
+        if self._text_baseline == Align.TOP:
+            baseline_y += size  # approximate ascender
+        elif self._text_baseline == Align.MIDDLE:
+            baseline_y += size // 2
+
+        # Second pass: render
+        var cx = draw_x
+        for i in range(s.byte_length()):
+            var g = self._font.render(Int(sp[unsafe_offset=i]), size, bold)
+            if g.width > 0 and g.height > 0:
+                var glyph_x0 = cx + g.bearing_x
+                var glyph_y0 = baseline_y - g.bearing_y
+                var gp = g.pixels.unsafe_ptr()
+                for row in range(g.height):
+                    for col in range(g.width):
+                        var alpha = Int(gp[unsafe_offset=row * g.width + col])
+                        if alpha == 0:
+                            continue
+                        var px_x = glyph_x0 + col
+                        var px_y = glyph_y0 + row
+                        if 0 <= px_x < W and 0 <= px_y < H:
+                            var off = (px_y * W + px_x) * 4
+                            if alpha == 255:
+                                px[unsafe_offset=off]     = c.r
+                                px[unsafe_offset=off + 1] = c.g
+                                px[unsafe_offset=off + 2] = c.b
+                                px[unsafe_offset=off + 3] = c.a
+                            else:
+                                var ia = 255 - alpha
+                                px[unsafe_offset=off]     = UInt8((cr * alpha + Int(px[unsafe_offset=off])     * ia) // 255)
+                                px[unsafe_offset=off + 1] = UInt8((cg * alpha + Int(px[unsafe_offset=off + 1]) * ia) // 255)
+                                px[unsafe_offset=off + 2] = UInt8((cb * alpha + Int(px[unsafe_offset=off + 2]) * ia) // 255)
+                                px[unsafe_offset=off + 3] = c.a
+            cx += g.advance_x
