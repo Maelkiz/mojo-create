@@ -5,9 +5,13 @@ def _in_list(keycode: Int, list: List[Int]) -> Bool:
     return False
 
 
+from create.math.vector2 import Vector2
+
+
 struct Input(Movable):
     var mouse_x: Int
     var mouse_y: Int
+    var mouse: Vector2
     var mouse_pressed: Bool
     var mouse_button: Int
     var _held_keys: List[Int]
@@ -17,6 +21,7 @@ struct Input(Movable):
     def __init__(out self):
         self.mouse_x = 0
         self.mouse_y = 0
+        self.mouse = Vector2(0, 0)
         self.mouse_pressed = False
         self.mouse_button = 0
         self._held_keys = List[Int]()

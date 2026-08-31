@@ -58,6 +58,7 @@ def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
             var e = event[MouseMoved]
             ctx.input.mouse_x = e.x
             ctx.input.mouse_y = e.y
+            ctx.input.mouse = Vector2(e.x, e.y)
             program.on_mouse_moved(e.x, e.y)
         elif event.isa[MouseButtonDown]():
             var e = event[MouseButtonDown]
@@ -65,6 +66,7 @@ def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
             ctx.input.mouse_button = e.button
             ctx.input.mouse_x = e.x
             ctx.input.mouse_y = e.y
+            ctx.input.mouse = Vector2(e.x, e.y)
             program.on_mouse_down(e.button, e.x, e.y)
         elif event.isa[MouseButtonUp]():
             var e = event[MouseButtonUp]
