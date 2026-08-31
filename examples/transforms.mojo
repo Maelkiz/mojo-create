@@ -31,7 +31,7 @@ struct Transforms(Windowed, Movable, Deinitable):
         var planet_angle = self.elapsed * tau / 10.0
         var moon_angle   = self.elapsed * tau / 3.5
 
-        # --- Solar system: 3 levels of nested transforms ---
+        # Solar system: 3 levels of nested transforms
         var sun_hovered: Bool
         with canvas.transform(translate(self.cx, self.cy)):
 
@@ -42,7 +42,7 @@ struct Transforms(Windowed, Movable, Deinitable):
 
             # Sun
             canvas.no_stroke()
-            canvas.fill(Color(255, 220, 30) if sun_hovered else Color(230, 180, 20))
+            canvas.fill(Color(30, 180, 230) if sun_hovered else Color(230, 180, 20))
             canvas.circle(0.0, 0.0, 40.0)
 
             # Planet — rotate then translate so it orbits the sun
@@ -63,7 +63,7 @@ struct Transforms(Windowed, Movable, Deinitable):
                     canvas.fill(Color(170, 170, 170))
                     canvas.circle(0.0, 0.0, 8.0)
 
-        # --- Spinning rect cluster: same transform pattern, different shape ---
+        # Spinning rect cluster: same transform pattern, different shape
         var cluster_cx = self.cx * 0.42
         var cluster_cy = self.cy * 1.55
 
@@ -82,7 +82,7 @@ struct Transforms(Windowed, Movable, Deinitable):
                     canvas.fill(Color(r, 80, b))
                     canvas.rect(0.0, 0.0, 36.0, 18.0)
 
-        # --- Rotating triangle fan ---
+        # Rotating triangle fan 
         var fan_cx = self.cx * 1.58
         var fan_cy = self.cy * 1.55
 
@@ -94,20 +94,6 @@ struct Transforms(Windowed, Movable, Deinitable):
                     canvas.no_stroke()
                     canvas.fill(Color(40, g, 160))
                     canvas.triangle(0.0, 0.0, 60.0, 15.0, 60.0, -15.0)
-
-        # --- Labels ---
-        canvas.fill(Color(200, 200, 200))
-        canvas.fontSize(14)
-        canvas.textAlign(Align.CENTER)
-
-        canvas.text("nested: sun → planet → moon", Int(self.cx), 30)
-        canvas.text("counter-rotating rects", Int(cluster_cx), Int(cluster_cy) + 95)
-        canvas.text("triangle fan", Int(fan_cx), Int(fan_cy) + 95)
-
-        if sun_hovered:
-            canvas.fill(Color(255, 240, 100))
-            canvas.fontSize(13)
-            canvas.text("hovering sun (to_local)", Int(self.cx), Int(self.cy) + 55)
 
 
 def main() raises:
