@@ -9,12 +9,12 @@ struct App(Windowed, Movable, Deinitable):
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         return App(
-            center = Circle(ctx.width // 2, ctx.height // 2, 100), 
-            mouse = Circle(0, 0, 100), 
+            center = Circle(ctx.center, 100),
+            mouse = Circle(0, 0, 100),
         )
 
     def update(mut self, mut ctx: Context) raises:
-        self.center.move_to(ctx.width // 2, ctx.height // 2)
+        self.center.move_to(ctx.center)
         self.mouse.move_to(ctx.input.mouse_x, ctx.input.mouse_y)
 
     def render(self, mut canvas: Canvas) raises:

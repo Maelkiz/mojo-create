@@ -14,6 +14,7 @@ from .input import Input
 from .time import Time
 from .context import Context
 from .program import Headless, Windowed
+from create.math.vector2 import Vector2
 
 
 def _wait_for_dimensions(mut ctx: Context) raises:
@@ -27,6 +28,7 @@ def _wait_for_dimensions(mut ctx: Context) raises:
                     var e = event[Resized]
                     ctx.width = e.width
                     ctx.height = e.height
+        ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
 
 
 def _process_events[P: Headless](mut program: P, mut ctx: Context) raises:
@@ -84,12 +86,17 @@ def _tick_time(mut ctx: Context, mut last_ticks: Int) raises:
     last_ticks = now
 
 
+def _update_dimensions(mut ctx: Context):
+    ctx.width = ctx._canvas._win.width()
+    ctx.height = ctx._canvas._win.height()
+    ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
+
+
 def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
         _process_events(program, ctx)
-        ctx.width = ctx._canvas._win.width()
-        ctx.height = ctx._canvas._win.height()
+        _update_dimensions(ctx)
         _tick_time(ctx, last_ticks)
         program.update(ctx)
 
@@ -98,8 +105,7 @@ def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
         _process_events(program, ctx)
-        ctx.width = ctx._canvas._win.width()
-        ctx.height = ctx._canvas._win.height()
+        _update_dimensions(ctx)
         _tick_time(ctx, last_ticks)
         program.update(ctx)
         program.render(ctx._canvas)
