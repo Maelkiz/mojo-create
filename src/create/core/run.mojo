@@ -111,6 +111,8 @@ def _run_noninteractable_loop[P: NonInteractable](mut program: P, mut ctx: Conte
         _update_dimensions(ctx)
         _tick_time(ctx, last_ticks)
         program.update(ctx)
+        program.render(ctx._canvas)
+        ctx._canvas.present()
 
 
 def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context, mut input: Input) raises:

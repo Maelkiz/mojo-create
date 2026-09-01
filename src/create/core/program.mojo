@@ -11,6 +11,9 @@ trait NonInteractable(Movable, Deinitable):
     def update(mut self, mut ctx: Context) raises:
         pass
 
+    def render(self, mut canvas: Canvas) raises:
+        pass
+
     def on_resize(mut self, width: Int, height: Int) raises:
         pass
 
