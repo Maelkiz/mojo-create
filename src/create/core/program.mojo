@@ -23,7 +23,7 @@ trait Headless(Movable, Deinitable):
     def create(mut ctx: Context) raises -> Self:
         ...
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context) raises:
         pass
 
 

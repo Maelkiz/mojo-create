@@ -115,11 +115,11 @@ def _run_noninteractable_loop[P: NonInteractable](mut program: P, mut ctx: Conte
         ctx._canvas.present()
 
 
-def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context, mut input: Input) raises:
+def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
         _tick_time(ctx, last_ticks)
-        program.update(ctx, input)
+        program.update(ctx)
 
 
 def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context, mut input: Input) raises:
@@ -156,16 +156,14 @@ def run[P: Headless](title: String) raises:
     var ctx = _make_ctx(title, 0, 0)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    var input = Input()
-    _run_headless_loop(program, ctx, input)
+    _run_headless_loop(program, ctx)
 
 
 def run[P: Headless](title: String, width: Int, height: Int) raises:
     var ctx = _make_ctx(title, width, height)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
-    var input = Input()
-    _run_headless_loop(program, ctx, input)
+    _run_headless_loop(program, ctx)
 
 
 def run[P: Windowed](title: String) raises:

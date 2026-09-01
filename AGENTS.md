@@ -108,7 +108,7 @@ canvas._push_transform(m)
 | Term | Meaning |
 |---|---|
 | `NonInteractable` | Windowed program with render but no Input (background animations, screen savers) |
-| `Headless` | Program with update+input but no render — window hidden; used for simulation |
+| `Headless` | Program with update only, no render and no Input — window still opens (for the event pump) but is never shown to the user; used for simulation |
 | `Windowed` | Full interactive program: update + render + event callbacks |
 | `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.time`, `ctx.exit_on_escape` |
 | `Time` | Struct on `ctx.time`: `delta_time` (Float64, seconds), `delta_millis` (Int), `frame_count` (Int) |
