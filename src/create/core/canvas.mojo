@@ -18,6 +18,34 @@ from create.math.matrix import (
 from create.graphics.sprite import Sprite
 
 
+def _blend[o: Origin[mut=True]](px: Pointer[UInt8, o], off: Int, c: Color):
+    """Composite one color into the framebuffer at `off`, source-over.
+
+    Fully opaque and fully transparent colors skip the read-back, so the
+    common case costs no more than a raw store; `Color.over` owns the mixing.
+    """
+    if c.a == 0:
+        return
+    if c.a == 255:
+        px[unsafe_offset=off] = c.r
+        px[unsafe_offset=off + 1] = c.g
+        px[unsafe_offset=off + 2] = c.b
+        px[unsafe_offset=off + 3] = 255
+        return
+    var out = c.over(
+        Color(
+            px[unsafe_offset=off],
+            px[unsafe_offset=off + 1],
+            px[unsafe_offset=off + 2],
+            px[unsafe_offset=off + 3],
+        )
+    )
+    px[unsafe_offset=off] = out.r
+    px[unsafe_offset=off + 1] = out.g
+    px[unsafe_offset=off + 2] = out.b
+    px[unsafe_offset=off + 3] = out.a
+
+
 struct TransformGuard[
     win_origin: Origin[mut=True], origin: Origin[mut=True]
 ](Movable):
@@ -133,10 +161,7 @@ struct Canvas[origin: Origin[mut=True]]:
         for row in range(max(y0, 0), min(y1, self._pixel_h)):
             for col in range(max(x0, 0), min(x1, W)):
                 var off = (row * W + col) * 4
-                px[unsafe_offset=off] = c.r
-                px[unsafe_offset=off + 1] = c.g
-                px[unsafe_offset=off + 2] = c.b
-                px[unsafe_offset=off + 3] = c.a
+                _blend(px, off, c)
 
     def _draw_letterbox(mut self) raises:
         """Paint the window area outside the design bounds.
@@ -217,10 +242,7 @@ struct Canvas[origin: Origin[mut=True]]:
                     var ny = y + ry
                     if 0 <= nx < W and 0 <= ny < H:
                         var off = (ny * W + nx) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
             if x == ix1 and y == iy1:
                 break
             var e2 = 2 * err
@@ -258,10 +280,7 @@ struct Canvas[origin: Origin[mut=True]]:
         var px = self._win[].pixels()
         for i in range(W * H):
             var off = i * 4
-            px[unsafe_offset=off] = color.r
-            px[unsafe_offset=off + 1] = color.g
-            px[unsafe_offset=off + 2] = color.b
-            px[unsafe_offset=off + 3] = color.a
+            _blend(px, off, color)
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
         var W = self._pixel_w
@@ -282,40 +301,25 @@ struct Canvas[origin: Origin[mut=True]]:
                 for row in range(max(y0, 0), min(y0 + ih, H)):
                     for col in range(max(x0, 0), min(x0 + iw, W)):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
             if self._stroke_enabled:
                 var sw = self._stroke_width
                 var c = self._stroke
                 for row in range(max(y0, 0), min(y0 + sw, H)):
                     for col in range(max(x0, 0), min(x0 + iw, W)):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
                 for row in range(max(y0 + ih - sw, 0), min(y0 + ih, H)):
                     for col in range(max(x0, 0), min(x0 + iw, W)):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
                 for row in range(max(y0 + sw, 0), min(y0 + ih - sw, H)):
                     for col in range(max(x0, 0), min(x0 + sw, W)):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
                     for col in range(max(x0 + iw - sw, 0), min(x0 + iw, W)):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
         else:
             var c0 = mat_apply(self._transform, lx0, ly0)
             var c1 = mat_apply(self._transform, lx1, ly0)
@@ -349,15 +353,9 @@ struct Canvas[origin: Origin[mut=True]]:
                     if self._fill_enabled and (
                         not self._stroke_enabled or in_inner
                     ):
-                        px[unsafe_offset=off] = self._fill.r
-                        px[unsafe_offset=off + 1] = self._fill.g
-                        px[unsafe_offset=off + 2] = self._fill.b
-                        px[unsafe_offset=off + 3] = self._fill.a
+                        _blend(px, off, self._fill)
                     elif self._stroke_enabled and not in_inner:
-                        px[unsafe_offset=off] = self._stroke.r
-                        px[unsafe_offset=off + 1] = self._stroke.g
-                        px[unsafe_offset=off + 2] = self._stroke.b
-                        px[unsafe_offset=off + 3] = self._stroke.a
+                        _blend(px, off, self._stroke)
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
         var W = self._pixel_w
@@ -384,15 +382,9 @@ struct Canvas[origin: Origin[mut=True]]:
                             or r_inner <= 0.0
                             or d2 <= r_inner2
                         ):
-                            px[unsafe_offset=off] = self._fill.r
-                            px[unsafe_offset=off + 1] = self._fill.g
-                            px[unsafe_offset=off + 2] = self._fill.b
-                            px[unsafe_offset=off + 3] = self._fill.a
+                            _blend(px, off, self._fill)
                         elif self._stroke_enabled and d2 > r_inner2:
-                            px[unsafe_offset=off] = self._stroke.r
-                            px[unsafe_offset=off + 1] = self._stroke.g
-                            px[unsafe_offset=off + 2] = self._stroke.b
-                            px[unsafe_offset=off + 3] = self._stroke.a
+                            _blend(px, off, self._stroke)
         else:
             var p0 = mat_apply(self._transform, cx - r, cy)
             var p1 = mat_apply(self._transform, cx + r, cy)
@@ -421,15 +413,9 @@ struct Canvas[origin: Origin[mut=True]]:
                             or r_inner <= 0.0
                             or d2 <= r_inner2
                         ):
-                            px[unsafe_offset=off] = self._fill.r
-                            px[unsafe_offset=off + 1] = self._fill.g
-                            px[unsafe_offset=off + 2] = self._fill.b
-                            px[unsafe_offset=off + 3] = self._fill.a
+                            _blend(px, off, self._fill)
                         elif self._stroke_enabled and d2 > r_inner2:
-                            px[unsafe_offset=off] = self._stroke.r
-                            px[unsafe_offset=off + 1] = self._stroke.g
-                            px[unsafe_offset=off + 2] = self._stroke.b
-                            px[unsafe_offset=off + 3] = self._stroke.a
+                            _blend(px, off, self._stroke)
 
     def line(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
@@ -498,10 +484,7 @@ struct Canvas[origin: Origin[mut=True]]:
                     var has_pos = (d1 > 0.0) or (d2 > 0.0) or (d3 > 0.0)
                     if not (has_neg and has_pos):
                         var off = (row * W + col) * 4
-                        px[unsafe_offset=off] = c.r
-                        px[unsafe_offset=off + 1] = c.g
-                        px[unsafe_offset=off + 2] = c.b
-                        px[unsafe_offset=off + 3] = c.a
+                        _blend(px, off, c)
         if self._stroke_enabled:
             self._line_pixels(sx1, sy1, sx2, sy2)
             self._line_pixels(sx2, sy2, sx3, sy3)
@@ -584,40 +567,16 @@ struct Canvas[origin: Origin[mut=True]]:
                 if sa == 0:
                     continue
                 var dst_off = (dy * W + dx) * 4
-                if sa == 255:
-                    px[unsafe_offset=dst_off] = sp[unsafe_offset=src_off]
-                    px[unsafe_offset=dst_off + 1] = sp[
-                        unsafe_offset=src_off + 1
-                    ]
-                    px[unsafe_offset=dst_off + 2] = sp[
-                        unsafe_offset=src_off + 2
-                    ]
-                    px[unsafe_offset=dst_off + 3] = 255
-                else:
-                    var a = Int(sa)
-                    var ia = 255 - a
-                    px[unsafe_offset=dst_off] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off]) * a
-                            + Int(px[unsafe_offset=dst_off]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 1] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off + 1]) * a
-                            + Int(px[unsafe_offset=dst_off + 1]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 2] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off + 2]) * a
-                            + Int(px[unsafe_offset=dst_off + 2]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 3] = 255
+                _blend(
+                    px,
+                    dst_off,
+                    Color(
+                        sp[unsafe_offset=src_off],
+                        sp[unsafe_offset=src_off + 1],
+                        sp[unsafe_offset=src_off + 2],
+                        sa,
+                    ),
+                )
 
     def sprite(mut self, s: Sprite, pos: Vector2) raises:
         self.sprite(s, pos.x, pos.y)
@@ -658,40 +617,16 @@ struct Canvas[origin: Origin[mut=True]]:
                 if sa == 0:
                     continue
                 var dst_off = (dy * W + dx) * 4
-                if sa == 255:
-                    px[unsafe_offset=dst_off] = sp[unsafe_offset=src_off]
-                    px[unsafe_offset=dst_off + 1] = sp[
-                        unsafe_offset=src_off + 1
-                    ]
-                    px[unsafe_offset=dst_off + 2] = sp[
-                        unsafe_offset=src_off + 2
-                    ]
-                    px[unsafe_offset=dst_off + 3] = 255
-                else:
-                    var a = Int(sa)
-                    var ia = 255 - a
-                    px[unsafe_offset=dst_off] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off]) * a
-                            + Int(px[unsafe_offset=dst_off]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 1] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off + 1]) * a
-                            + Int(px[unsafe_offset=dst_off + 1]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 2] = UInt8(
-                        (
-                            Int(sp[unsafe_offset=src_off + 2]) * a
-                            + Int(px[unsafe_offset=dst_off + 2]) * ia
-                        )
-                        // 255
-                    )
-                    px[unsafe_offset=dst_off + 3] = 255
+                _blend(
+                    px,
+                    dst_off,
+                    Color(
+                        sp[unsafe_offset=src_off],
+                        sp[unsafe_offset=src_off + 1],
+                        sp[unsafe_offset=src_off + 2],
+                        sa,
+                    ),
+                )
 
     def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int) raises:
         self.sprite(s, Float64(cx), Float64(cy), w, h)
@@ -737,9 +672,7 @@ struct Canvas[origin: Origin[mut=True]]:
             size = max(Int(Float64(self._font_size) * self.scale + 0.5), 1)
         self._font._set_weight(self._font_weight)
         var c = self._fill
-        var cr = Int(c.r)
-        var cg = Int(c.g)
-        var cb = Int(c.b)
+        var ca = Int(c.a)
 
         # Two-pass: measure total advance for alignment, then render.
         # First pass: measure (iterate codepoints for correct Unicode handling)
@@ -785,40 +718,18 @@ struct Canvas[origin: Origin[mut=True]]:
                 var gp = g.pixels.unsafe_ptr()
                 for row in range(g.height):
                     for col in range(g.width):
-                        var alpha = Int(gp[unsafe_offset=row * g.width + col])
-                        if alpha == 0:
+                        var cov = Int(gp[unsafe_offset=row * g.width + col])
+                        if cov == 0:
                             continue
                         var px_x = glyph_x0 + col
                         var px_y = glyph_y0 + row
                         if 0 <= px_x < W and 0 <= px_y < H:
                             var off = (px_y * W + px_x) * 4
-                            if alpha == 255:
-                                px[unsafe_offset=off] = c.r
-                                px[unsafe_offset=off + 1] = c.g
-                                px[unsafe_offset=off + 2] = c.b
-                                px[unsafe_offset=off + 3] = c.a
-                            else:
-                                var ia = 255 - alpha
-                                px[unsafe_offset=off] = UInt8(
-                                    (
-                                        cr * alpha
-                                        + Int(px[unsafe_offset=off]) * ia
-                                    )
-                                    // 255
-                                )
-                                px[unsafe_offset=off + 1] = UInt8(
-                                    (
-                                        cg * alpha
-                                        + Int(px[unsafe_offset=off + 1]) * ia
-                                    )
-                                    // 255
-                                )
-                                px[unsafe_offset=off + 2] = UInt8(
-                                    (
-                                        cb * alpha
-                                        + Int(px[unsafe_offset=off + 2]) * ia
-                                    )
-                                    // 255
-                                )
-                                px[unsafe_offset=off + 3] = c.a
+                            # Glyph coverage scales the fill's alpha, so
+                            # antialiasing and a translucent fill compose.
+                            _blend(
+                                px,
+                                off,
+                                Color(c.r, c.g, c.b, UInt8(cov * ca // 255)),
+                            )
             cx += g.advance_x

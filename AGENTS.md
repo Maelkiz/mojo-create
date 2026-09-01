@@ -89,6 +89,8 @@ canvas._push_transform(m)
 
 **All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. This matches Unity/Godot conventions. `Rectangle.x/y` is the center, not the top-left corner.
 
+**Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
+
 **Autoscale:** set `ctx.autoscale = True` in `create` to keep the program in the resolution passed to `run`, scaled uniformly to fit the window and centred (letterboxed). `ctx.width`/`height`/`center`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor. Font size, stroke width, and sprite size scale with it. The leftover window area is painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds.
 
 **Key strings:** pass lowercase strings to `input.key_down()` / `input.key_just_pressed()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`).

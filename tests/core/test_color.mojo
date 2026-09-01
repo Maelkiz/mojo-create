@@ -262,5 +262,44 @@ def test_hsv_round_trip() raises -> None:
     assert_equal(Color.hsv(h[0], h[1], h[2]), original)
 
 
+def test_over_opaque_source_replaces() raises -> None:
+    assert_equal(Color.RED.over(Color.BLUE), Color.RED)
+
+
+def test_over_transparent_source_keeps_destination() raises -> None:
+    assert_equal(Color(255, 0, 0, 0).over(Color.BLUE), Color.BLUE)
+
+
+def test_over_half_alpha_is_midpoint() raises -> None:
+    var c = Color(255, 255, 255, 128).over(Color.BLACK)
+    assert_equal(c.r, UInt8(128))
+    assert_equal(c.g, UInt8(128))
+    assert_equal(c.b, UInt8(128))
+
+
+def test_over_stays_opaque_on_opaque_destination() raises -> None:
+    assert_equal(Color(0, 0, 0, 1).over(Color.WHITE).a, UInt8(255))
+    assert_equal(Color(0, 0, 0, 128).over(Color.WHITE).a, UInt8(255))
+
+
+def test_over_accumulates_alpha_on_translucent_destination() raises -> None:
+    var c = Color(0, 0, 0, 128).over(Color(0, 0, 0, 128))
+    assert_equal(c.a, UInt8(191))
+
+
+def test_over_per_channel() raises -> None:
+    var c = Color(255, 0, 0, 128).over(Color(0, 0, 255))
+    assert_equal(c.r, UInt8(128))
+    assert_equal(c.g, UInt8(0))
+    assert_equal(c.b, UInt8(127))
+
+
+def test_over_repeated_converges_on_source() raises -> None:
+    var c = Color.BLACK
+    for _ in range(16):
+        c = Color(255, 255, 255, 64).over(c)
+    assert_true(c.r > UInt8(240))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

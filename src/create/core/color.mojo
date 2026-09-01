@@ -90,6 +90,26 @@ struct Color(Equatable, Writable, Copyable, ImplicitlyCopyable, Movable):
         var s = 0.0 if mx == 0.0 else d / mx
         return (h, s, mx)
 
+    def over(self, dst: Color) -> Color:
+        """Composite this color over `dst`, source-over.
+
+        `self.a` decides how much of `self` shows through. Compositing over an
+        opaque color yields an opaque color, so this is what a canvas fill does
+        against the framebuffer.
+        """
+        if self.a == 255:
+            return self
+        if self.a == 0:
+            return dst
+        var a = Int(self.a)
+        var ia = 255 - a
+        return Color(
+            UInt8((Int(self.r) * a + Int(dst.r) * ia) // 255),
+            UInt8((Int(self.g) * a + Int(dst.g) * ia) // 255),
+            UInt8((Int(self.b) * a + Int(dst.b) * ia) // 255),
+            UInt8(a + Int(dst.a) * ia // 255),
+        )
+
     @staticmethod
     def hex(rgb: Int) -> Color:
         """Build a color from a packed literal: `Color.hex(0x336699)`."""
