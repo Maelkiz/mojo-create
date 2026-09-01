@@ -125,7 +125,7 @@ canvas._push_transform(m)
 
 ## Don't
 
-- Don't run `mojo run` without `-I src` — module imports will fail.
+- Don't use `alias` it has been depricated in favor of `comptime`
+- Don't use `UnsafePointer` it has been depricated in favor of `Pointer`
 - Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard` — use origin-tracked references.
 - Don't name new test files without the `test_` prefix — the test runner won't pick them up.
-- Don't implement `render` on a `Headless` struct — the trait has no `render` method and the loop never calls it.
