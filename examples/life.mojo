@@ -34,7 +34,7 @@ struct Life(Headless, Movable, Deinitable):
         )
 
     def update(mut self, mut ctx: Context) raises:
-        self.accumulator += ctx.time.delta_time
+        self.accumulator += ctx.delta_time
         if self.accumulator < Life.STEP_INTERVAL:
             return
         self.accumulator -= Life.STEP_INTERVAL

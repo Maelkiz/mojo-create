@@ -8,7 +8,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 
 | Module | Path | Responsibility |
 |---|---|---|
-| `core` | `src/create/core/` | Program traits, Canvas, Context, Input, Font, Color, Time |
+| `core` | `src/create/core/` | Program traits, Canvas, Context, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer |
 
@@ -110,8 +110,7 @@ canvas._push_transform(m)
 | `NonInteractable` | Windowed program with render but no Input (background animations, screen savers) |
 | `Headless` | Program with update only, no render and no Input — window still opens (for the event pump) but is never shown to the user; used for simulation |
 | `Windowed` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.time`, `ctx.exit_on_escape` |
-| `Time` | Struct on `ctx.time`: `delta_time` (Float64, seconds), `delta_millis` (Int), `frame_count` (Int) |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape` |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 

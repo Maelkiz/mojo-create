@@ -2,15 +2,15 @@ from create.core import *
 
 
 @fieldwise_init
-struct App(Windowed, Movable, Deinitable):
+struct App(Deinitable, Movable, Windowed):
     var center: Circle
     var mouse: Circle
 
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         return App(
-            center = Circle(ctx.center, 100),
-            mouse = Circle(0, 0, 100),
+            center=Circle(ctx.center, 100),
+            mouse=Circle(0, 0, 100),
         )
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
@@ -19,8 +19,8 @@ struct App(Windowed, Movable, Deinitable):
 
     def render(self, mut canvas: Canvas) raises:
         if overlaps(self.center, self.mouse):
-            canvas.background(Color(40, 40, 60)) 
-        else: 
+            canvas.background(Color(40, 40, 60))
+        else:
             canvas.background(Color(20, 20, 30))
 
         canvas.no_stroke()
@@ -31,4 +31,4 @@ struct App(Windowed, Movable, Deinitable):
 
 
 def main() raises:
-    run[App]("Circle Overlap")
+    run[App]("Circle Overlap", 1000, 1000)

@@ -4,7 +4,6 @@ from create.math.vector2 import Vector2
 from .color import Color
 from .align import Align
 from .font_weight import FontWeight
-from .time import Time
 from .input import Input
 from .key import Key
 from .canvas import Canvas, TransformGuard as TransformGuard

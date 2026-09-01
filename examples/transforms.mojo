@@ -21,7 +21,7 @@ struct Transforms(Windowed, Movable, Deinitable):
         )
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
-        self.elapsed += ctx.time.delta_time
+        self.elapsed += ctx.delta_time
         self.mouse_x = input.mouse_x
         self.mouse_y = input.mouse_y
 

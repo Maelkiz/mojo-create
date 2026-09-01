@@ -11,7 +11,6 @@ from window.event import (
 )
 from .canvas import Canvas
 from .input import Input
-from .time import Time
 from .context import Context
 from .program import NonInteractable, Headless, Windowed
 from create.math.vector2 import Vector2
@@ -92,9 +91,9 @@ def _process_events[P: Windowed](mut program: P, mut ctx: Context, mut input: In
 
 def _tick_time(mut ctx: Context, mut last_ticks: Int) raises:
     var now = ctx._canvas.ticks()
-    ctx.time.delta_millis = now - last_ticks
-    ctx.time.delta_time = Float64(ctx.time.delta_millis) / 1000.0
-    ctx.time.frame_count += 1
+    ctx.delta_millis = now - last_ticks
+    ctx.delta_time = Float64(ctx.delta_millis) / 1000.0
+    ctx.frame_count += 1
     last_ticks = now
 
 
@@ -135,7 +134,7 @@ def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context, mut input:
 
 def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     var canvas = Canvas(title, width, height)
-    return Context(canvas^, Time(0, 0.0, 0), width, height)
+    return Context(canvas^, width, height)
 
 
 def run[P: NonInteractable](title: String) raises:
