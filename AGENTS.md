@@ -16,7 +16,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 
 | File | Lines | Purpose |
 |---|---|---|
-| `src/create/core/program.mojo` | ~60 | Defines `NonInteractable`, `Headless`, `Windowed` traits |
+| `src/create/core/program.mojo` | ~60 | Defines the `Program` trait |
 | `src/create/core/run.mojo` | ~185 | `run[T](title)` / `run[T](title, w, h)` entry-point overloads |
 | `src/create/core/canvas.mojo` | ~570 | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/core/context.mojo` | ~20 | `Context` — width/height/center/time passed to every frame |
@@ -101,15 +101,11 @@ canvas._push_transform(m)
 
 4. **Tests are plain Mojo programs, not a test framework.** Each `test_*.mojo` file calls `assert` directly and terminates. There is no `unittest` module or runner. `pixi run test` aborts on first non-zero exit (`set -e`), so a failing file stops the suite.
 
-5. **`Headless` programs still open a window.** The headless loop skips `render`/`present` but SDL is initialized and a window is created for the event pump. There is no truly windowless mode.
-
 ## Terminology
 
 | Term | Meaning |
 |---|---|
-| `NonInteractable` | Windowed program with render but no Input (background animations, screen savers) |
-| `Headless` | Program with update only, no render and no Input — window still opens (for the event pump) but is never shown to the user; used for simulation |
-| `Windowed` | Full interactive program: update + render + event callbacks |
+| `Program` | Full interactive program: update + render + event callbacks |
 | `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape` |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |

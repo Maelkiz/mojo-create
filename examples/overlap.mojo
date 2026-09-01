@@ -2,7 +2,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct App(Deinitable, Movable, Windowed):
+struct App(Deinitable, Movable, Program):
     var center: Circle
     var mouse: Circle
 

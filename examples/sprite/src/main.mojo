@@ -4,14 +4,16 @@ from create.math import clamp
 
 
 @fieldwise_init
-struct Game(Windowed, Movable, Deinitable):
+struct Game(Deinitable, Movable, Program):
     var sprite: Sprite
     var x: Int
     var y: Int
 
     @staticmethod
     def create(mut ctx: Context) raises -> Game:
-        var sprite = Sprite.load(script_dir() + "/../assets/sprite.jpeg", 120, 120)
+        var sprite = Sprite.load(
+            script_dir() + "/../assets/sprite.jpeg", 120, 120
+        )
         return Game(sprite^, ctx.width // 2, ctx.height // 2)
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:

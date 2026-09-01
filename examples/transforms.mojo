@@ -3,7 +3,7 @@ from create.math import translate, rotate, scale, pi, tau, cos, sin
 
 
 @fieldwise_init
-struct Transforms(Windowed, Movable, Deinitable):
+struct Transforms(Deinitable, Movable, Program):
     var cx: Float64
     var cy: Float64
     var elapsed: Float64
@@ -29,25 +29,28 @@ struct Transforms(Windowed, Movable, Deinitable):
         canvas.background(Color(8, 8, 20))
 
         var planet_angle = self.elapsed * tau / 10.0
-        var moon_angle   = self.elapsed * tau / 3.5
+        var moon_angle = self.elapsed * tau / 3.5
 
         # Solar system: 3 levels of nested transforms
         var sun_hovered: Bool
         with canvas.transform(translate(self.cx, self.cy)):
-
             # Hit-test sun in local space (origin after the translate)
-            var local = canvas.to_local(Float64(self.mouse_x), Float64(self.mouse_y))
-            var lx = local[0]; var ly = local[1]
+            var local = canvas.to_local(
+                Float64(self.mouse_x), Float64(self.mouse_y)
+            )
+            var lx = local[0]
+            var ly = local[1]
             sun_hovered = lx * lx + ly * ly <= 40.0 * 40.0
 
             # Sun
             canvas.no_stroke()
-            canvas.fill(Color(30, 180, 230) if sun_hovered else Color(230, 180, 20))
+            canvas.fill(
+                Color(30, 180, 230) if sun_hovered else Color(230, 180, 20)
+            )
             canvas.circle(0.0, 0.0, 40.0)
 
             # Planet — rotate then translate so it orbits the sun
             with canvas.transform(rotate(planet_angle) @ translate(160.0, 0.0)):
-
                 # Thin orbit guide drawn in planet's frame before further nesting
                 canvas.stroke(Color(50, 50, 70))
                 canvas.stroke_width(1)
@@ -59,7 +62,9 @@ struct Transforms(Windowed, Movable, Deinitable):
                 canvas.circle(0.0, 0.0, 18.0)
 
                 # Moon — orbits the planet
-                with canvas.transform(rotate(moon_angle) @ translate(45.0, 0.0)):
+                with canvas.transform(
+                    rotate(moon_angle) @ translate(45.0, 0.0)
+                ):
                     canvas.fill(Color(170, 170, 170))
                     canvas.circle(0.0, 0.0, 8.0)
 
@@ -75,14 +80,18 @@ struct Transforms(Windowed, Movable, Deinitable):
             for i in range(6):
                 var arm_angle = self.elapsed * 0.9 + Float64(i) * tau / 6.0
                 # Arm rotates; rect counter-rotates so it stays axis-aligned in world space
-                with canvas.transform(rotate(arm_angle) @ translate(70.0, 0.0) @ rotate(-arm_angle)):
+                with canvas.transform(
+                    rotate(arm_angle)
+                    @ translate(70.0, 0.0)
+                    @ rotate(-arm_angle)
+                ):
                     var t = (sin(self.elapsed * 2.0 + Float64(i)) + 1.0) / 2.0
                     var r = UInt8(60 + Int(t * 180.0))
                     var b = UInt8(180 - Int(t * 100.0))
                     canvas.fill(Color(r, 80, b))
                     canvas.rect(0.0, 0.0, 36.0, 18.0)
 
-        # Rotating triangle fan 
+        # Rotating triangle fan
         var fan_cx = self.cx * 1.58
         var fan_cy = self.cy * 1.55
 

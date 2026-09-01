@@ -2,8 +2,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct Sketch(NonInteractable, Movable, Deinitable):
-
+struct Sketch(Deinitable, Movable, Program):
     @staticmethod
     def create(mut ctx: Context) raises -> Sketch:
         return Sketch()
@@ -17,7 +16,7 @@ struct Sketch(NonInteractable, Movable, Deinitable):
 
         canvas.fill(Color.BLUE)
         canvas.circle((300, 300), 50)
-        
+
         canvas.fill(Color.BLACK)
         canvas.triangle((400, 400), (450, 550), (550, 450))
 

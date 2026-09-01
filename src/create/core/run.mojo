@@ -12,7 +12,7 @@ from window.event import (
 from .canvas import Canvas
 from .input import Input
 from .context import Context
-from .program import NonInteractable, Headless, Windowed
+from .program import Program
 from create.math.vector2 import Vector2
 
 
@@ -30,17 +30,9 @@ def _wait_for_dimensions(mut ctx: Context) raises:
         ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
 
 
-def _process_noninteractable_events[P: NonInteractable](mut program: P, mut ctx: Context) raises:
-    var events = ctx._canvas.events()
-    for event in events:
-        if event.isa[Quit]():
-            ctx._canvas.close()
-        elif event.isa[Resized]():
-            var e = event[Resized]
-            program.on_resize(e.width, e.height)
-
-
-def _process_events[P: Windowed](mut program: P, mut ctx: Context, mut input: Input) raises:
+def _process_events[
+    P: Program
+](mut program: P, mut ctx: Context, mut input: Input) raises:
     input._just_pressed = List[Int]()
     input._just_released = List[Int]()
     var events = ctx._canvas.events()
@@ -103,25 +95,9 @@ def _update_dimensions(mut ctx: Context):
     ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
 
 
-def _run_noninteractable_loop[P: NonInteractable](mut program: P, mut ctx: Context) raises:
-    var last_ticks = ctx._canvas.ticks()
-    while ctx._canvas.is_open():
-        _process_noninteractable_events(program, ctx)
-        _update_dimensions(ctx)
-        _tick_time(ctx, last_ticks)
-        program.update(ctx)
-        program.render(ctx._canvas)
-        ctx._canvas.present()
-
-
-def _run_headless_loop[P: Headless](mut program: P, mut ctx: Context) raises:
-    var last_ticks = ctx._canvas.ticks()
-    while ctx._canvas.is_open():
-        _tick_time(ctx, last_ticks)
-        program.update(ctx)
-
-
-def _run_windowed_loop[P: Windowed](mut program: P, mut ctx: Context, mut input: Input) raises:
+def _run_loop[
+    P: Program
+](mut program: P, mut ctx: Context, mut input: Input) raises:
     var last_ticks = ctx._canvas.ticks()
     while ctx._canvas.is_open():
         _process_events(program, ctx, input)
@@ -137,45 +113,17 @@ def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
     return Context(canvas^, width, height)
 
 
-def run[P: NonInteractable](title: String) raises:
-    var ctx = _make_ctx(title, 0, 0)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    _run_noninteractable_loop(program, ctx)
-
-
-def run[P: NonInteractable](title: String, width: Int, height: Int) raises:
-    var ctx = _make_ctx(title, width, height)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    _run_noninteractable_loop(program, ctx)
-
-
-def run[P: Headless](title: String) raises:
-    var ctx = _make_ctx(title, 0, 0)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    _run_headless_loop(program, ctx)
-
-
-def run[P: Headless](title: String, width: Int, height: Int) raises:
-    var ctx = _make_ctx(title, width, height)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    _run_headless_loop(program, ctx)
-
-
-def run[P: Windowed](title: String) raises:
+def run[P: Program](title: String) raises:
     var ctx = _make_ctx(title, 0, 0)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
     var input = Input()
-    _run_windowed_loop(program, ctx, input)
+    _run_loop(program, ctx, input)
 
 
-def run[P: Windowed](title: String, width: Int, height: Int) raises:
+def run[P: Program](title: String, width: Int, height: Int) raises:
     var ctx = _make_ctx(title, width, height)
     _wait_for_dimensions(ctx)
     var program = P.create(ctx)
     var input = Input()
-    _run_windowed_loop(program, ctx, input)
+    _run_loop(program, ctx, input)

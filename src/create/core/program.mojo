@@ -3,31 +3,7 @@ from .context import Context
 from .input import Input
 
 
-trait NonInteractable(Movable, Deinitable):
-    @staticmethod
-    def create(mut ctx: Context) raises -> Self:
-        ...
-
-    def update(mut self, mut ctx: Context) raises:
-        pass
-
-    def render(self, mut canvas: Canvas) raises:
-        pass
-
-    def on_resize(mut self, width: Int, height: Int) raises:
-        pass
-
-
-trait Headless(Movable, Deinitable):
-    @staticmethod
-    def create(mut ctx: Context) raises -> Self:
-        ...
-
-    def update(mut self, mut ctx: Context) raises:
-        pass
-
-
-trait Windowed(Movable, Deinitable):
+trait Program(Deinitable, Movable):
     @staticmethod
     def create(mut ctx: Context) raises -> Self:
         ...
