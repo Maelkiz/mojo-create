@@ -3,7 +3,7 @@ from player import Player
 
 
 @fieldwise_init
-struct Game(Deinitable, Movable, Program):
+struct Game(Program):
     var player: Player
 
     @staticmethod

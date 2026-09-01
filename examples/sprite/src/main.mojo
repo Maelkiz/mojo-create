@@ -4,7 +4,7 @@ from create.math import clamp
 
 
 @fieldwise_init
-struct Game(Deinitable, Movable, Program):
+struct Game(Program):
     var sprite: Sprite
     var x: Int
     var y: Int

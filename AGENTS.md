@@ -116,7 +116,6 @@ canvas._push_transform(m)
 - Use `pixi run test` before committing.
 - Use `canvas.background(Color.X)` as the first call in `render` to clear the frame.
 - Use `canvas.to_world()` / `canvas.to_local()` when mapping between screen and transformed coordinates.
-- Add `Movable` and `Deinitable` to every program struct (required by all three traits).
 
 ## Don't
 

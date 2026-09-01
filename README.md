@@ -12,7 +12,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct App(Windowed, Movable, Deinitable):
+struct MyApp(Program):
 
     @staticmethod
     def create(mut ctx: Context) raises -> App:
@@ -26,7 +26,7 @@ struct App(Windowed, Movable, Deinitable):
 
 
 def main() raises:
-    run[App]("Example Sketch", 400, 300)
+    run[MyApp]("Example Sketch", 400, 300)
 ```
 
 Run the example programs using the `create` pixi task:

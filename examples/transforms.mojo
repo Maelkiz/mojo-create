@@ -3,7 +3,7 @@ from create.math import translate, rotate, scale, pi, tau, cos, sin
 
 
 @fieldwise_init
-struct Transforms(Deinitable, Movable, Program):
+struct Transforms(Program):
     var cx: Float64
     var cy: Float64
     var elapsed: Float64
