@@ -89,6 +89,8 @@ canvas._push_transform(m)
 
 **All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. This matches Unity/Godot conventions. `Rectangle.x/y` is the center, not the top-left corner.
 
+**Autoscale:** set `ctx.autoscale = True` in `create` to keep the program in the resolution passed to `run`, scaled uniformly to fit the window and centred (letterboxed). `ctx.width`/`height`/`center`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor. Font size, stroke width, and sprite size scale with it. The leftover window area is painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds.
+
 **Key strings:** pass lowercase strings to `input.key_down()` / `input.key_just_pressed()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`).
 
 ## Critical Gotchas
@@ -106,7 +108,8 @@ canvas._push_transform(m)
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.quit()` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale`, `ctx.scale`, `ctx.quit()` |
+| Design resolution | The size passed to `run` — the coordinate space a program is authored in. With `ctx.autoscale = True` it stays fixed while the window resizes |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 

@@ -18,9 +18,7 @@ from create.math.vector2 import Vector2
 
 
 def _update_dimensions(mut win: Window, mut ctx: Context) raises:
-    ctx.width = win.width()
-    ctx.height = win.height()
-    ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
+    ctx._set_viewport(win.width(), win.height())
 
 
 def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
@@ -59,22 +57,26 @@ def _process_events[
             program.on_key_up(keycode)
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
-            input.mouse_x = e.x
-            input.mouse_y = e.y
-            input.mouse = Vector2(e.x, e.y)
-            program.on_mouse_moved(e.x, e.y)
+            # Pointer positions reach the program in the same space it draws in.
+            var p = ctx.to_design(Float64(e.x), Float64(e.y))
+            input.mouse = Vector2(p[0], p[1])
+            input.mouse_x = Int(p[0])
+            input.mouse_y = Int(p[1])
+            program.on_mouse_moved(input.mouse_x, input.mouse_y)
         elif event.isa[MouseButtonDown]():
             var e = event[MouseButtonDown]
+            var p = ctx.to_design(Float64(e.x), Float64(e.y))
             input.mouse_pressed = True
             input.mouse_button = e.button
-            input.mouse_x = e.x
-            input.mouse_y = e.y
-            input.mouse = Vector2(e.x, e.y)
-            program.on_mouse_down(e.button, e.x, e.y)
+            input.mouse = Vector2(p[0], p[1])
+            input.mouse_x = Int(p[0])
+            input.mouse_y = Int(p[1])
+            program.on_mouse_down(e.button, input.mouse_x, input.mouse_y)
         elif event.isa[MouseButtonUp]():
             var e = event[MouseButtonUp]
+            var p = ctx.to_design(Float64(e.x), Float64(e.y))
             input.mouse_pressed = False
-            program.on_mouse_up(e.button, e.x, e.y)
+            program.on_mouse_up(e.button, Int(p[0]), Int(p[1]))
         elif event.isa[MouseWheel]():
             var e = event[MouseWheel]
             program.on_mouse_wheel(e.x, e.y)
@@ -100,16 +102,18 @@ def _run_loop[
     var canvas = Canvas(win)
     var last_ticks = win.ticks()
     while win.is_open() and not ctx._quit:
-        _process_events(program, win, ctx, input)
+        # Dimensions are refreshed before events so pointer positions are
+        # mapped with this frame's scale, not the previous one's.
         _update_dimensions(win, ctx)
-        # Canvas mirrors the frame dimensions; it cannot be passed to
-        # _update_dimensions because that call already borrows the window.
-        canvas.width = ctx.width
-        canvas.height = ctx.height
-        canvas.center = ctx.center
+        _process_events(program, win, ctx, input)
+        # Canvas mirrors the frame dimensions and the design-space mapping; it
+        # cannot be updated inside _update_dimensions because that call already
+        # borrows the window.
+        canvas._sync(ctx)
         _tick_time(win, ctx, last_ticks)
         program.update(ctx, input)
         program.render(canvas)
+        canvas._draw_letterbox()
         win.present()
 
 
@@ -118,6 +122,11 @@ def _start[P: Program](title: String, width: Int, height: Int) raises:
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()
     _wait_for_dimensions(win, ctx)
+    # The size the program is authored against: whatever it starts at. Programs
+    # that set ctx.autoscale in create() keep drawing in these coordinates no
+    # matter how the window is later resized.
+    ctx._design_w = ctx.width
+    ctx._design_h = ctx.height
     var program = P.create(ctx)
     var input = Input()
     _run_loop(program, win, ctx, input)

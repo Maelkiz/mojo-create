@@ -4,9 +4,17 @@ from .color import Color
 from .align import Align
 from .font_weight import FontWeight
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
+from .context import Context
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
-from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
+from create.math.matrix import (
+    Matrix,
+    identity,
+    inverse,
+    apply as mat_apply,
+    scale as mat_scale,
+    translate as mat_translate,
+)
 from create.graphics.sprite import Sprite
 
 
@@ -30,6 +38,15 @@ struct Canvas[origin: Origin[mut=True]]:
     var width: Int
     var height: Int
     var center: Vector2
+    var autoscale: Bool
+    var scale: Float64
+    var letterbox: Color
+    var _pixel_w: Int
+    var _pixel_h: Int
+    var _base: Matrix[3, 3]
+    var _scaled: Bool
+    var _offset_x: Float64
+    var _offset_y: Float64
     var _fill: Color
     var _fill_enabled: Bool
     var _stroke: Color
@@ -50,6 +67,15 @@ struct Canvas[origin: Origin[mut=True]]:
         self.width = win.width()
         self.height = win.height()
         self.center = Vector2(self.width // 2, self.height // 2)
+        self.autoscale = False
+        self.scale = 1.0
+        self.letterbox = Color(0x22)
+        self._pixel_w = self.width
+        self._pixel_h = self.height
+        self._base = identity[3]()
+        self._scaled = False
+        self._offset_x = 0.0
+        self._offset_y = 0.0
         self._fill = Color.WHITE
         self._fill_enabled = True
         self._stroke = Color.BLACK
@@ -68,6 +94,77 @@ struct Canvas[origin: Origin[mut=True]]:
         self._transform = identity[3]()
         self._transform_inv = identity[3]()
         self._transform_stack = List[Matrix[3, 3]]()
+
+    def _sync(mut self, ctx: Context) raises:
+        """Adopt this frame's dimensions and design-space mapping from `ctx`.
+
+        `width`/`height`/`center` are design coordinates — equal to the window
+        size unless autoscale is on. `_pixel_w`/`_pixel_h` stay the real
+        framebuffer size, which every raster loop clips against.
+        """
+        self._pixel_w = self._win[].width()
+        self._pixel_h = self._win[].height()
+        self.width = ctx.width
+        self.height = ctx.height
+        self.center = ctx.center
+        self.autoscale = ctx.autoscale
+        self.scale = ctx.scale
+        self._scaled = (
+            ctx.scale != 1.0 or ctx._offset_x != 0.0 or ctx._offset_y != 0.0
+        )
+        self._offset_x = ctx._offset_x
+        self._offset_y = ctx._offset_y
+        if self._scaled:
+            self._base = mat_translate(ctx._offset_x, ctx._offset_y) @ mat_scale(
+                ctx.scale
+            )
+        else:
+            self._base = identity[3]()
+        # Render always starts with an empty stack, so the base mapping is the
+        # current transform; user transforms compose on top of it.
+        self._transform = self._base
+        self._transform_inv = inverse(self._base)
+
+    def _fill_pixels(
+        mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
+    ) raises:
+        var W = self._pixel_w
+        var px = self._win[].pixels()
+        for row in range(max(y0, 0), min(y1, self._pixel_h)):
+            for col in range(max(x0, 0), min(x1, W)):
+                var off = (row * W + col) * 4
+                px[unsafe_offset=off] = c.r
+                px[unsafe_offset=off + 1] = c.g
+                px[unsafe_offset=off + 2] = c.b
+                px[unsafe_offset=off + 3] = c.a
+
+    def _draw_letterbox(mut self) raises:
+        """Paint the window area outside the design bounds.
+
+        Runs after render, so it doubles as the clip for anything drawn past
+        the edges of the design area.
+        """
+        if not self._scaled:
+            return
+        var W = self._pixel_w
+        var H = self._pixel_h
+        var cx0 = Int(self._offset_x)
+        var cy0 = Int(self._offset_y)
+        var cx1 = Int(self._offset_x + Float64(self.width) * self.scale + 0.5)
+        var cy1 = Int(self._offset_y + Float64(self.height) * self.scale + 0.5)
+        var c = self.letterbox
+        if cy0 > 0:
+            self._fill_pixels(0, 0, W, cy0, c)
+        if cy1 < H:
+            self._fill_pixels(0, cy1, W, H, c)
+        if cx0 > 0:
+            self._fill_pixels(0, cy0, cx0, cy1, c)
+        if cx1 < W:
+            self._fill_pixels(cx1, cy0, W, cy1, c)
+
+    def _transformed(self) -> Bool:
+        """True when drawing coordinates differ from framebuffer pixels."""
+        return self._scaled or len(self._transform_stack) > 0
 
     def transform(
         mut self, m: Matrix[3, 3]
@@ -94,11 +191,14 @@ struct Canvas[origin: Origin[mut=True]]:
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var c = self._stroke
-        var half = self._stroke_width // 2
+        var sw = self._stroke_width
+        if self._scaled:
+            sw = max(Int(Float64(sw) * self.scale + 0.5), 1)
+        var half = sw // 2
         var ix0 = Int(x0)
         var iy0 = Int(y0)
         var ix1 = Int(x1)
@@ -111,8 +211,8 @@ struct Canvas[origin: Origin[mut=True]]:
         var x = ix0
         var y = iy0
         while True:
-            for ry in range(-half, self._stroke_width - half):
-                for rx in range(-half, self._stroke_width - half):
+            for ry in range(-half, sw - half):
+                for rx in range(-half, sw - half):
                     var nx = x + rx
                     var ny = y + ry
                     if 0 <= nx < W and 0 <= ny < H:
@@ -153,8 +253,8 @@ struct Canvas[origin: Origin[mut=True]]:
         self._stroke_width = w
 
     def background(mut self, color: Color) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         for i in range(W * H):
             var off = i * 4
@@ -164,15 +264,15 @@ struct Canvas[origin: Origin[mut=True]]:
             px[unsafe_offset=off + 3] = color.a
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var lx0 = x - w / 2.0
         var ly0 = y - h / 2.0
         var lx1 = x + w / 2.0
         var ly1 = y + h / 2.0
 
-        if len(self._transform_stack) == 0:
+        if not self._transformed():
             var x0 = Int(lx0)
             var y0 = Int(ly0)
             var iw = Int(w)
@@ -260,14 +360,14 @@ struct Canvas[origin: Origin[mut=True]]:
                         px[unsafe_offset=off + 3] = self._stroke.a
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var r2 = r * r
         var r_inner = r - Float64(self._stroke_width)
         var r_inner2 = r_inner * r_inner
 
-        if len(self._transform_stack) == 0:
+        if not self._transformed():
             var x0 = max(Int(cx - r), 0)
             var y0 = max(Int(cy - r), 0)
             var x1 = min(Int(cx + r) + 1, W)
@@ -340,7 +440,7 @@ struct Canvas[origin: Origin[mut=True]]:
         var sy0 = y0
         var sx1 = x1
         var sy1 = y1
-        if len(self._transform_stack) > 0:
+        if self._transformed():
             var p0 = mat_apply(self._transform, x0, y0)
             var p1 = mat_apply(self._transform, x1, y1)
             sx0 = p0[0]
@@ -358,8 +458,8 @@ struct Canvas[origin: Origin[mut=True]]:
         x3: Float64,
         y3: Float64,
     ) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var sx1 = x1
         var sy1 = y1
@@ -367,7 +467,7 @@ struct Canvas[origin: Origin[mut=True]]:
         var sy2 = y2
         var sx3 = x3
         var sy3 = y3
-        if len(self._transform_stack) > 0:
+        if self._transformed():
             var p1 = mat_apply(self._transform, x1, y1)
             var p2 = mat_apply(self._transform, x2, y2)
             var p3 = mat_apply(self._transform, x3, y3)
@@ -462,8 +562,11 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(s, Float64(cx), Float64(cy))
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64) raises:
-        var W = self.width
-        var H = self.height
+        if self._transformed():
+            self.sprite(s, cx, cy, s.width, s.height)
+            return
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var sp = s.pixels.unsafe_ptr()
         var x0 = Int(cx) - s.width // 2
@@ -522,22 +625,34 @@ struct Canvas[origin: Origin[mut=True]]:
     def sprite(
         mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int
     ) raises:
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var sp = s.pixels.unsafe_ptr()
-        var x0 = Int(cx) - w // 2
-        var y0 = Int(cy) - h // 2
-        for row in range(h):
+        var ox = cx
+        var oy = cy
+        var dw = w
+        var dh = h
+        if self._transformed():
+            # Rotation and shear are not resampled — only position and the
+            # uniform autoscale factor apply.
+            var p = mat_apply(self._transform, cx, cy)
+            ox = p[0]
+            oy = p[1]
+            dw = max(Int(Float64(w) * self.scale + 0.5), 1)
+            dh = max(Int(Float64(h) * self.scale + 0.5), 1)
+        var x0 = Int(ox) - dw // 2
+        var y0 = Int(oy) - dh // 2
+        for row in range(dh):
             var dy = y0 + row
             if dy < 0 or dy >= H:
                 continue
-            var src_row = row * s.height // h
-            for col in range(w):
+            var src_row = row * s.height // dh
+            for col in range(dw):
                 var dx = x0 + col
                 if dx < 0 or dx >= W:
                     continue
-                var src_col = col * s.width // w
+                var src_col = col * s.width // dw
                 var src_off = (src_row * s.width + src_col) * 4
                 var sa = sp[unsafe_offset=src_off + 3]
                 if sa == 0:
@@ -610,14 +725,16 @@ struct Canvas[origin: Origin[mut=True]]:
             return
         var tx = x
         var ty = y
-        if len(self._transform_stack) > 0:
+        if self._transformed():
             var p = mat_apply(self._transform, x, y)
             tx = p[0]
             ty = p[1]
-        var W = self.width
-        var H = self.height
+        var W = self._pixel_w
+        var H = self._pixel_h
         var px = self._win[].pixels()
         var size = self._font_size
+        if self._scaled:
+            size = max(Int(Float64(self._font_size) * self.scale + 0.5), 1)
         self._font._set_weight(self._font_weight)
         var c = self._fill
         var cr = Int(c.r)
