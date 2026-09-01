@@ -1,3 +1,4 @@
+from window.window import Window
 from window.event import (
     Event,
     Quit,
@@ -16,33 +17,34 @@ from .program import Program
 from create.math.vector2 import Vector2
 
 
-def _wait_for_dimensions(mut ctx: Context) raises:
-    # For fullscreen (requested 0x0), SDL fires a bogus (1, 1) Resized before
-    # reporting real dimensions — pump until we get the actual size.
-    if ctx.width == 0 and ctx.height == 0:
-        while ctx.width <= 1 or ctx.height <= 1:
-            var events = ctx._canvas.events()
-            for event in events:
-                if event.isa[Resized]():
-                    var e = event[Resized]
-                    ctx.width = e.width
-                    ctx.height = e.height
-        ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
+def _update_dimensions(mut win: Window, mut ctx: Context) raises:
+    ctx.width = win.width()
+    ctx.height = win.height()
+    ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
+
+
+def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
+    # For fullscreen, SDL fires a bogus (1, 1) Resized before reporting real
+    # dimensions — pump events until the window reports a usable size.
+    _update_dimensions(win, ctx)
+    while ctx.width <= 1 or ctx.height <= 1:
+        _ = win.events()
+        _update_dimensions(win, ctx)
 
 
 def _process_events[
     P: Program
-](mut program: P, mut ctx: Context, mut input: Input) raises:
+](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
     input._just_pressed = List[Int]()
     input._just_released = List[Int]()
-    var events = ctx._canvas.events()
+    var events = win.events()
     for event in events:
         if event.isa[Quit]():
-            ctx._canvas.close()
+            win.close()
         elif event.isa[KeyDown]():
             var keycode = event[KeyDown].keycode
             if keycode == 27 and ctx.exit_on_escape:
-                ctx._canvas.close()
+                win.close()
             if not input.is_key_down(keycode):
                 input._held_keys.append(keycode)
                 input._just_pressed.append(keycode)
@@ -81,49 +83,44 @@ def _process_events[
             program.on_resize(e.width, e.height)
 
 
-def _tick_time(mut ctx: Context, mut last_ticks: Int) raises:
-    var now = ctx._canvas.ticks()
+def _tick_time(mut win: Window, mut ctx: Context, mut last_ticks: Int) raises:
+    var now = win.ticks()
     ctx.delta_millis = now - last_ticks
     ctx.delta_time = Float64(ctx.delta_millis) / 1000.0
     ctx.frame_count += 1
     last_ticks = now
 
 
-def _update_dimensions(mut ctx: Context):
-    ctx.width = ctx._canvas._win.width()
-    ctx.height = ctx._canvas._win.height()
-    ctx.center = Vector2(ctx.width // 2, ctx.height // 2)
-
-
 def _run_loop[
     P: Program
-](mut program: P, mut ctx: Context, mut input: Input) raises:
-    var last_ticks = ctx._canvas.ticks()
-    while ctx._canvas.is_open():
-        _process_events(program, ctx, input)
-        _update_dimensions(ctx)
-        _tick_time(ctx, last_ticks)
+](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
+    # Canvas borrows the window for the whole loop, so it is built here rather
+    # than passed in: no single call may take both `win` and `canvas` mutably.
+    # Building it once also keeps font loading out of the frame path.
+    var canvas = Canvas(win)
+    var last_ticks = win.ticks()
+    while win.is_open():
+        _process_events(program, win, ctx, input)
+        _update_dimensions(win, ctx)
+        _tick_time(win, ctx, last_ticks)
         program.update(ctx, input)
-        program.render(ctx._canvas)
-        ctx._canvas.present()
+        program.render(canvas)
+        win.present()
 
 
-def _make_ctx(title: String, width: Int, height: Int) raises -> Context:
-    var canvas = Canvas(title, width, height)
-    return Context(canvas^, width, height)
+def _start[P: Program](title: String, width: Int, height: Int) raises:
+    var fullscreen = width == 0 and height == 0
+    var win = Window(title, width, height, fullscreen)
+    var ctx = Context()
+    _wait_for_dimensions(win, ctx)
+    var program = P.create(ctx)
+    var input = Input()
+    _run_loop(program, win, ctx, input)
 
 
 def run[P: Program](title: String) raises:
-    var ctx = _make_ctx(title, 0, 0)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    var input = Input()
-    _run_loop(program, ctx, input)
+    _start[P](title, 0, 0)
 
 
 def run[P: Program](title: String, width: Int, height: Int) raises:
-    var ctx = _make_ctx(title, width, height)
-    _wait_for_dimensions(ctx)
-    var program = P.create(ctx)
-    var input = Input()
-    _run_loop(program, ctx, input)
+    _start[P](title, width, height)
