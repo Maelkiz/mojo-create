@@ -71,14 +71,14 @@ def test_load_with_dimensions() raises -> None:
 
 
 def test_load_png() raises -> None:
-    var s = Sprite.load("examples/sprite_example/assets/sprite.png")
+    var s = Sprite.load("tests/assets/sprite.png")
     assert_equal(s.width, 500)
     assert_equal(s.height, 500)
     assert_equal(len(s.pixels), 500 * 500 * 4)
 
 
 def test_load_jpeg() raises -> None:
-    var s = Sprite.load("examples/sprite_example/assets/sprite.jpeg")
+    var s = Sprite.load("tests/assets/sprite.jpeg")
     assert_equal(s.width, 500)
     assert_equal(s.height, 500)
     assert_equal(len(s.pixels), 500 * 500 * 4)
