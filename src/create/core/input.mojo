@@ -33,7 +33,7 @@ struct Input(Movable):
         
         # Single printable char — SDL keycode == ASCII for a-z, 0-9, punctuation
         if key.byte_length() == 1:
-            return _in_list(ord(key), list)
+            return _in_list(ord(k), list)
 
         # Modifier keys — bare name matches either side
         if k == "ctrl":         return _in_list(1073742048, list) or _in_list(1073742052, list)

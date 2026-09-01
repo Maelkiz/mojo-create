@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_true, assert_equal
-from create.math import Random
+from create.math.random import Random
 
 
 def test_float_in_unit_interval() raises -> None:
@@ -23,7 +23,7 @@ def test_int_range() raises -> None:
         assert_true(v >= 3 and v < 8)
 
 
-def test_bool() raises -> None:
+def test_bool_roughly_half() raises -> None:
     var rng = Random(99)
     var true_count = 0
     for _ in range(1000):
@@ -36,6 +36,13 @@ def test_deterministic_seed() raises -> None:
     var a = Random(12345)
     var b = Random(12345)
     assert_equal(a.float(), b.float())
+
+
+def test_different_seeds_differ() raises -> None:
+    var a = Random(1)
+    var b = Random(2)
+    # Astronomically unlikely to match
+    assert_equal(a.float() == b.float(), False)
 
 
 def main() raises:

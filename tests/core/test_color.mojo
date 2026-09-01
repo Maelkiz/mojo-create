@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal
-from create.core import Color
+from create.core.color import Color
 
 
 def test_rgba_constructor() raises -> None:
@@ -10,7 +10,7 @@ def test_rgba_constructor() raises -> None:
     assert_equal(c.a, UInt8(40))
 
 
-def test_rgba_default_alpha() raises -> None:
+def test_rgb_default_alpha() raises -> None:
     var c = Color(1, 2, 3)
     assert_equal(c.a, UInt8(255))
 
@@ -44,6 +44,7 @@ def test_red() raises -> None:
     assert_equal(c.r, UInt8(255))
     assert_equal(c.g, UInt8(0))
     assert_equal(c.b, UInt8(0))
+    assert_equal(c.a, UInt8(255))
 
 
 def test_green() raises -> None:
@@ -51,6 +52,7 @@ def test_green() raises -> None:
     assert_equal(c.r, UInt8(0))
     assert_equal(c.g, UInt8(255))
     assert_equal(c.b, UInt8(0))
+    assert_equal(c.a, UInt8(255))
 
 
 def test_blue() raises -> None:
@@ -58,6 +60,21 @@ def test_blue() raises -> None:
     assert_equal(c.r, UInt8(0))
     assert_equal(c.g, UInt8(0))
     assert_equal(c.b, UInt8(255))
+    assert_equal(c.a, UInt8(255))
+
+
+def test_boundary_max() raises -> None:
+    var c = Color(255, 255, 255, 255)
+    assert_equal(c.r, UInt8(255))
+    assert_equal(c.g, UInt8(255))
+    assert_equal(c.b, UInt8(255))
+    assert_equal(c.a, UInt8(255))
+
+
+def test_boundary_min() raises -> None:
+    var c = Color(0, 0, 0, 0)
+    assert_equal(c.r, UInt8(0))
+    assert_equal(c.a, UInt8(0))
 
 
 def main() raises:
