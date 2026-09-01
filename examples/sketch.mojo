@@ -2,7 +2,7 @@ from create.core import *
 
 
 @fieldwise_init
-struct Sketch(Windowed, Movable, Deinitable):
+struct Sketch(NonInteractable, Movable, Deinitable):
 
     @staticmethod
     def create(mut ctx: Context) raises -> Sketch:
