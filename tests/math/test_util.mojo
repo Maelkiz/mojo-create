@@ -125,5 +125,43 @@ def test_degrees_radians_roundtrip() raises -> None:
     assert_almost_equal(radians(degrees(1.0)), 1.0, atol=1e-9)
 
 
+def test_fmod_negative_numerator() raises -> None:
+    # floor(-1/3) = -1, so -1 - (-1)*3 = 2
+    assert_almost_equal(fmod(-1.0, 3.0), 2.0, atol=1e-12)
+
+
+def test_fmod_negative_large() raises -> None:
+    # floor(-7/3) = -3, so -7 - (-3)*3 = 2
+    assert_almost_equal(fmod(-7.0, 3.0), 2.0, atol=1e-12)
+
+
+def test_lerp_out_of_range_extrapolates_below() raises -> None:
+    assert_equal(lerp(0.0, 10.0, -1.0), -10.0)
+
+
+def test_map_extrapolates_outside_input() raises -> None:
+    # value outside [in_low, in_high] extrapolates linearly
+    assert_almost_equal(map(15.0, 0.0, 10.0, 0.0, 100.0), 150.0, atol=1e-9)
+
+
+def test_norm_outside_range() raises -> None:
+    assert_almost_equal(norm(-5.0, 0.0, 10.0), -0.5, atol=1e-12)
+    assert_almost_equal(norm(15.0, 0.0, 10.0), 1.5, atol=1e-12)
+
+
+def test_fract_at_integer() raises -> None:
+    assert_almost_equal(fract(5.0), 0.0, atol=1e-12)
+    assert_almost_equal(fract(0.0), 0.0, atol=1e-12)
+
+
+def test_degrees_quarter_turn() raises -> None:
+    assert_almost_equal(degrees(pi / 2.0), 90.0, atol=1e-9)
+
+
+def test_radians_quarter_turn() raises -> None:
+    from std.math import pi as PI
+    assert_almost_equal(radians(90.0), PI / 2.0, atol=1e-12)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

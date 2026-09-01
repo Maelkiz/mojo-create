@@ -1,4 +1,4 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal
+from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 from create.math.vector3 import Vector3
 
 
@@ -189,6 +189,13 @@ def test_lerp_midpoint() raises -> None:
     assert_equal(r.x, 1.0)
     assert_equal(r.y, 2.0)
     assert_equal(r.z, 3.0)
+
+
+def test_write_to_contains_type_name() raises -> None:
+    var v = Vector3(1.0, 2.0, 3.0)
+    var s = String(v)
+    assert_true(s.startswith("Vector3("))
+    assert_true(s.endswith(")"))
 
 
 def main() raises:

@@ -240,5 +240,79 @@ def test_overlaps_circles_no() raises -> None:
     assert_equal(overlaps(a, b), False)
 
 
+def test_rect_touching_edges_do_not_overlap() raises -> None:
+    # Implementation uses strict < / >, so touching edges are not overlap
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5
+    var b = Rectangle(10.0, 0.0, 10.0, 10.0)   # left=5
+    assert_equal(a.overlaps(b), False)
+
+
+def test_rect_overlaps_rect_touching_corner() raises -> None:
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5, bottom=5
+    var b = Rectangle(10.0, 10.0, 10.0, 10.0)  # left=5, top=5
+    assert_equal(a.overlaps(b), False)
+
+
+def test_triangle_move_to() raises -> None:
+    # Triangle with center (1.5, 1.0); move center to (4.5, 4.0)
+    var t = Triangle(0.0, 0.0, 3.0, 0.0, 1.5, 3.0)
+    t.move_to(4.5, 4.0)
+    assert_almost_equal(t.x1, 3.0, atol=1e-9)
+    assert_almost_equal(t.y1, 3.0, atol=1e-9)
+    assert_almost_equal(t.x2, 6.0, atol=1e-9)
+    assert_almost_equal(t.y2, 3.0, atol=1e-9)
+    assert_almost_equal(t.x3, 4.5, atol=1e-9)
+    assert_almost_equal(t.y3, 6.0, atol=1e-9)
+
+
+def test_line_intersects_t_intersection() raises -> None:
+    # Endpoint of b sits on interior of a — CCW test detects this as intersection
+    var a = Line(0.0, 0.0, 4.0, 0.0)
+    var b = Line(2.0, 0.0, 2.0, 2.0)
+    assert_true(a.intersects(b))
+
+
+def test_overlaps_rect_circle_via_generic() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var c = Circle(6.0, 0.0, 3.0)
+    assert_true(overlaps(r, c))
+
+
+def test_overlaps_rect_circle_no_via_generic() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var c = Circle(20.0, 0.0, 3.0)
+    assert_equal(overlaps(r, c), False)
+
+
+def test_circle_overlaps_touching_boundary() raises -> None:
+    # Circles touching at exactly one point — dist == r1+r2
+    var a = Circle(0.0, 0.0, 5.0)
+    var b = Circle(10.0, 0.0, 5.0)
+    # dist_sq = 100, (r1+r2)^2 = 100: <=, so overlaps is True
+    assert_true(a.overlaps(b))
+
+
+def test_rect_contains_vector2() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var inside = Vector2(2.0, 2.0)
+    var outside = Vector2(8.0, 0.0)
+    assert_true(r.contains(inside))
+    assert_equal(r.contains(outside), False)
+
+
+def test_circle_contains_vector2() raises -> None:
+    var c = Circle(0.0, 0.0, 5.0)
+    var inside = Vector2(3.0, 4.0)
+    var outside = Vector2(4.0, 4.0)
+    assert_true(c.contains(inside))
+    assert_equal(c.contains(outside), False)
+
+
+def test_triangle_contains_vertex() raises -> None:
+    # A vertex of the triangle is on its boundary — should be contained
+    var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
+    assert_true(t.contains(0.0, 0.0))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
