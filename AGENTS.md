@@ -14,16 +14,16 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 
 ## Key Files
 
-| File | Lines | Purpose |
-|---|---|---|
-| `src/create/core/program.mojo` | ~60 | Defines the `Program` trait |
-| `src/create/core/run.mojo` | ~185 | `run[T](title)` / `run[T](title, w, h)` entry-point overloads |
-| `src/create/core/canvas.mojo` | ~570 | Drawing API: shapes, text, transforms, coordinate helpers |
-| `src/create/core/context.mojo` | ~20 | `Context` — width/height/center/time passed to every frame |
-| `src/create/core/input.mojo` | ~106 | `Input` — keyboard state, mouse position/buttons |
-| `src/create/math/geometry.mojo` | ~290 | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
-| `src/create/math/matrix.mojo` | ~150 | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
-| `src/create/graphics/sprite.mojo` | ~225 | `Sprite` struct + BMP/PNG/JPEG parsers |
+| File | Purpose |
+|---|---|
+| `src/create/core/program.mojo` | Defines the `Program` trait |
+| `src/create/core/run.mojo` | `run[T](title)` / `run[T](title, w, h)` entry-point overloads |
+| `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
+| `src/create/core/context.mojo` | `Context` — width/height/center/time passed to every frame |
+| `src/create/core/input.mojo` | `Input` — keyboard state, mouse position/buttons |
+| `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
+| `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
+| `src/create/graphics/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
 
 ## Build & Test
 
@@ -106,7 +106,7 @@ canvas._push_transform(m)
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.quit()` |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 

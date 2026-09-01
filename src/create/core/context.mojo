@@ -9,6 +9,7 @@ struct Context(Movable):
     var height: Int
     var center: Vector2
     var exit_on_escape: Bool
+    var _quit: Bool
 
     def __init__(out self):
         self.frame_count = 0
@@ -18,3 +19,12 @@ struct Context(Movable):
         self.height = 0
         self.center = (self.width // 2, self.height // 2)
         self.exit_on_escape = True
+        self._quit = False
+
+    def quit(mut self):
+        """Ask the run loop to stop after the current frame.
+
+        Unwinds normally, so the window tears down cleanly and program
+        destructors run — unlike `std.sys.exit`, which aborts the process.
+        """
+        self._quit = True

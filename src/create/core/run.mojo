@@ -99,7 +99,7 @@ def _run_loop[
     # Building it once also keeps font loading out of the frame path.
     var canvas = Canvas(win)
     var last_ticks = win.ticks()
-    while win.is_open():
+    while win.is_open() and not ctx._quit:
         _process_events(program, win, ctx, input)
         _update_dimensions(win, ctx)
         _tick_time(win, ctx, last_ticks)
