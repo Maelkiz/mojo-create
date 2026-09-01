@@ -1,4 +1,26 @@
-struct Color(ImplicitlyCopyable, Movable):
+from std.math import min, max, abs
+
+
+def _channel(v: Float64) -> UInt8:
+    """Round a 0..1 channel to a byte, clamped."""
+    return UInt8(Int(min(max(v, 0.0), 1.0) * 255.0 + 0.5))
+
+
+def _linear(v: UInt8) -> Float64:
+    """Undo the sRGB transfer curve for one channel."""
+    var c = Float64(Int(v)) / 255.0
+    if c <= 0.03928:
+        return c / 12.92
+    return ((c + 0.055) / 1.055) ** 2.4
+
+
+def _mix(a: UInt8, b: UInt8, t: Float64) -> UInt8:
+    var fa = Float64(Int(a))
+    var fb = Float64(Int(b))
+    return UInt8(Int(fa + (fb - fa) * t + 0.5))
+
+
+struct Color(Equatable, Writable, Copyable, ImplicitlyCopyable, Movable):
     var r: UInt8
     var g: UInt8
     var b: UInt8
@@ -16,8 +38,133 @@ struct Color(ImplicitlyCopyable, Movable):
         self.b = gray
         self.a = 255
 
+    def __eq__(self, other: Color) -> Bool:
+        return (
+            self.r == other.r
+            and self.g == other.g
+            and self.b == other.b
+            and self.a == other.a
+        )
+
+    def __ne__(self, other: Color) -> Bool:
+        return not (self == other)
+
+    def write_to[W: Writer](self, mut writer: W):
+        writer.write(
+            "Color(", self.r, ", ", self.g, ", ", self.b, ", ", self.a, ")"
+        )
+
+    def luminance(self) -> Float64:
+        """WCAG relative luminance, 0.0 (black) to 1.0 (white).
+
+        Answers "is this background light or dark" — the usual caller picks
+        black or white text against it, with 0.18 as the crossover.
+        """
+        return (
+            0.2126 * _linear(self.r)
+            + 0.7152 * _linear(self.g)
+            + 0.0722 * _linear(self.b)
+        )
+
+    def to_hsv(self) -> Tuple[Float64, Float64, Float64]:
+        """Inverse of `hsv`: hue in degrees, saturation and value in 0..1.
+
+        Hue is 0.0 for grays, which have none.
+        """
+        var r = Float64(Int(self.r)) / 255.0
+        var g = Float64(Int(self.g)) / 255.0
+        var b = Float64(Int(self.b)) / 255.0
+        var mx = max(r, max(g, b))
+        var mn = min(r, min(g, b))
+        var d = mx - mn
+        var h = 0.0
+        if d > 0.0:
+            if mx == r:
+                h = 60.0 * ((g - b) / d)
+            elif mx == g:
+                h = 60.0 * ((b - r) / d + 2.0)
+            else:
+                h = 60.0 * ((r - g) / d + 4.0)
+            if h < 0.0:
+                h += 360.0
+        var s = 0.0 if mx == 0.0 else d / mx
+        return (h, s, mx)
+
+    @staticmethod
+    def hex(rgb: Int) -> Color:
+        """Build a color from a packed literal: `Color.hex(0x336699)`."""
+        return Color(
+            UInt8((rgb >> 16) & 0xFF),
+            UInt8((rgb >> 8) & 0xFF),
+            UInt8(rgb & 0xFF),
+        )
+
+    @staticmethod
+    def hsv(h: Float64, s: Float64, v: Float64) -> Color:
+        """Build a color from hue in degrees (wraps) and saturation/value in 0..1.
+
+        Hue cycling is the point: `Color.hsv(Float64(frame) % 360.0, 1.0, 1.0)`
+        sweeps the spectrum without hand-mixing channels.
+        """
+        var hh = h - 360.0 * Float64(Int(h / 360.0))
+        if hh < 0.0:
+            hh += 360.0
+        var ss = min(max(s, 0.0), 1.0)
+        var vv = min(max(v, 0.0), 1.0)
+        var c = vv * ss
+        var seg = hh / 60.0
+        var f = seg - 2.0 * Float64(Int(seg / 2.0))
+        var x = c * (1.0 - abs(f - 1.0))
+        var m = vv - c
+        var r = 0.0
+        var g = 0.0
+        var b = 0.0
+        if hh < 60.0:
+            r = c
+            g = x
+        elif hh < 120.0:
+            r = x
+            g = c
+        elif hh < 180.0:
+            g = c
+            b = x
+        elif hh < 240.0:
+            g = x
+            b = c
+        elif hh < 300.0:
+            r = x
+            b = c
+        else:
+            r = c
+            b = x
+        return Color(_channel(r + m), _channel(g + m), _channel(b + m))
+
+    @staticmethod
+    def lerp(a: Color, b: Color, t: Float64) -> Color:
+        """Blend two colors, `t` clamped to 0..1. Mixes in sRGB, like a paint
+        program's gradient — not perceptually uniform, but what the eye expects
+        from two swatches."""
+        var tt = min(max(t, 0.0), 1.0)
+        return Color(
+            _mix(a.r, b.r, tt),
+            _mix(a.g, b.g, tt),
+            _mix(a.b, b.b, tt),
+            _mix(a.a, b.a, tt),
+        )
+
     comptime BLACK = Color(0)
     comptime WHITE = Color(255)
-    comptime RED   = Color(255, 0, 0)
+
+    comptime DARK_GRAY = Color(0x40)
+    comptime GRAY = Color(0x80)
+    comptime LIGHT_GRAY = Color(0xC0)
+
+    comptime RED = Color(255, 0, 0)
     comptime GREEN = Color(0, 255, 0)
-    comptime BLUE  = Color(0, 0, 255)
+    comptime BLUE = Color(0, 0, 255)
+
+    comptime CYAN = Color(0, 255, 255)
+    comptime MAGENTA = Color(255, 0, 255)
+    comptime YELLOW = Color(255, 255, 0)
+
+    comptime ORANGE = Color(255, 128, 0)
