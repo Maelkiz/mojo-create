@@ -27,6 +27,9 @@ struct TransformGuard[
 
 struct Canvas[origin: Origin[mut=True]]:
     var _win: Pointer[Window, Self.origin]
+    var width: Int
+    var height: Int
+    var center: Vector2
     var _fill: Color
     var _fill_enabled: Bool
     var _stroke: Color
@@ -44,6 +47,9 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def __init__(out self, ref [Self.origin] win: Window) raises:
         self._win = Pointer(to=win)
+        self.width = win.width()
+        self.height = win.height()
+        self.center = Vector2(self.width // 2, self.height // 2)
         self._fill = Color.WHITE
         self._fill_enabled = True
         self._stroke = Color.BLACK
@@ -62,12 +68,6 @@ struct Canvas[origin: Origin[mut=True]]:
         self._transform = identity[3]()
         self._transform_inv = identity[3]()
         self._transform_stack = List[Matrix[3, 3]]()
-
-    def width(self) raises -> Int:
-        return self._win[].width()
-
-    def height(self) raises -> Int:
-        return self._win[].height()
 
     def transform(
         mut self, m: Matrix[3, 3]
@@ -94,8 +94,8 @@ struct Canvas[origin: Origin[mut=True]]:
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var c = self._stroke
         var half = self._stroke_width // 2
@@ -153,8 +153,8 @@ struct Canvas[origin: Origin[mut=True]]:
         self._stroke_width = w
 
     def background(mut self, color: Color) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         for i in range(W * H):
             var off = i * 4
@@ -164,8 +164,8 @@ struct Canvas[origin: Origin[mut=True]]:
             px[unsafe_offset=off + 3] = color.a
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var lx0 = x - w / 2.0
         var ly0 = y - h / 2.0
@@ -260,8 +260,8 @@ struct Canvas[origin: Origin[mut=True]]:
                         px[unsafe_offset=off + 3] = self._stroke.a
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var r2 = r * r
         var r_inner = r - Float64(self._stroke_width)
@@ -358,8 +358,8 @@ struct Canvas[origin: Origin[mut=True]]:
         x3: Float64,
         y3: Float64,
     ) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var sx1 = x1
         var sy1 = y1
@@ -462,8 +462,8 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(s, Float64(cx), Float64(cy))
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var sp = s.pixels.unsafe_ptr()
         var x0 = Int(cx) - s.width // 2
@@ -522,8 +522,8 @@ struct Canvas[origin: Origin[mut=True]]:
     def sprite(
         mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int
     ) raises:
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var sp = s.pixels.unsafe_ptr()
         var x0 = Int(cx) - w // 2
@@ -614,8 +614,8 @@ struct Canvas[origin: Origin[mut=True]]:
             var p = mat_apply(self._transform, x, y)
             tx = p[0]
             ty = p[1]
-        var W = self._win[].width()
-        var H = self._win[].height()
+        var W = self.width
+        var H = self.height
         var px = self._win[].pixels()
         var size = self._font_size
         self._font._set_weight(self._font_weight)

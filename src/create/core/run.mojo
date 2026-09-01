@@ -102,6 +102,11 @@ def _run_loop[
     while win.is_open() and not ctx._quit:
         _process_events(program, win, ctx, input)
         _update_dimensions(win, ctx)
+        # Canvas mirrors the frame dimensions; it cannot be passed to
+        # _update_dimensions because that call already borrows the window.
+        canvas.width = ctx.width
+        canvas.height = ctx.height
+        canvas.center = ctx.center
         _tick_time(win, ctx, last_ticks)
         program.update(ctx, input)
         program.render(canvas)
