@@ -18,28 +18,26 @@ struct App(Program):
         # clearing it, leaving motion trails.
         canvas.background(Color(0x11, 0x11, 0x11, 24))
 
-        var center = canvas.center
         canvas.no_stroke()
 
-        # Overlapping translucent fills mix where they cross.
+        # Overlapping translucent fills mix where they cross. The origin is the
+        # middle of the screen, so these are absolute world coordinates.
         canvas.fill(Color(255, 0, 0, 128))
-        canvas.circle((center.x - 60.0, center.y), 90.0)
+        canvas.circle((-60.0, 0.0), 90.0)
         canvas.fill(Color(0, 255, 0, 128))
-        canvas.circle((center.x + 60.0, center.y), 90.0)
+        canvas.circle((60.0, 0.0), 90.0)
         canvas.fill(Color(0, 0, 255, 128))
-        canvas.circle((center.x, center.y - 90.0), 90.0)
+        canvas.circle((0.0, 90.0), 90.0)
 
         # An orbiting dot draws the trail the faded background preserves.
         var r = 220.0
         canvas.fill(Color.ORANGE)
-        canvas.circle(
-            (center.x + r * cos(self.t), center.y + r * sin(self.t) * 0.5), 14.0
-        )
+        canvas.circle((r * cos(self.t), r * sin(self.t) * 0.5), 14.0)
 
         canvas.fill(Color(255, 255, 255, 160))
         canvas.fontSize(28)
         canvas.textAlign(Align.CENTER)
-        canvas.text("alpha", center.x, center.y + 150.0)
+        canvas.text("alpha", 0.0, -150.0)
 
 
 def main() raises:

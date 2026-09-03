@@ -58,7 +58,7 @@ struct Rectangle(Convex):
 
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         return Vector2(max(self.left(), min(px, self.right())),
-                     max(self.top(), min(py, self.bottom())))
+                     max(self.bottom(), min(py, self.top())))
 
     def left(self) -> Float64:
         return self.x - self.w / 2.0
@@ -66,14 +66,14 @@ struct Rectangle(Convex):
     def right(self) -> Float64:
         return self.x + self.w / 2.0
 
-    def top(self) -> Float64:
+    def bottom(self) -> Float64:
         return self.y - self.h / 2.0
 
-    def bottom(self) -> Float64:
+    def top(self) -> Float64:
         return self.y + self.h / 2.0
 
     def contains(self, px: Float64, py: Float64) -> Bool:
-        return self.left() <= px <= self.right() and self.top() <= py <= self.bottom()
+        return self.left() <= px <= self.right() and self.bottom() <= py <= self.top()
 
     def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
@@ -98,11 +98,11 @@ struct Rectangle(Convex):
 
     def overlaps(self, other: Rectangle) -> Bool:
         return (self.left() < other.right() and self.right() > other.left() and
-                self.top() < other.bottom() and self.bottom() > other.top())
+                self.bottom() < other.top() and self.top() > other.bottom())
 
     def overlaps(self, c: Circle) -> Bool:
         var nearest_x = max(self.left(), min(c.x, self.right()))
-        var nearest_y = max(self.top(), min(c.y, self.bottom()))
+        var nearest_y = max(self.bottom(), min(c.y, self.top()))
         var dx = c.x - nearest_x
         var dy = c.y - nearest_y
         return dx * dx + dy * dy <= c.r * c.r

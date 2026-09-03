@@ -12,20 +12,20 @@ struct Sketch(Program):
         canvas.stroke(Color.GREEN)
 
         canvas.fill(Color.RED)
-        canvas.rect((150, 150), 100, 100)
+        canvas.rect((-250, 150), 100, 100)
 
         canvas.fill(Color.BLUE)
-        canvas.circle((300, 300), 50)
+        canvas.circle((-100, 0), 50)
 
         canvas.fill(Color.BLACK)
-        canvas.triangle((400, 400), (450, 550), (550, 450))
+        canvas.triangle((0, -100), (50, -250), (150, -150))
 
         canvas.stroke_width(3)
-        canvas.line((200, 200), (400, 400))
+        canvas.line((-200, 100), (0, -100))
 
         canvas.fill(Color.BLACK)
         canvas.fontSize(54)
-        canvas.text("Create!", 450, 200)
+        canvas.text("Create!", 50, 100)
 
 
 def main() raises:

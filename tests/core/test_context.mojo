@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal
 from create.core.autoscale import AutoScale
+from create.math.matrix import apply
 from create.core.context import Context
 
 
@@ -34,8 +35,8 @@ def test_fit_keeps_design_dimensions() raises -> None:
     ctx._set_viewport(1600, 1200)
     assert_equal(ctx.width, 800)
     assert_equal(ctx.height, 600)
-    assert_equal(ctx.center.x, 400.0)
-    assert_equal(ctx.center.y, 300.0)
+    assert_equal(ctx.left(), -400.0)
+    assert_equal(ctx.top(), 300.0)
 
 
 def test_fit_uniform_scale_no_letterbox() raises -> None:
@@ -76,8 +77,8 @@ def test_extend_widens_world_instead_of_letterboxing() raises -> None:
     assert_equal(ctx.height, 600)
     assert_equal(ctx._offset_x, 0.0)
     assert_equal(ctx._offset_y, 0.0)
-    assert_equal(ctx.center.x, 800.0)
-    assert_equal(ctx.center.y, 300.0)
+    assert_equal(ctx.right(), 800.0)
+    assert_equal(ctx.top(), 300.0)
 
 
 def test_extend_heightens_world_instead_of_letterboxing() raises -> None:
@@ -108,39 +109,78 @@ def test_extend_scale_is_still_the_fit_factor() raises -> None:
     assert_equal(ctx.width, 857)
 
 
-def test_to_design_is_identity_without_autoscale() raises -> None:
+def test_to_world_centres_the_origin_without_autoscale() raises -> None:
     var ctx = Context()
     ctx._set_viewport(1024, 768)
-    var p = ctx.to_design(120.0, 40.0)
-    assert_equal(p[0], 120.0)
-    assert_equal(p[1], 40.0)
+    var c = ctx.to_world(512.0, 384.0)
+    assert_equal(c[0], 0.0)
+    assert_equal(c[1], 0.0)
+    # Pixel space runs y down, world space runs y up.
+    var p = ctx.to_world(120.0, 40.0)
+    assert_equal(p[0], -392.0)
+    assert_equal(p[1], 344.0)
 
 
-def test_to_design_maps_window_centre_to_design_centre() raises -> None:
+def test_to_world_maps_top_left_pixel_to_the_top_left_corner() raises -> None:
+    var ctx = Context()
+    ctx._set_viewport(1024, 768)
+    var p = ctx.to_world(0.0, 0.0)
+    assert_almost_equal(p[0], ctx.left())
+    assert_almost_equal(p[1], ctx.top())
+
+
+def test_to_world_maps_window_centre_to_origin_under_fit() raises -> None:
     var ctx = _fit(800, 600)
     ctx._set_viewport(1600, 900)
-    var p = ctx.to_design(800.0, 450.0)
-    assert_almost_equal(p[0], 400.0)
-    assert_almost_equal(p[1], 300.0)
-
-
-def test_to_design_maps_letterboxed_corner_to_origin() raises -> None:
-    var ctx = _fit(800, 600)
-    ctx._set_viewport(1600, 600)
-    var p = ctx.to_design(400.0, 0.0)
+    var p = ctx.to_world(800.0, 450.0)
     assert_almost_equal(p[0], 0.0)
     assert_almost_equal(p[1], 0.0)
 
 
-def test_to_design_under_extend_has_no_offset() raises -> None:
+def test_to_world_maps_letterboxed_corner_to_design_corner() raises -> None:
+    # 800x600 into 1600x600: scale 1, 400px bars either side. The inner edge of
+    # the left bar is the design area's left edge.
+    var ctx = _fit(800, 600)
+    ctx._set_viewport(1600, 600)
+    var p = ctx.to_world(400.0, 0.0)
+    assert_almost_equal(p[0], ctx.left())
+    assert_almost_equal(p[1], ctx.top())
+
+
+def test_to_world_corners_under_extend() raises -> None:
     var ctx = _extend(800, 600)
     ctx._set_viewport(1600, 1200)
-    var origin = ctx.to_design(0.0, 0.0)
-    assert_almost_equal(origin[0], 0.0)
-    assert_almost_equal(origin[1], 0.0)
-    var p = ctx.to_design(1200.0, 800.0)
-    assert_almost_equal(p[0], 600.0)
-    assert_almost_equal(p[1], 400.0)
+    var origin = ctx.to_world(0.0, 0.0)
+    assert_almost_equal(origin[0], ctx.left())
+    assert_almost_equal(origin[1], ctx.top())
+    var p = ctx.to_world(1200.0, 800.0)
+    assert_almost_equal(p[0], 200.0)
+    assert_almost_equal(p[1], -100.0)
+
+
+def _assert_base_round_trips(ctx: Context, x: Float64, y: Float64) raises:
+    """`_base_matrix` maps world to pixels; `to_world` is its inverse."""
+    var w = ctx.to_world(x, y)
+    var back = apply(ctx._base_matrix(), w[0], w[1])
+    assert_almost_equal(back[0], x)
+    assert_almost_equal(back[1], y)
+
+
+def test_base_matrix_inverts_to_world() raises -> None:
+    var off = Context()
+    off._set_viewport(1024, 768)
+    _assert_base_round_trips(off, 0.0, 0.0)
+    _assert_base_round_trips(off, 731.0, 12.0)
+
+    var fit = _fit(800, 600)
+    fit._set_viewport(1600, 600)
+    _assert_base_round_trips(fit, 400.0, 0.0)
+    _assert_base_round_trips(fit, 1201.0, 517.0)
+
+    var extend = _extend(800, 600)
+    extend._set_viewport(1000, 700)
+    _assert_base_round_trips(extend, 0.0, 0.0)
+    _assert_base_round_trips(extend, 913.0, 44.0)
 
 
 def test_autoscale_ignored_before_design_size_known() raises -> None:

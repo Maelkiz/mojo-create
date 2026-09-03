@@ -81,11 +81,22 @@ with canvas.transform(translate(50.0, 50.0)):
 canvas._push_transform(m)
 ```
 
-**All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. This matches Unity/Godot conventions. `Rectangle.x/y` is the center, not the top-left corner.
+**Coordinate system is Unity-style, not Processing-style.** The origin is the **middle** of the design area and **y grows upward**. World `x` runs `[-width/2, +width/2]`, `y` runs `[-height/2, +height/2]`; `(0, 0)` is the centre of the screen and negative `y` is below it.
+
+`Context` and `Canvas` both expose `left()`, `right()`, `bottom()`, `top()` as the edges — use those rather than `width`/`height` arithmetic, and note `left()` and `bottom()` are negative. `Rectangle.top()` is `y + h/2`.
+
+Consequences worth internalising:
+
+- `rotate(angle)` turns **counter-clockwise**, the mathematical convention.
+- Downward motion is negative: gravity is a negative `vel_y`, a jump is positive. See [examples/movement/src/player.mojo](examples/movement/src/player.mojo).
+- Glyphs and sprites are **not** flipped — only their anchor point is mapped, so `Align.TOP`/`BOTTOM` still mean the top and bottom of the text box.
+- `input.mouse` and the `on_mouse_*` callbacks deliver world coordinates, so they can be negative.
+
+**All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner.
 
 **Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
 
-**Autoscale:** set `ctx.autoscale` in `create` to keep the program in the resolution passed to `run` while the window resizes. `ctx.width`/`height`/`center`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
+**Autoscale:** set `ctx.autoscale` in `create` to keep the program in the resolution passed to `run` while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
 
 | `AutoScale` | Behaviour |
 |---|---|
@@ -93,7 +104,7 @@ canvas._push_transform(m)
 | `FIT` | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
 | `EXTEND` | Same scale factor as `FIT`, but anchored at the origin with no bars — `ctx.width`/`height` grow so the leftover becomes extra world. A wider window shows more horizontal space, a taller one more vertical |
 
-Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to `ctx.center` or the edges rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which toggles between the two modes on space.
+Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which toggles between the two modes on space.
 
 **Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload.
 
@@ -112,7 +123,8 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Context._base_matrix()` |
 | Design resolution | The size passed to `run` — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
@@ -122,7 +134,7 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 - Use `@fieldwise_init` on program structs to auto-generate `__init__` from fields.
 - Use `pixi run test` before committing.
 - Use `canvas.background(Color.X)` as the first call in `render` to clear the frame.
-- Use `canvas.to_world()` / `canvas.to_local()` when mapping between screen and transformed coordinates.
+- Use `canvas.to_local()` to map a world position (such as `input.mouse`) into the frame of the current transform, and `canvas.to_world()` for the reverse. Neither deals in pixels.
 
 ## Don't
 

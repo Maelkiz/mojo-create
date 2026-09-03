@@ -14,6 +14,7 @@ from .canvas import Canvas
 from .input import Input
 from .context import Context
 from .program import Program
+from std.math import floor
 from create.math.vector2 import Vector2
 
 
@@ -58,25 +59,25 @@ def _process_events[
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
             # Pointer positions reach the program in the same space it draws in.
-            var p = ctx.to_design(Float64(e.x), Float64(e.y))
+            var p = ctx.to_world(Float64(e.x), Float64(e.y))
             input.mouse = Vector2(p[0], p[1])
-            input.mouse_x = Int(p[0])
-            input.mouse_y = Int(p[1])
+            input.mouse_x = Int(floor(p[0]))
+            input.mouse_y = Int(floor(p[1]))
             program.on_mouse_moved(input.mouse_x, input.mouse_y)
         elif event.isa[MouseButtonDown]():
             var e = event[MouseButtonDown]
-            var p = ctx.to_design(Float64(e.x), Float64(e.y))
+            var p = ctx.to_world(Float64(e.x), Float64(e.y))
             input.mouse_pressed = True
             input.mouse_button = e.button
             input.mouse = Vector2(p[0], p[1])
-            input.mouse_x = Int(p[0])
-            input.mouse_y = Int(p[1])
+            input.mouse_x = Int(floor(p[0]))
+            input.mouse_y = Int(floor(p[1]))
             program.on_mouse_down(e.button, input.mouse_x, input.mouse_y)
         elif event.isa[MouseButtonUp]():
             var e = event[MouseButtonUp]
-            var p = ctx.to_design(Float64(e.x), Float64(e.y))
+            var p = ctx.to_world(Float64(e.x), Float64(e.y))
             input.mouse_pressed = False
-            program.on_mouse_up(e.button, Int(p[0]), Int(p[1]))
+            program.on_mouse_up(e.button, Int(floor(p[0])), Int(floor(p[1])))
         elif event.isa[MouseWheel]():
             var e = event[MouseWheel]
             program.on_mouse_wheel(e.x, e.y)

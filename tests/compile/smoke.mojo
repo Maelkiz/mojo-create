@@ -18,7 +18,7 @@ struct Smoke(Program):
     @staticmethod
     def create(mut ctx: Context) raises -> Smoke:
         ctx.exit_on_escape = True
-        return Smoke(ctx.center.x)
+        return Smoke(0.0)
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
         if input.is_key_down("right"):
@@ -27,7 +27,7 @@ struct Smoke(Program):
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)
         canvas.fill(Color.RED)
-        canvas.circle((self.x, 100.0), 20)
+        canvas.circle((self.x, 0.0), 20)
 
 
 def main() raises:

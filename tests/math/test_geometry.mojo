@@ -8,8 +8,8 @@ def test_rect_bounds() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 6.0)
     assert_equal(r.left(), -5.0)
     assert_equal(r.right(), 5.0)
-    assert_equal(r.top(), -3.0)
-    assert_equal(r.bottom(), 3.0)
+    assert_equal(r.bottom(), -3.0)
+    assert_equal(r.top(), 3.0)
 
 
 def test_rect_center() raises -> None:
@@ -248,8 +248,8 @@ def test_rect_touching_edges_do_not_overlap() raises -> None:
 
 
 def test_rect_overlaps_rect_touching_corner() raises -> None:
-    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5, bottom=5
-    var b = Rectangle(10.0, 10.0, 10.0, 10.0)  # left=5, top=5
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5, top=5
+    var b = Rectangle(10.0, 10.0, 10.0, 10.0)  # left=5, bottom=5
     assert_equal(a.overlaps(b), False)
 
 

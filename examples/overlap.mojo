@@ -9,12 +9,11 @@ struct App(Program):
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         return App(
-            center=Circle(ctx.center, 100),
+            center=Circle(0, 0, 100),
             mouse=Circle(0, 0, 100),
         )
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
-        self.center.move_to(ctx.center)
         self.mouse.move_to(input.mouse)
 
     def render(self, mut canvas: Canvas) raises:
