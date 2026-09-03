@@ -1,7 +1,7 @@
 from std.math import sqrt
 
 
-struct Vector2(Writable, Copyable, ImplicitlyCopyable, Movable):
+struct Vector2(Copyable, ImplicitlyCopyable, Movable, Writable):
     var x: Float64
     var y: Float64
 
@@ -21,6 +21,16 @@ struct Vector2(Writable, Copyable, ImplicitlyCopyable, Movable):
     @implicit
     def __init__(out self, t: Tuple[Int, Int]):
         self.x = Float64(t[0])
+        self.y = Float64(t[1])
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Float64]):
+        self.x = Float64(t[0])
+        self.y = t[1]
+
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Int]):
+        self.x = t[0]
         self.y = Float64(t[1])
 
     @staticmethod
@@ -91,4 +101,6 @@ struct Vector2(Writable, Copyable, ImplicitlyCopyable, Movable):
         return (self - other).mag_sq()
 
     def lerp(self, other: Vector2, t: Float64) -> Vector2:
-        return Vector2(self.x + (other.x - self.x) * t, self.y + (other.y - self.y) * t)
+        return Vector2(
+            self.x + (other.x - self.x) * t, self.y + (other.y - self.y) * t
+        )

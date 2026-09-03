@@ -1,7 +1,7 @@
 from std.math import sqrt
 
 
-struct Vector3(Writable, Copyable, ImplicitlyCopyable, Movable):
+struct Vector3(Copyable, ImplicitlyCopyable, Movable, Writable):
     var x: Float64
     var y: Float64
     var z: Float64
@@ -27,6 +27,42 @@ struct Vector3(Writable, Copyable, ImplicitlyCopyable, Movable):
         self.x = Float64(t[0])
         self.y = Float64(t[1])
         self.z = Float64(t[2])
+
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Int, Int]):
+        self.x = t[0]
+        self.y = Float64(t[1])
+        self.z = Float64(t[2])
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Float64, Int]):
+        self.x = Float64(t[0])
+        self.y = t[1]
+        self.z = Float64(t[2])
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Int, Float64]):
+        self.x = Float64(t[0])
+        self.y = Float64(t[1])
+        self.z = t[2]
+
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Float64, Int]):
+        self.x = t[0]
+        self.y = t[1]
+        self.z = Float64(t[2])
+
+    @implicit
+    def __init__(out self, t: Tuple[Int, Float64, Float64]):
+        self.x = Float64(t[0])
+        self.y = t[1]
+        self.z = t[2]
+
+    @implicit
+    def __init__(out self, t: Tuple[Float64, Int, Float64]):
+        self.x = t[0]
+        self.y = Float64(t[1])
+        self.z = t[2]
 
     @staticmethod
     def zero() -> Vector3:

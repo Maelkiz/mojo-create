@@ -23,15 +23,15 @@ struct App(Program):
         var center = canvas.center
 
         canvas.fill(Color.RED)
-        canvas.circle((self.x, 150.0), 40.0)
+        canvas.circle((self.x, 150), 40)
 
         canvas.fill(Color.BLUE)
-        canvas.rect(center, 200.0, 120.0)
+        canvas.rect(center, 200, 120)
 
         canvas.fill(Color.BLACK)
         canvas.fontSize(28)
         canvas.textAlign(Align.CENTER)
-        canvas.text("scale " + String(canvas.scale), center.x, 480.0)
+        canvas.text("scale " + String(canvas.scale), center.x, 480)
 
 
 def main() raises:
