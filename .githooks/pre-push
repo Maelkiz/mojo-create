@@ -1,9 +1,29 @@
 #!/bin/sh
-echo "Running tests..."
-pixi run bash -c 'set -e; for f in $(find tests -name "test_*.mojo" | sort); do mojo run -I src "$f"; done' 2>&1
-if [ $? -ne 0 ]; then
-    echo "Tests failed — push aborted."
+# Thorough tier: everything the fast pre-commit gate skips.
+#
+# precompile catches library code that no example or test calls — a consumer
+# build only type-checks the `def` bodies it actually reaches.
+set -u
+
+out=$(mktemp -d)
+trap 'rm -rf "$out"' EXIT
+
+echo "Type-checking library..."
+pixi run mojo precompile src/create -o "$out/create.mojoc" \
+    || { echo "Library type-check failed — push aborted."; exit 1; }
+
+echo "Building examples..."
+examples=$(grep -rlE '^(def|fn) main' examples --include='*.mojo' | sort)
+if [ -z "$examples" ]; then
+    echo "No example entrypoints found — push aborted."
     exit 1
 fi
+echo "$examples" | xargs -P 4 -I{} sh -c \
+    'pixi run mojo build -I src "{}" -o "'"$out"'/$(echo {} | tr / _).bin"' \
+    || { echo "Example build failed — push aborted."; exit 1; }
+
+echo "Running tests..."
+pixi run bash -c 'set -e; for f in $(find tests -name "test_*.mojo" | sort); do mojo run -I src "$f"; done' \
+    || { echo "Tests failed — push aborted."; exit 1; }
 
 exit 0

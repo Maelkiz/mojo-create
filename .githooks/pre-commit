@@ -1,11 +1,23 @@
 #!/bin/sh
-echo "Compiling..."
-pixi run mojo build -I src examples/sketch.mojo -o /tmp/mojo-create-precommit-check 2>&1
-status=$?
-rm -f /tmp/mojo-create-precommit-check
-if [ $status -ne 0 ]; then
-    echo "Compilation failed — commit aborted."
+# Fast tier: build one consumer program.
+#
+# Constant cost (~1.5s) no matter how many examples exist. Catches consumer-side
+# API drift — trait changes, `run[T]` instantiation, Context/Input/Canvas
+# signatures — which `mojo precompile` cannot see. The full example sweep and the
+# library type-check run on push.
+set -u
+
+smoke=tests/compile/smoke.mojo
+if [ ! -f "$smoke" ]; then
+    echo "$smoke is missing — commit aborted."
     exit 1
 fi
+
+out=$(mktemp -d)
+trap 'rm -rf "$out"' EXIT
+
+echo "Compiling $smoke..."
+pixi run mojo build -I src "$smoke" -o "$out/smoke" \
+    || { echo "Compilation failed — commit aborted."; exit 1; }
 
 exit 0
