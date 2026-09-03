@@ -122,9 +122,9 @@ def _start[P: Program](title: String, width: Int, height: Int) raises:
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()
     _wait_for_dimensions(win, ctx)
-    # The size the program is authored against: whatever it starts at. Programs
-    # that set ctx.autoscale in create() keep drawing in these coordinates no
-    # matter how the window is later resized.
+    # The size the program is authored against: whatever it starts at. It fixes
+    # the scale factor for programs that set ctx.autoscale in create(), so they
+    # keep their proportions no matter how the window is later resized.
     ctx._design_w = ctx.width
     ctx._design_h = ctx.height
     var program = P.create(ctx)

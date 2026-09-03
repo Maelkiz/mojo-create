@@ -85,7 +85,15 @@ canvas._push_transform(m)
 
 **Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
 
-**Autoscale:** set `ctx.autoscale = True` in `create` to keep the program in the resolution passed to `run`, scaled uniformly to fit the window and centred (letterboxed). `ctx.width`/`height`/`center`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor. Font size, stroke width, and sprite size scale with it. The leftover window area is painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds.
+**Autoscale:** set `ctx.autoscale` in `create` to keep the program in the resolution passed to `run` while the window resizes. `ctx.width`/`height`/`center`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
+
+| `AutoScale` | Behaviour |
+|---|---|
+| `OFF` (default) | No scaling — `ctx.width`/`height` are the window in pixels |
+| `FIT` | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
+| `EXTEND` | Same scale factor as `FIT`, but anchored at the origin with no bars — `ctx.width`/`height` grow so the leftover becomes extra world. A wider window shows more horizontal space, a taller one more vertical |
+
+Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to `ctx.center` or the edges rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which toggles between the two modes on space.
 
 **Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload.
 
@@ -104,8 +112,8 @@ canvas._push_transform(m)
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale`, `ctx.scale`, `ctx.quit()` |
-| Design resolution | The size passed to `run` — the coordinate space a program is authored in. With `ctx.autoscale = True` it stays fixed while the window resizes |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.center`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| Design resolution | The size passed to `run` — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 

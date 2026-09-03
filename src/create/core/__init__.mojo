@@ -10,6 +10,7 @@ from create.math.geometry import (
 from create.math.vector2 import Vector2
 from .color import Color
 from .align import Align
+from .autoscale import AutoScale
 from .font_weight import FontWeight
 from .input import Input
 from .key import Key

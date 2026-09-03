@@ -1,5 +1,6 @@
 from std.math import min
 from create.math.vector2 import Vector2
+from .autoscale import AutoScale
 
 
 struct Context(Movable):
@@ -10,7 +11,7 @@ struct Context(Movable):
     var height: Int
     var center: Vector2
     var exit_on_escape: Bool
-    var autoscale: Bool
+    var autoscale: Int
     var scale: Float64
     var _design_w: Int
     var _design_h: Int
@@ -26,7 +27,7 @@ struct Context(Movable):
         self.height = 0
         self.center = (self.width // 2, self.height // 2)
         self.exit_on_escape = True
-        self.autoscale = False
+        self.autoscale = AutoScale.OFF
         self.scale = 1.0
         self._design_w = 0
         self._design_h = 0
@@ -38,23 +39,38 @@ struct Context(Movable):
         """Recompute the design-space mapping for a framebuffer of this size.
 
         With autoscale on, the program keeps the resolution it was authored
-        against and the content is scaled to fit inside the window, centred —
-        so a sketch built for 800x600 looks the same on any screen, with
-        letterbox bars taking up the leftover.
+        against and the content is scaled to fit inside the window — so a
+        sketch built for 800x600 looks the same on any screen. Both modes
+        derive the same uniform factor and differ only in what happens to the
+        window area the design does not cover: `FIT` centres the design and
+        leaves letterbox bars, `EXTEND` anchors it at the origin and grows the
+        design size to fill the frame, so the leftover becomes extra world.
         """
-        if self.autoscale and self._design_w > 1 and self._design_h > 1:
-            self.width = self._design_w
-            self.height = self._design_h
+        if (
+            self.autoscale != AutoScale.OFF
+            and self._design_w > 1
+            and self._design_h > 1
+        ):
             self.scale = min(
                 Float64(pixel_w) / Float64(self._design_w),
                 Float64(pixel_h) / Float64(self._design_h),
             )
-            self._offset_x = (
-                Float64(pixel_w) - Float64(self._design_w) * self.scale
-            ) / 2.0
-            self._offset_y = (
-                Float64(pixel_h) - Float64(self._design_h) * self.scale
-            ) / 2.0
+            if self.autoscale == AutoScale.EXTEND:
+                # The axis that constrained the scale divides back out to its
+                # design size; the other one gains the slack as world space.
+                self.width = Int(Float64(pixel_w) / self.scale + 0.5)
+                self.height = Int(Float64(pixel_h) / self.scale + 0.5)
+                self._offset_x = 0.0
+                self._offset_y = 0.0
+            else:
+                self.width = self._design_w
+                self.height = self._design_h
+                self._offset_x = (
+                    Float64(pixel_w) - Float64(self._design_w) * self.scale
+                ) / 2.0
+                self._offset_y = (
+                    Float64(pixel_h) - Float64(self._design_h) * self.scale
+                ) / 2.0
         else:
             self.width = pixel_w
             self.height = pixel_h

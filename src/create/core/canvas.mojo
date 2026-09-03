@@ -2,6 +2,7 @@ from std.math import max, min, abs
 from window.window import Window
 from .color import Color
 from .align import Align
+from .autoscale import AutoScale
 from .font_weight import FontWeight
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from .context import Context
@@ -66,7 +67,7 @@ struct Canvas[origin: Origin[mut=True]]:
     var width: Int
     var height: Int
     var center: Vector2
-    var autoscale: Bool
+    var autoscale: Int
     var scale: Float64
     var letterbox: Color
     var _pixel_w: Int
@@ -95,7 +96,7 @@ struct Canvas[origin: Origin[mut=True]]:
         self.width = win.width()
         self.height = win.height()
         self.center = Vector2(self.width // 2, self.height // 2)
-        self.autoscale = False
+        self.autoscale = AutoScale.OFF
         self.scale = 1.0
         self.letterbox = Color(0x22)
         self._pixel_w = self.width
@@ -167,9 +168,12 @@ struct Canvas[origin: Origin[mut=True]]:
         """Paint the window area outside the design bounds.
 
         Runs after render, so it doubles as the clip for anything drawn past
-        the edges of the design area.
+        the edges of the design area. Nothing to do under `AutoScale.EXTEND`:
+        the design covers the whole frame, so there is neither a bar to paint
+        nor an out-of-bounds region to clip — and rounding the extended size
+        could otherwise leave a one-pixel seam along an edge.
         """
-        if not self._scaled:
+        if not self._scaled or self.autoscale == AutoScale.EXTEND:
             return
         var W = self._pixel_w
         var H = self._pixel_h
