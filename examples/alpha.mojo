@@ -1,4 +1,4 @@
-from std.math import sin, cos
+from create.math import sin, cos
 from create.core import *
 
 
