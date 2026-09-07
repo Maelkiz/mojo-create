@@ -1,4 +1,5 @@
 from ._sdl_audio import SDLAudio, SDL_AUDIO_S16
+from ._sndfile import SndFile
 
 
 struct Sound(Movable):
@@ -15,9 +16,18 @@ struct Sound(Movable):
 
     @staticmethod
     def load(path: String) raises -> Sound:
-        """Load a WAV file."""
-        var result = SDLAudio().load_wav(path)
-        return Sound(result[0].copy(), result[1], result[2], result[3])
+        """Load a WAV, OGG, FLAC, or MP3 file. Dispatches on the file's magic
+        bytes, not its extension: `RIFF` (WAV) decodes via the zero-dependency
+        `SDL_LoadWAV` path; everything else goes through `libsndfile`."""
+        var header: List[UInt8]
+        with open(path, "r") as f:
+            header = f.read_bytes(4)
+        if len(header) == 4 and header[0] == 82 and header[1] == 73 and header[2] == 70 and header[3] == 70:
+            var result = SDLAudio().load_wav(path)
+            return Sound(result[0].copy(), result[1], result[2], result[3])
+
+        var decoded = SndFile().load(path)
+        return Sound.from_pcm(decoded[0].copy(), decoded[1], decoded[2])
 
     @staticmethod
     def from_pcm(data: List[Int16], channels: Int32 = 1, freq: Int32 = 44100) -> Sound:
