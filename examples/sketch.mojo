@@ -24,7 +24,7 @@ struct Sketch(Program):
         canvas.line((-200, 100), (0, -100))
 
         canvas.fill(Color.BLACK)
-        canvas.fontSize(54)
+        canvas.font_size(54)
         canvas.text("Create!", 50, 100)
 
 

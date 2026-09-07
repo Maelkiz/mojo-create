@@ -691,16 +691,16 @@ struct Canvas[origin: Origin[mut=True]]:
     def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int) raises:
         self.sprite(s, pos.x, pos.y, w, h)
 
-    def fontSize(mut self, size: Int):
+    def font_size(mut self, size: Int):
         self._font_size = size
 
-    def fontWeight(mut self, weight: Int):
+    def font_weight(mut self, weight: Int):
         self._font_weight = weight
 
-    def textAlign(mut self, align: Int):
+    def text_align(mut self, align: Int):
         self._text_align = align
 
-    def textBaseline(mut self, baseline: Int):
+    def text_baseline(mut self, baseline: Int):
         self._text_baseline = baseline
 
     def text(mut self, s: String, x: Int, y: Int) raises:
@@ -709,7 +709,7 @@ struct Canvas[origin: Origin[mut=True]]:
     def text(mut self, s: String, pos: Vector2) raises:
         self.text(s, pos.x, pos.y)
 
-    def setFont(mut self, path: String) raises:
+    def font(mut self, path: String) raises:
         self._font = Font(path, self._font_size)
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:

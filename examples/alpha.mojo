@@ -35,8 +35,8 @@ struct App(Program):
         canvas.circle((r * cos(self.t), r * sin(self.t) * 0.5), 14.0)
 
         canvas.fill(Color(255, 255, 255, 160))
-        canvas.fontSize(28)
-        canvas.textAlign(Align.CENTER)
+        canvas.font_size(28)
+        canvas.text_align(Align.CENTER)
         canvas.text("alpha", 0.0, -150.0)
 
 

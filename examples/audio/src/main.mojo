@@ -34,8 +34,8 @@ struct AudioDemo(Program):
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)
         canvas.fill(Color.BLACK)
-        canvas.fontSize(24)
-        canvas.textAlign(Align.CENTER)
+        canvas.font_size(24)
+        canvas.text_align(Align.CENTER)
         canvas.text("space: chime    hold h: loop ambience", 0, 20)
         canvas.text("looping: " + String(self.looping), 0, -20)
 
