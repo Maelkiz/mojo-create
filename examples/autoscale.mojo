@@ -39,7 +39,7 @@ struct App(Program):
         var mode = "FIT" if canvas.autoscale == AutoScale.FIT else "EXTEND"
         canvas.fill(Color.BLACK)
         canvas.font_size(28)
-        canvas.text_align(Align.CENTER)
+        canvas.text_align(HAlign.CENTER)
         canvas.text("Autoscale Mode: " + mode, 0, -140)
         canvas.font_size(20)
         canvas.text("(space to toggle)", 0, -180)

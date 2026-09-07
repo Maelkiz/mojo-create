@@ -1,7 +1,7 @@
 from std.math import max, min, abs
 from window.window import Window
 from .color import Color
-from .align import Align
+from .align import HAlign, VAlign
 from .autoscale import AutoScale
 from .font_weight import FontWeight
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
@@ -81,8 +81,8 @@ struct Canvas[origin: Origin[mut=True]]:
     var _stroke_enabled: Bool
     var _font_size: Int
     var _font_weight: Int
-    var _text_align: Int
-    var _text_baseline: Int
+    var _text_align: HAlign
+    var _text_baseline: VAlign
     var _font: List[Font]
     var _fallback_font: List[Font]
     var _fallback_attempted: Bool
@@ -117,8 +117,8 @@ struct Canvas[origin: Origin[mut=True]]:
         self._stroke_enabled = True
         self._font_size = 16
         self._font_weight = FontWeight.REGULAR
-        self._text_align = Align.LEFT
-        self._text_baseline = Align.TOP
+        self._text_align = HAlign.LEFT
+        self._text_baseline = VAlign.TOP
         self._font = List[Font]()
         self._fallback_font = List[Font]()
         self._fallback_attempted = False
@@ -695,10 +695,10 @@ struct Canvas[origin: Origin[mut=True]]:
     def font_weight(mut self, weight: Int):
         self._font_weight = weight
 
-    def text_align(mut self, align: Int):
+    def text_align(mut self, align: HAlign):
         self._text_align = align
 
-    def text_baseline(mut self, baseline: Int):
+    def text_baseline(mut self, baseline: VAlign):
         self._text_baseline = baseline
 
     def text(mut self, s: String, x: Int, y: Int) raises:
@@ -733,7 +733,7 @@ struct Canvas[origin: Origin[mut=True]]:
             return
         self._ensure_font()
         # Only the anchor is mapped: glyphs rasterise upright in pixel space, so
-        # `Align.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
+        # `VAlign.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
         # however the world axes are oriented.
         var p = mat_apply(self._transform, x, y)
         var tx = p[0]
@@ -762,19 +762,19 @@ struct Canvas[origin: Origin[mut=True]]:
 
         var draw_x = Int(tx)
         var draw_y = Int(ty)
-        if self._text_align == Align.CENTER:
+        if self._text_align == HAlign.CENTER:
             draw_x -= tw // 2
-        elif self._text_align == Align.RIGHT:
+        elif self._text_align == HAlign.RIGHT:
             draw_x -= tw
 
         var asc = self._font[0].ascender
         var desc = self._font[0].descender
         var baseline_y = draw_y
-        if self._text_baseline == Align.TOP:
+        if self._text_baseline == VAlign.TOP:
             baseline_y += asc
-        elif self._text_baseline == Align.MIDDLE:
+        elif self._text_baseline == VAlign.MIDDLE:
             baseline_y += (asc + desc) // 2
-        elif self._text_baseline == Align.BOTTOM:
+        elif self._text_baseline == VAlign.BOTTOM:
             baseline_y += desc
 
         # Second pass: render
