@@ -1,17 +1,16 @@
 from std.testing import TestSuite, assert_equal, assert_true
-from create.core.color import Color
 from create.graphics.sprite import Sprite
 
 
 def test_solid_dimensions() raises -> None:
-    var s = Sprite.solid(4, 3, Color.RED)
+    var s = Sprite.solid(4, 3, 255, 0, 0)
     assert_equal(s.width, 4)
     assert_equal(s.height, 3)
     assert_equal(len(s.pixels), 4 * 3 * 4)
 
 
 def test_solid_pixels_correct() raises -> None:
-    var s = Sprite.solid(2, 2, Color.RED)
+    var s = Sprite.solid(2, 2, 255, 0, 0)
     var ptr = s.pixels.unsafe_ptr()
     for i in range(4):
         var off = i * 4
@@ -22,7 +21,7 @@ def test_solid_pixels_correct() raises -> None:
 
 
 def test_solid_blue() raises -> None:
-    var s = Sprite.solid(1, 1, Color.BLUE)
+    var s = Sprite.solid(1, 1, 0, 0, 255)
     var ptr = s.pixels.unsafe_ptr()
     assert_equal(Int(ptr[unsafe_offset=0]), 0)    # R
     assert_equal(Int(ptr[unsafe_offset=1]), 0)    # G
@@ -87,7 +86,7 @@ def test_load_with_dimensions() raises -> None:
 
 
 def test_resize_dimensions() raises -> None:
-    var s = Sprite.solid(4, 4, Color.RED)
+    var s = Sprite.solid(4, 4, 255, 0, 0)
     s.resize(2, 2)
     assert_equal(s.width, 2)
     assert_equal(s.height, 2)
@@ -95,7 +94,7 @@ def test_resize_dimensions() raises -> None:
 
 
 def test_resize_preserves_color() raises -> None:
-    var s = Sprite.solid(4, 4, Color.RED)
+    var s = Sprite.solid(4, 4, 255, 0, 0)
     s.resize(2, 2)
     var ptr = s.pixels.unsafe_ptr()
     for i in range(4):  # 2×2 = 4 pixels
@@ -107,7 +106,7 @@ def test_resize_preserves_color() raises -> None:
 
 
 def test_resize_upscale() raises -> None:
-    var s = Sprite.solid(2, 2, Color.GREEN)
+    var s = Sprite.solid(2, 2, 0, 255, 0)
     s.resize(4, 4)
     assert_equal(s.width, 4)
     assert_equal(s.height, 4)
@@ -115,7 +114,7 @@ def test_resize_upscale() raises -> None:
 
 
 def test_resize_to_1x1() raises -> None:
-    var s = Sprite.solid(100, 100, Color.WHITE)
+    var s = Sprite.solid(100, 100, 255, 255, 255)
     s.resize(1, 1)
     assert_equal(s.width, 1)
     assert_equal(s.height, 1)
@@ -123,7 +122,7 @@ def test_resize_to_1x1() raises -> None:
 
 
 def test_solid_1x1() raises -> None:
-    var s = Sprite.solid(1, 1, Color.GREEN)
+    var s = Sprite.solid(1, 1, 0, 255, 0)
     assert_equal(s.width, 1)
     assert_equal(s.height, 1)
     assert_equal(len(s.pixels), 4)
