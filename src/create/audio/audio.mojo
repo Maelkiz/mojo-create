@@ -123,20 +123,24 @@ struct Audio(Movable):
         return not self._paused[Self._decode(id)[0]]
 
     def update(mut self) raises:
-        """Reap finished one-shot voices and refill looping ones."""
+        """Reap finished one-shot voices and top up looping ones.
+
+        Looping voices are topped up *before* the queue drains (once queued
+        audio drops below one loop's worth), not after `available()` hits 0
+        -- by then the device has already gone silent and the refill lands
+        late, audible as a click/pop at every loop boundary.
+        """
         for i in range(len(self._voices)):
             if self._voices[i] == 0:
                 continue
-            if self._sdl.available(self._voices[i]) != 0:
-                continue
             if self._looping[i]:
-                self._sdl.clear_stream(self._voices[i])
-                self._sdl.put_data(
-                    self._voices[i],
-                    self._loop_pcm[i].unsafe_ptr(),
-                    Int32(len(self._loop_pcm[i])),
-                )
-            else:
+                if self._sdl.available(self._voices[i]) < Int32(len(self._loop_pcm[i])):
+                    self._sdl.put_data(
+                        self._voices[i],
+                        self._loop_pcm[i].unsafe_ptr(),
+                        Int32(len(self._loop_pcm[i])),
+                    )
+            elif self._sdl.available(self._voices[i]) == 0:
                 self._free_slot(i)
 
     def __deinit__(deinit self):

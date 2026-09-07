@@ -11,6 +11,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | `core` | `src/create/core/` | Program traits, Canvas, Context, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer |
+| `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
 
 ## Key Files
 
@@ -24,6 +25,8 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/graphics/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
+| `src/create/audio/sound.mojo` | `Sound` — decoded PCM + format/channels/freq, `load`/`from_pcm` |
+| `src/create/audio/audio.mojo` | `Audio` — playback device, voice lifecycle, `play`/`stop`/`update` |
 
 ## Build & Test
 
@@ -108,6 +111,10 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 
 **Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload.
 
+**Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
+
+**Audio:** construct `Audio()` once in `create`, hold it as a field, and call `audio.update()` once per frame from `update` — SDL never tells `Audio` a stream finished on its own, so skipping `update()` stalls a loop after its first buffer drains and leaks one-shot voice slots forever. `audio.play(sound, loop=True)` returns a voice id for `stop`/`pause`/`resume`/`is_playing`; ids are generation-counted so a stale id from a finished/recycled slot can't affect a later voice. See [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
+
 ## Critical Gotchas
 
 1. **`-I src` is required for every `mojo run`.** Without it, `from create.core import *` fails with a module-not-found error. All pixi tasks include it; bare `mojo run` calls must add it manually.
@@ -128,6 +135,8 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 | Design resolution | The size passed to `run` — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
+| `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
+| `Audio` | Program-owned playback device: `play`/`stop`/`stop_all`/`pause`/`resume`/`is_playing`, plus `update()` (call once per frame) |
 
 ## Do
 

@@ -23,7 +23,7 @@ echo "$examples" | xargs -P 4 -I{} sh -c \
     || { echo "Example build failed — push aborted."; exit 1; }
 
 echo "Running tests..."
-pixi run bash -c 'set -e; for f in $(find tests -name "test_*.mojo" | sort); do mojo run -I src "$f"; done' \
+pixi run test \
     || { echo "Tests failed — push aborted."; exit 1; }
 
 exit 0

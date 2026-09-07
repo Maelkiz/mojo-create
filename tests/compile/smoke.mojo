@@ -9,20 +9,25 @@
 # Keep it minimal; the examples are the broad gate and run on push.
 
 from create.core import *
+from create.audio import Audio, Sound
 
 
 @fieldwise_init
 struct Smoke(Program):
     var x: Float64
+    var audio: Audio
 
     @staticmethod
     def create(mut ctx: Context) raises -> Smoke:
         ctx.exit_on_escape = True
-        return Smoke(0.0)
+        return Smoke(0.0, Audio())
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
+        self.audio.update()
         if input.is_key_down("right"):
             self.x += 100.0 * ctx.delta_time
+        if input.just_pressed("space"):
+            _ = self.audio.play(Sound.from_pcm(List[Int16](length=1, fill=0)))
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)
