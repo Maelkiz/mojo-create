@@ -130,7 +130,7 @@ struct Canvas[origin: Origin[mut=True]]:
         self._transform_inv = identity[3]()
         self._transform_stack = List[Matrix[3, 3]]()
 
-    def _sync(mut self, ctx: Context) raises:
+    def _sync(mut self, ctx: Context):
         """Adopt this frame's dimensions and world-space mapping from `ctx`.
 
         `width`/`height` are the design-space extent — equal to the window
@@ -173,7 +173,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def _fill_pixels(
         mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
-    ) raises:
+    ):
         var W = self._pixel_w
         var px = self._win[].pixels()
         for row in range(max(y0, 0), min(y1, self._pixel_h)):
@@ -181,7 +181,7 @@ struct Canvas[origin: Origin[mut=True]]:
                 var off = (row * W + col) * 4
                 _blend(px, off, c)
 
-    def _draw_letterbox(mut self) raises:
+    def _draw_letterbox(mut self):
         """Paint the window area outside the design bounds.
 
         Runs after render, so it doubles as the clip for anything drawn past
@@ -279,7 +279,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
-    ) raises:
+    ):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -336,7 +336,7 @@ struct Canvas[origin: Origin[mut=True]]:
     def stroke_width(mut self, w: Int):
         self._stroke_width = w
 
-    def background(mut self, color: Color) raises:
+    def background(mut self, color: Color):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -344,7 +344,7 @@ struct Canvas[origin: Origin[mut=True]]:
             var off = i * 4
             _blend(px, off, color)
 
-    def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64) raises:
+    def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -424,7 +424,7 @@ struct Canvas[origin: Origin[mut=True]]:
                     elif self._stroke_enabled and not in_inner:
                         _blend(px, off, self._stroke)
 
-    def circle(mut self, cx: Float64, cy: Float64, r: Float64) raises:
+    def circle(mut self, cx: Float64, cy: Float64, r: Float64):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -495,7 +495,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def line(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
-    ) raises:
+    ):
         if not self._stroke_enabled:
             return
         var p0 = mat_apply(self._transform, x0, y0)
@@ -510,7 +510,7 @@ struct Canvas[origin: Origin[mut=True]]:
         y2: Float64,
         x3: Float64,
         y3: Float64,
-    ) raises:
+    ):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -550,18 +550,18 @@ struct Canvas[origin: Origin[mut=True]]:
             self._line_pixels(sx2, sy2, sx3, sy3)
             self._line_pixels(sx3, sy3, sx1, sy1)
 
-    def rect(mut self, x: Int, y: Int, w: Int, h: Int) raises:
+    def rect(mut self, x: Int, y: Int, w: Int, h: Int):
         self.rect(Float64(x), Float64(y), Float64(w), Float64(h))
 
-    def circle(mut self, cx: Int, cy: Int, r: Int) raises:
+    def circle(mut self, cx: Int, cy: Int, r: Int):
         self.circle(Float64(cx), Float64(cy), Float64(r))
 
-    def line(mut self, x0: Int, y0: Int, x1: Int, y1: Int) raises:
+    def line(mut self, x0: Int, y0: Int, x1: Int, y1: Int):
         self.line(Float64(x0), Float64(y0), Float64(x1), Float64(y1))
 
     def triangle(
         mut self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int
-    ) raises:
+    ):
         self.triangle(
             Float64(x1),
             Float64(y1),
@@ -571,40 +571,40 @@ struct Canvas[origin: Origin[mut=True]]:
             Float64(y3),
         )
 
-    def rect(mut self, r: Rectangle) raises:
+    def rect(mut self, r: Rectangle):
         self.rect(r.x, r.y, r.w, r.h)
 
-    def rect(mut self, pos: Vector2, w: Float64, h: Float64) raises:
+    def rect(mut self, pos: Vector2, w: Float64, h: Float64):
         self.rect(pos.x, pos.y, w, h)
 
-    def rect(mut self, pos: Vector2, size: Vector2) raises:
+    def rect(mut self, pos: Vector2, size: Vector2):
         self.rect(pos.x, pos.y, size.x, size.y)
 
-    def circle(mut self, c: Circle) raises:
+    def circle(mut self, c: Circle):
         self.circle(c.x, c.y, c.r)
 
-    def circle(mut self, pos: Vector2, r: Float64) raises:
+    def circle(mut self, pos: Vector2, r: Float64):
         self.circle(pos.x, pos.y, r)
 
-    def circle(mut self, pos: Vector2, r: Int) raises:
+    def circle(mut self, pos: Vector2, r: Int):
         self.circle(pos.x, pos.y, Float64(r))
 
-    def line(mut self, l: Line) raises:
+    def line(mut self, l: Line):
         self.line(l.x0, l.y0, l.x1, l.y1)
 
-    def line(mut self, start: Vector2, end: Vector2) raises:
+    def line(mut self, start: Vector2, end: Vector2):
         self.line(start.x, start.y, end.x, end.y)
 
-    def triangle(mut self, t: Triangle) raises:
+    def triangle(mut self, t: Triangle):
         self.triangle(t.x1, t.y1, t.x2, t.y2, t.x3, t.y3)
 
-    def triangle(mut self, a: Vector2, b: Vector2, c: Vector2) raises:
+    def triangle(mut self, a: Vector2, b: Vector2, c: Vector2):
         self.triangle(a.x, a.y, b.x, b.y, c.x, c.y)
 
-    def sprite(mut self, s: Sprite, cx: Int, cy: Int) raises:
+    def sprite(mut self, s: Sprite, cx: Int, cy: Int):
         self.sprite(s, Float64(cx), Float64(cy))
 
-    def sprite(mut self, s: Sprite, cx: Float64, cy: Float64) raises:
+    def sprite(mut self, s: Sprite, cx: Float64, cy: Float64):
         # One sprite pixel per framebuffer pixel — worth a dedicated blit, but
         # only while nothing resizes it. Anything else goes through the sized
         # overload, which resamples.
@@ -642,12 +642,12 @@ struct Canvas[origin: Origin[mut=True]]:
                     ),
                 )
 
-    def sprite(mut self, s: Sprite, pos: Vector2) raises:
+    def sprite(mut self, s: Sprite, pos: Vector2):
         self.sprite(s, pos.x, pos.y)
 
     def sprite(
         mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int
-    ) raises:
+    ):
         var W = self._pixel_w
         var H = self._pixel_h
         var px = self._win[].pixels()
@@ -685,10 +685,10 @@ struct Canvas[origin: Origin[mut=True]]:
                     ),
                 )
 
-    def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int) raises:
+    def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int):
         self.sprite(s, Float64(cx), Float64(cy), w, h)
 
-    def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int) raises:
+    def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int):
         self.sprite(s, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
