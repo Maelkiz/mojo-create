@@ -1,13 +1,14 @@
 # Requires SDL_AUDIO_DRIVER=dummy (set globally by the `test` pixi task) so
 # this runs without real audio hardware.
 
+from std.memory import ArcPointer
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
 from create.audio import Audio, Sound
 
 
-def _tone() -> Sound:
+def _tone() -> ArcPointer[Sound]:
     var data = List[Int16](length=256, fill=0)
-    return Sound.from_pcm(data)
+    return ArcPointer(Sound.from_pcm(data))
 
 
 def test_play_returns_valid_id() raises -> None:

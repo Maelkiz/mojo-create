@@ -1,8 +1,41 @@
+from std.memory import ArcPointer
+
 from ._sdl_audio import SDLAudio
 from .sound import Sound
 
 comptime _GEN_SHIFT = 32
 comptime _INDEX_MASK: Int = 0xFFFFFFFF
+
+
+struct Voice(Movable):
+    """One playback slot. `stream == 0` means free.
+
+    `loop_sound` holds an `ArcPointer` to the playing `Sound` -- a refcount
+    bump, not a copy -- and is only populated for looping voices, since a
+    one-shot voice never needs its PCM again after the initial `put_data`.
+    """
+
+    var stream: Int
+    var generation: Int
+    var paused: Bool
+    var looping: Bool
+    var loop_sound: Optional[ArcPointer[Sound]]
+
+    def __init__(out self):
+        self.stream = 0
+        self.generation = 0
+        self.paused = False
+        self.looping = False
+        self.loop_sound = None
+
+    def reset(mut self):
+        """Return this slot to the free state, bumping its generation so
+        stale ids from before the reset fail `_valid`."""
+        self.stream = 0
+        self.generation += 1
+        self.paused = False
+        self.looping = False
+        self.loop_sound = None
 
 
 struct Audio(Movable):
@@ -17,21 +50,13 @@ struct Audio(Movable):
     """
 
     var _sdl: SDLAudio
-    var _voices: List[Int]         # stream handle per slot, 0 = free
-    var _generations: List[Int]    # bumped whenever a slot is freed
-    var _paused: List[Bool]
-    var _looping: List[Bool]
-    var _loop_pcm: List[List[UInt8]]
+    var _voices: List[Voice]
     var volume: Float32
 
     def __init__(out self) raises:
         self._sdl = SDLAudio()
         self._sdl.init()
-        self._voices = List[Int]()
-        self._generations = List[Int]()
-        self._paused = List[Bool]()
-        self._looping = List[Bool]()
-        self._loop_pcm = List[List[UInt8]]()
+        self._voices = List[Voice]()
         self.volume = 1.0
 
     @staticmethod
@@ -49,47 +74,47 @@ struct Audio(Movable):
         return (
             index >= 0
             and index < len(self._voices)
-            and self._generations[index] == generation
-            and self._voices[index] != 0
+            and self._voices[index].generation == generation
+            and self._voices[index].stream != 0
         )
 
-    def play(mut self, sound: Sound, loop: Bool = False) raises -> Int:
+    def play(mut self, sound: ArcPointer[Sound], loop: Bool = False) raises -> Int:
         """Play a Sound. Returns a voice id usable with `stop`/`pause`/`resume`/
-        `is_playing`. Looping voices are refilled by `update`."""
-        var stream = self._sdl.open_device_stream(sound.format, sound.channels, sound.freq)
+        `is_playing`. Looping voices are refilled by `update`.
+
+        `sound` is an `ArcPointer` so a looping voice can keep the PCM alive
+        and shared -- callers hold their `Sound`s as `ArcPointer[Sound]`
+        fields and pass a cheap `.copy()` of the pointer here."""
+        var stream = self._sdl.open_device_stream(sound[].format, sound[].channels, sound[].freq)
         self._sdl.set_gain(stream, self.volume)
-        self._sdl.put_data(stream, sound.pcm.unsafe_ptr(), Int32(len(sound.pcm)))
+        self._sdl.put_data(stream, sound[].pcm.unsafe_ptr(), Int32(len(sound[].pcm)))
         self._sdl.resume_stream(stream)
-        var loop_pcm = sound.pcm.copy() if loop else List[UInt8]()
+        var loop_sound = Optional(sound) if loop else None
 
         var index = -1
         for i in range(len(self._voices)):
-            if self._voices[i] == 0:
+            if self._voices[i].stream == 0:
                 index = i
                 break
 
         if index == -1:
-            self._voices.append(stream)
-            self._generations.append(0)
-            self._paused.append(False)
-            self._looping.append(loop)
-            self._loop_pcm.append(loop_pcm^)
+            var voice = Voice()
+            voice.stream = stream
+            voice.looping = loop
+            voice.loop_sound = loop_sound
+            self._voices.append(voice^)
             index = len(self._voices) - 1
         else:
-            self._voices[index] = stream
-            self._paused[index] = False
-            self._looping[index] = loop
-            self._loop_pcm[index] = loop_pcm^
+            self._voices[index].stream = stream
+            self._voices[index].paused = False
+            self._voices[index].looping = loop
+            self._voices[index].loop_sound = loop_sound
 
-        return Self._encode(index, self._generations[index])
+        return Self._encode(index, self._voices[index].generation)
 
     def _free_slot(mut self, index: Int) raises:
-        self._sdl.destroy_stream(self._voices[index])
-        self._voices[index] = 0
-        self._generations[index] += 1
-        self._paused[index] = False
-        self._looping[index] = False
-        self._loop_pcm[index] = List[UInt8]()
+        self._sdl.destroy_stream(self._voices[index].stream)
+        self._voices[index].reset()
 
     def stop(mut self, id: Int) raises:
         """Stop and release the voice with the given id. No-op if already
@@ -100,27 +125,34 @@ struct Audio(Movable):
 
     def stop_all(mut self) raises:
         for i in range(len(self._voices)):
-            if self._voices[i] != 0:
+            if self._voices[i].stream != 0:
                 self._free_slot(i)
 
     def pause(mut self, id: Int) raises:
         if not self._valid(id):
             return
         var index = Self._decode(id)[0]
-        self._sdl.pause_stream(self._voices[index])
-        self._paused[index] = True
+        self._sdl.pause_stream(self._voices[index].stream)
+        self._voices[index].paused = True
+
+    def set_volume(mut self, id: Int, gain: Float32) raises:
+        """Set gain for a single live voice, independent of `self.volume`.
+        No-op if stopped or the id is stale."""
+        if not self._valid(id):
+            return
+        self._sdl.set_gain(self._voices[Self._decode(id)[0]].stream, gain)
 
     def resume(mut self, id: Int) raises:
         if not self._valid(id):
             return
         var index = Self._decode(id)[0]
-        self._sdl.resume_stream(self._voices[index])
-        self._paused[index] = False
+        self._sdl.resume_stream(self._voices[index].stream)
+        self._voices[index].paused = False
 
     def is_playing(self, id: Int) raises -> Bool:
         if not self._valid(id):
             return False
-        return not self._paused[Self._decode(id)[0]]
+        return not self._voices[Self._decode(id)[0]].paused
 
     def update(mut self) raises:
         """Reap finished one-shot voices and top up looping ones.
@@ -131,16 +163,17 @@ struct Audio(Movable):
         late, audible as a click/pop at every loop boundary.
         """
         for i in range(len(self._voices)):
-            if self._voices[i] == 0:
+            if self._voices[i].stream == 0:
                 continue
-            if self._looping[i]:
-                if self._sdl.available(self._voices[i]) < Int32(len(self._loop_pcm[i])):
+            if self._voices[i].looping:
+                var pcm_len = len(self._voices[i].loop_sound.value()[].pcm)
+                if self._sdl.available(self._voices[i].stream) < Int32(pcm_len):
                     self._sdl.put_data(
-                        self._voices[i],
-                        self._loop_pcm[i].unsafe_ptr(),
-                        Int32(len(self._loop_pcm[i])),
+                        self._voices[i].stream,
+                        self._voices[i].loop_sound.value()[].pcm.unsafe_ptr(),
+                        Int32(pcm_len),
                     )
-            elif self._sdl.available(self._voices[i]) == 0:
+            elif self._sdl.available(self._voices[i].stream) == 0:
                 self._free_slot(i)
 
     def __deinit__(deinit self):

@@ -8,6 +8,8 @@
 # the Context/Input/Canvas signatures — none of which `mojo precompile` sees.
 # Keep it minimal; the examples are the broad gate and run on push.
 
+from std.memory import ArcPointer
+
 from create.core import *
 from create.audio import Audio, Sound
 
@@ -27,7 +29,7 @@ struct Smoke(Program):
         if input.is_key_down("right"):
             self.x += 100.0 * ctx.delta_time
         if input.just_pressed("space"):
-            _ = self.audio.play(Sound.from_pcm(List[Int16](length=1, fill=0)))
+            _ = self.audio.play(ArcPointer(Sound.from_pcm(List[Int16](length=1, fill=0))))
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)
