@@ -45,6 +45,9 @@ for f in $(find tests -name "test_*.mojo" | sort); do mojo run -I src "$f"; done
 # Run a single test file
 mojo run -I src tests/math/test_vector2.mojo
 
+# Type-check the whole library without running anything (output goes to build/, gitignored)
+pixi run precompile
+
 # One-time setup (points core.hooksPath at .githooks)
 pixi run setup
 ```

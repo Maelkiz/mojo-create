@@ -8,6 +8,7 @@ version = "0.1.0"
 [tasks]
 create = "mojo run -I src"
 test = "bash -c 'set -e; export SDL_AUDIO_DRIVER=dummy; for f in $(find tests -name \"test_*.mojo\" | sort); do mojo run -I src \"$f\"; done'"
+precompile = "mkdir -p build && mojo precompile src/create -o build/create.mojoc"
 setup = "git config core.hooksPath .githooks"
 
 [dependencies]
