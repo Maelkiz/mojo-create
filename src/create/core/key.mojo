@@ -58,3 +58,73 @@ struct Key:
     comptime NUM_0 = 48; comptime NUM_1 = 49; comptime NUM_2 = 50; comptime NUM_3 = 51
     comptime NUM_4 = 52; comptime NUM_5 = 53; comptime NUM_6 = 54; comptime NUM_7 = 55
     comptime NUM_8 = 56; comptime NUM_9 = 57
+
+    # Single source for named-key lookups — Input._check calls this instead of
+    # holding its own copy of these codes. Returns -1 for an unknown name.
+    @staticmethod
+    def from_name(name: String) -> Int:
+        if name == "up":         return Key.UP
+        if name == "down":       return Key.DOWN
+        if name == "left":       return Key.LEFT
+        if name == "right":      return Key.RIGHT
+
+        if name == "insert":     return Key.INSERT
+        if name == "home":       return Key.HOME
+        if name == "page_up":    return Key.PAGE_UP
+        if name == "page_down":  return Key.PAGE_DOWN
+        if name == "end":        return Key.END
+
+        if name == "enter":      return Key.ENTER
+        if name == "escape":     return Key.ESCAPE
+        if name == "backspace":  return Key.BACKSPACE
+        if name == "tab":        return Key.TAB
+        if name == "space":      return Key.SPACE
+        if name == "delete":     return Key.DELETE
+        if name == "caps_lock":  return Key.CAPS_LOCK
+
+        if name == "f1":  return Key.F1
+        if name == "f2":  return Key.F2
+        if name == "f3":  return Key.F3
+        if name == "f4":  return Key.F4
+        if name == "f5":  return Key.F5
+        if name == "f6":  return Key.F6
+        if name == "f7":  return Key.F7
+        if name == "f8":  return Key.F8
+        if name == "f9":  return Key.F9
+        if name == "f10": return Key.F10
+        if name == "f11": return Key.F11
+        if name == "f12": return Key.F12
+
+        return -1
+
+
+struct KeyBits(Copyable, Movable):
+    """512-bit membership set over keycodes: printable ASCII (0-127) map
+    directly, SDL scancode-based keys (arrows, F-keys, modifiers, nav —
+    all >= 1 << 30, spanning a ~230-wide band) map via an offset into the
+    upper half of the same word array."""
+
+    var _words: InlineArray[UInt64, 8]
+
+    def __init__(out self):
+        self._words = InlineArray[UInt64, 8](fill=0)
+
+    def _index(self, keycode: Int) -> Int:
+        if keycode >= 1073741824:
+            return 256 + (keycode - 1073741824)
+        return keycode
+
+    def set(mut self, keycode: Int):
+        var i = self._index(keycode)
+        self._words[i // 64] |= UInt64(1) << UInt64(i % 64)
+
+    def clear(mut self, keycode: Int):
+        var i = self._index(keycode)
+        self._words[i // 64] &= ~(UInt64(1) << UInt64(i % 64))
+
+    def test(self, keycode: Int) -> Bool:
+        var i = self._index(keycode)
+        return (self._words[i // 64] & (UInt64(1) << UInt64(i % 64))) != 0
+
+    def clear_all(mut self):
+        self._words = InlineArray[UInt64, 8](fill=0)

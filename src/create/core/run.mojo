@@ -34,8 +34,8 @@ def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
 def _process_events[
     P: Program
 ](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
-    input._just_pressed = List[Int]()
-    input._just_released = List[Int]()
+    input._just_pressed.clear_all()
+    input._just_released.clear_all()
     var events = win.events()
     for event in events:
         if event.isa[Quit]():
@@ -45,16 +45,13 @@ def _process_events[
             if keycode == 27 and ctx.exit_on_escape:
                 win.close()
             if not input.is_key_down(keycode):
-                input._held_keys.append(keycode)
-                input._just_pressed.append(keycode)
+                input._held_keys.set(keycode)
+                input._just_pressed.set(keycode)
                 program.on_key_down(keycode)
         elif event.isa[KeyUp]():
             var keycode = event[KeyUp].keycode
-            for i in range(len(input._held_keys)):
-                if input._held_keys[i] == keycode:
-                    _ = input._held_keys.pop(i)
-                    break
-            input._just_released.append(keycode)
+            input._held_keys.clear(keycode)
+            input._just_released.set(keycode)
             program.on_key_up(keycode)
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
