@@ -4,3 +4,6 @@
 
 # IDE
 .vscode/
+
+# build artifacts
+*.mojoc
