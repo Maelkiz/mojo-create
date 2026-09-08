@@ -96,8 +96,8 @@ struct Rectangle(Convex):
         self.translate(delta.x, delta.y)
 
     def overlaps(self, other: Rectangle) -> Bool:
-        return (self.left() < other.right() and self.right() > other.left() and
-                self.bottom() < other.top() and self.top() > other.bottom())
+        return (self.left() <= other.right() and self.right() >= other.left() and
+                self.bottom() <= other.top() and self.top() >= other.bottom())
 
     def overlaps(self, c: Circle) -> Bool:
         var nearest_x = max(self.left(), min(c.x, self.right()))

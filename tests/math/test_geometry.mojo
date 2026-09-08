@@ -240,17 +240,17 @@ def test_overlaps_circles_no() raises -> None:
     assert_equal(overlaps(a, b), False)
 
 
-def test_rect_touching_edges_do_not_overlap() raises -> None:
-    # Implementation uses strict < / >, so touching edges are not overlap
+def test_rect_touching_edges_overlap() raises -> None:
+    # Touching counts as overlap everywhere, matching every contains()
     var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5
     var b = Rectangle(10.0, 0.0, 10.0, 10.0)   # left=5
-    assert_equal(a.overlaps(b), False)
+    assert_true(a.overlaps(b))
 
 
 def test_rect_overlaps_rect_touching_corner() raises -> None:
     var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5, top=5
     var b = Rectangle(10.0, 10.0, 10.0, 10.0)  # left=5, bottom=5
-    assert_equal(a.overlaps(b), False)
+    assert_true(a.overlaps(b))
 
 
 def test_triangle_move_to() raises -> None:
@@ -312,6 +312,129 @@ def test_triangle_contains_vertex() raises -> None:
     # A vertex of the triangle is on its boundary — should be contained
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
     assert_true(t.contains(0.0, 0.0))
+
+
+# overlaps(a, b), overlaps(b, a) and a.overlaps(b) must all agree — separated,
+# overlapping, and exactly-touching configurations for every pair the library
+# supports.
+def test_overlaps_agree_rect_rect() raises -> None:
+    var sep_a = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var sep_b = Rectangle(30.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(sep_a, sep_b), False)
+    assert_equal(overlaps(sep_a, sep_b), overlaps(sep_b, sep_a))
+    assert_equal(overlaps(sep_a, sep_b), sep_a.overlaps(sep_b))
+
+    var ovl_a = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var ovl_b = Rectangle(4.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(ovl_a, ovl_b), True)
+    assert_equal(overlaps(ovl_a, ovl_b), overlaps(ovl_b, ovl_a))
+    assert_equal(overlaps(ovl_a, ovl_b), ovl_a.overlaps(ovl_b))
+
+    var tch_a = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var tch_b = Rectangle(10.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(tch_a, tch_b), True)
+    assert_equal(overlaps(tch_a, tch_b), overlaps(tch_b, tch_a))
+    assert_equal(overlaps(tch_a, tch_b), tch_a.overlaps(tch_b))
+
+
+def test_overlaps_agree_circle_circle() raises -> None:
+    var sep_a = Circle(0.0, 0.0, 5.0)
+    var sep_b = Circle(20.0, 0.0, 5.0)
+    assert_equal(overlaps(sep_a, sep_b), False)
+    assert_equal(overlaps(sep_a, sep_b), overlaps(sep_b, sep_a))
+    assert_equal(overlaps(sep_a, sep_b), sep_a.overlaps(sep_b))
+
+    var ovl_a = Circle(0.0, 0.0, 5.0)
+    var ovl_b = Circle(8.0, 0.0, 5.0)
+    assert_equal(overlaps(ovl_a, ovl_b), True)
+    assert_equal(overlaps(ovl_a, ovl_b), overlaps(ovl_b, ovl_a))
+    assert_equal(overlaps(ovl_a, ovl_b), ovl_a.overlaps(ovl_b))
+
+    var tch_a = Circle(0.0, 0.0, 5.0)
+    var tch_b = Circle(10.0, 0.0, 5.0)
+    assert_equal(overlaps(tch_a, tch_b), True)
+    assert_equal(overlaps(tch_a, tch_b), overlaps(tch_b, tch_a))
+    assert_equal(overlaps(tch_a, tch_b), tch_a.overlaps(tch_b))
+
+
+def test_overlaps_agree_rect_circle() raises -> None:
+    var sep_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var sep_c = Circle(20.0, 0.0, 3.0)
+    assert_equal(overlaps(sep_r, sep_c), False)
+    assert_equal(overlaps(sep_r, sep_c), overlaps(sep_c, sep_r))
+    assert_equal(overlaps(sep_r, sep_c), sep_r.overlaps(sep_c))
+
+    var ovl_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var ovl_c = Circle(6.0, 0.0, 3.0)
+    assert_equal(overlaps(ovl_r, ovl_c), True)
+    assert_equal(overlaps(ovl_r, ovl_c), overlaps(ovl_c, ovl_r))
+    assert_equal(overlaps(ovl_r, ovl_c), ovl_r.overlaps(ovl_c))
+
+    var tch_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var tch_c = Circle(8.0, 0.0, 3.0)
+    assert_equal(overlaps(tch_r, tch_c), True)
+    assert_equal(overlaps(tch_r, tch_c), overlaps(tch_c, tch_r))
+    assert_equal(overlaps(tch_r, tch_c), tch_r.overlaps(tch_c))
+
+
+def test_overlaps_agree_circle_rect() raises -> None:
+    var sep_c = Circle(20.0, 0.0, 3.0)
+    var sep_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(sep_c, sep_r), False)
+    assert_equal(overlaps(sep_c, sep_r), overlaps(sep_r, sep_c))
+    assert_equal(overlaps(sep_c, sep_r), sep_c.overlaps(sep_r))
+
+    var ovl_c = Circle(6.0, 0.0, 3.0)
+    var ovl_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(ovl_c, ovl_r), True)
+    assert_equal(overlaps(ovl_c, ovl_r), overlaps(ovl_r, ovl_c))
+    assert_equal(overlaps(ovl_c, ovl_r), ovl_c.overlaps(ovl_r))
+
+    var tch_c = Circle(8.0, 0.0, 3.0)
+    var tch_r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    assert_equal(overlaps(tch_c, tch_r), True)
+    assert_equal(overlaps(tch_c, tch_r), overlaps(tch_r, tch_c))
+    assert_equal(overlaps(tch_c, tch_r), tch_c.overlaps(tch_r))
+
+
+def test_overlaps_agree_triangle_triangle() raises -> None:
+    var sep_a = Triangle(0.0, 0.0, 2.0, 0.0, 1.0, 2.0)
+    var sep_b = Triangle(10.0, 0.0, 12.0, 0.0, 11.0, 2.0)
+    assert_equal(overlaps(sep_a, sep_b), False)
+    assert_equal(overlaps(sep_a, sep_b), overlaps(sep_b, sep_a))
+    assert_equal(overlaps(sep_a, sep_b), sep_a.overlaps(sep_b))
+
+    var ovl_a = Triangle(0.0, 0.0, 4.0, 0.0, 2.0, 4.0)
+    var ovl_b = Triangle(1.0, 0.0, 5.0, 0.0, 3.0, 4.0)
+    assert_equal(overlaps(ovl_a, ovl_b), True)
+    assert_equal(overlaps(ovl_a, ovl_b), overlaps(ovl_b, ovl_a))
+    assert_equal(overlaps(ovl_a, ovl_b), ovl_a.overlaps(ovl_b))
+
+    # Mirrored across the shared base edge (0,0)-(4,0)
+    var tch_a = Triangle(0.0, 0.0, 4.0, 0.0, 2.0, 4.0)
+    var tch_b = Triangle(0.0, 0.0, 4.0, 0.0, 2.0, -4.0)
+    assert_equal(overlaps(tch_a, tch_b), True)
+    assert_equal(overlaps(tch_a, tch_b), overlaps(tch_b, tch_a))
+    assert_equal(overlaps(tch_a, tch_b), tch_a.overlaps(tch_b))
+
+
+# overlaps[A, B] reads only a's centre and b's surface, so it is asymmetric
+# by construction. These configurations overlap with neither shape's centre
+# inside the other — the case most likely to expose that asymmetry.
+def test_overlaps_symmetric_long_rect_triangle() raises -> None:
+    var rect = Rectangle(0.0, 0.0, 20.0, 2.0)
+    var tri = Triangle(-1.0, -2.0, 1.0, 0.5, 3.0, -2.0)
+    assert_equal(rect.contains(tri.center()), False)
+    assert_equal(tri.contains(rect.center()), False)
+    assert_equal(overlaps(rect, tri), overlaps(tri, rect))
+
+
+def test_overlaps_symmetric_circle_triangle() raises -> None:
+    var circ = Circle(6.0, -3.0, 2.0)
+    var tri = Triangle(7.0, -4.0, 9.0, 2.0, 11.0, -4.0)
+    assert_equal(circ.contains(tri.center()), False)
+    assert_equal(tri.contains(circ.x, circ.y), False)
+    assert_equal(overlaps(circ, tri), overlaps(tri, circ))
 
 
 def main() raises:

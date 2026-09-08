@@ -139,6 +139,22 @@ assert the local behaviour with a comment explaining the operator — accurate,
 but they read as "this is what the code does" rather than "this is what the
 library promises", and nothing compares the pairs against each other.
 
+**Resolved: touching counts as overlap, everywhere.** Every shape's `contains`
+is already inclusive (`<=`), so a point exactly on a shared boundary is
+`contains`ed by both shapes — the natural definition of overlap ("shapes share
+at least one point") already implies inclusive for the three pairs that use
+it. `Rectangle.overlaps(Rectangle)`'s strict `<`/`>` is the outlier, not the
+other three, and it is also the smaller fix: two comparisons in one method,
+versus loosening three methods and losing the "overlap implies share a
+`contains`ed point" invariant everywhere else. `Rectangle.overlaps(Rectangle)`
+changes from `left() < other.right() and right() > other.left() and ...` to
+`<=`/`>=` throughout. This also resolves G1 for the rect-rect touching case
+specifically: `overlaps[A,B]` already returns `True` there (via inclusive
+`contains`), so fixing the concrete method to agree removes the contradiction
+for that pair. G1's deeper issue — the generic reads only `a`'s centre and
+`b`'s surface, so it is asymmetric by construction — is unrelated to this fix
+and is what W2 tests for.
+
 **G3 — every degenerate-input path is unasserted.** Seven of them, listed under
 rubric axis 2. `Vector2.normalize()` on `Vector2.zero()` is the one most likely
 to reach a user: it returns `(nan, nan)` and poisons every subsequent
@@ -159,6 +175,14 @@ asserts `<= 1.0`, which is compatible with either choice. `int(low, high)` is
 half-open and also carries modulo bias — small for typical ranges, unbounded
 in principle.
 
+**Resolved: half-open `[0,1)`, matching `int(low, high)`'s existing
+convention.** `random.mojo`'s `float()` changes from
+`Float64(self._next()) / Float64(UInt64.MAX)` to
+`Float64(self._next()) / (Float64(UInt64.MAX) + 1.0)` — `2^64` is exactly
+representable in `Float64`, so this is a clean divisor change, not an
+approximation. `float(low, high)` needs no change; it already inherits
+whatever `float()` promises.
+
 **G6 — the mixed-`Tuple` constructors are untested.** Seven of them across the
 two vector types, each a hand-written field-by-field body where an `x`/`y`
 transposition would compile. Low risk, trivially cheap to close.
@@ -178,16 +202,24 @@ requiring the partial-pivot row swap, so the swap loop is unproven.
 Ordered, commit-sized. Each leaves the suite green. No new files — every item
 adds to an existing one, per the runtime-cost constraint.
 
-**W1 — Pin the contact semantics of `overlaps[A, B]` against the concrete
-methods.** `tests/math/test_geometry.mojo`. For each pair the library supports
-(rect-rect, circle-circle, rect-circle, circle-rect, triangle-triangle),
-assert that `overlaps(a, b)`, `overlaps(b, a)` and `a.overlaps(b)` agree, over
-a small table of clearly-separated, clearly-overlapping, and exactly-touching
-configurations. The clearly-separated and clearly-overlapping rows will pass;
-**the touching rect-rect row is expected to fail**, which is the point — it
-turns G1 from an observation into a failing assertion. Land this only after
-deciding G2's intended semantics, since the assertion encodes that decision.
-Do not weaken the assertion to make it pass.
+**W1 — Fix `Rectangle.overlaps(Rectangle)` to inclusive, then pin the contact
+semantics of `overlaps[A, B]` against the concrete methods.** One commit,
+source before tests:
+
+1. `src/create/math/geometry.mojo`: change `Rectangle.overlaps(Rectangle)`
+   from strict `<`/`>` to `<=`/`>=` (see G2's resolution — touching counts as
+   overlap everywhere, matching every `contains`).
+2. `tests/math/test_geometry.mojo`: `test_rect_touching_edges_do_not_overlap`
+   now asserts the wrong thing — rename it (e.g.
+   `test_rect_touching_edges_overlap`) and flip its assertion to `True`.
+3. Same file: for each pair the library supports (rect-rect, circle-circle,
+   rect-circle, circle-rect, triangle-triangle), assert that `overlaps(a, b)`,
+   `overlaps(b, a)` and `a.overlaps(b)` agree, over a small table of
+   clearly-separated, clearly-overlapping, and exactly-touching
+   configurations. With step 1 landed, all rows — including the rect-rect
+   touching row that used to contradict — are expected to pass; if any
+   touching-pair row still disagrees, that is a new instance of G1 to fix
+   before this commit closes, not a reason to weaken the assertion.
 
 **W2 — Assert symmetry of `overlaps[A, B]` on asymmetric shape pairs.**
 `test_geometry.mojo`. Long thin rectangle against a triangle, circle against a
@@ -215,12 +247,18 @@ eight `_next()`-derived outputs for a fixed seed (via `float()` and `int()`)
 and assert them exactly. Closes G4: any change to SplitMix64 seeding or the
 xoroshiro128+ step fails loudly instead of staying "deterministic".
 
-**W6 — Pin `Random`'s interval contract.** `test_random.mojo`. Decide whether
-`float()` is `[0,1]` or `[0,1)`, then assert it — including that `float(lo,hi)`
-respects the same convention and that `int(lo, hi)` is half-open (already
-implied by `test_int_range`, but not stated as the contract). If the intent is
-half-open, this fails against the current `/ UInt64.MAX` and correctly demands
-the fix.
+**W6 — Fix `Random.float()` to half-open, then pin the interval contract.**
+One commit, source before tests:
+
+1. `src/create/math/random.mojo`: change `float()`'s divisor from
+   `Float64(UInt64.MAX)` to `Float64(UInt64.MAX) + 1.0` (see G5's resolution
+   — half-open `[0,1)`, matching `int(low, high)`'s existing convention).
+2. `test_random.mojo`: tighten `test_float_in_unit_interval` and
+   `test_float_range`'s upper-bound checks from `<=` to `<`; state that
+   `int(lo, hi)` is half-open as an explicit contract, not just an implied
+   property of `test_int_range`. Land after W5 (golden vectors), or update
+   W5's recorded values to the post-fix divisor — not the current one, or the
+   golden vectors will pin the wrong contract.
 
 **W7 — Strengthen `test_random`'s distribution checks.** `test_random.mojo`.
 Replace the abort-on-first-bad-draw loops with an accumulate-then-assert shape
