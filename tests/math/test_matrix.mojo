@@ -255,6 +255,27 @@ def test_inverse_of_singular_matrix_is_garbage() raises -> None:
     assert_true(off > 0.01)
 
 
+def test_copy_ctor_is_independent() raises -> None:
+    var m = Matrix[2, 2]()
+    m[0, 0] = 1.0; m[0, 1] = 2.0
+    m[1, 0] = 3.0; m[1, 1] = 4.0
+    var c = Matrix[2, 2](copy=m)
+    m[0, 0] = 99.0
+    assert_equal(c[0, 0], 1.0)
+    assert_equal(c[0, 1], 2.0)
+    assert_equal(c[1, 0], 3.0)
+    assert_equal(c[1, 1], 4.0)
+
+
+def test_write_to_contains_type_name() raises -> None:
+    var m = Matrix[2, 2]()
+    m[0, 0] = 1.0; m[0, 1] = 2.0
+    m[1, 0] = 3.0; m[1, 1] = 4.0
+    var s = String(m)
+    assert_true(s.startswith("Matrix[2x2]("))
+    assert_true(s.endswith(")"))
+
+
 def test_composition_translate_then_scale() raises -> None:
     # scale @ translate applied to (1,1):
     # translate(2,3): (1,1) → (3,4)
