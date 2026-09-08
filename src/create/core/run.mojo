@@ -10,7 +10,8 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from .canvas import Canvas, CanvasState
+from .canvas import CanvasState
+from .frame import step
 from .surface import Surface
 from .input import Input
 from .context import Context
@@ -101,24 +102,21 @@ def _run_loop[
         _update_dimensions(win, ctx)
         _process_events(program, win, ctx, input)
         ctx.time._tick(win.ticks())
-        program.update(ctx, input)
-        # Built here, after events, because Window._resize reallocates the
-        # pixel buffer: a Surface taken before them could point at freed
-        # memory. Its extent comes from the window rather than the viewport
-        # for the same reason — the viewport was measured before the resize,
-        # and a stale width would run the raster loops off the new buffer.
+        # The Surface is taken here, after events, because Window._resize
+        # reallocates the pixel buffer: one taken before them could point at
+        # freed memory. Its extent comes from the window rather than the
+        # viewport for the same reason — the viewport was measured before the
+        # resize, and a stale width would run the raster loops off the new
+        # buffer.
         var pixel_w = win.width()
         var pixel_h = win.height()
-        var canvas = Canvas(
-            Surface(win.pixels(), pixel_w, pixel_h), ctx.view, state^
+        state = step(
+            program,
+            ctx,
+            input,
+            Surface(win.pixels(), pixel_w, pixel_h),
+            state^,
         )
-        program.render(canvas)
-        # The letterbox doubles as the clip for anything drawn out of bounds,
-        # so it must land while the Canvas still holds the framebuffer.
-        canvas._draw_letterbox()
-        # Releasing the Canvas ends its borrow of the window, which is what
-        # lets the frame be presented.
-        state = canvas^._release()
         win.present()
 
 

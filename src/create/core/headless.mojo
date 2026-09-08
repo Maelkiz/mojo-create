@@ -1,5 +1,6 @@
 from .autoscale import AutoScale
-from .canvas import Canvas, CanvasState
+from .canvas import CanvasState
+from .frame import step
 from .context import Context
 from .input import Input
 from .program import Program
@@ -51,9 +52,5 @@ def run_headless[
             break
         now += _FRAME_MILLIS
         ctx.time._tick(now)
-        program.update(ctx, input)
-        var canvas = Canvas(mem.surface(), ctx.view, state^)
-        program.render(canvas)
-        canvas._draw_letterbox()
-        state = canvas^._release()
+        state = step(program, ctx, input, mem.surface(), state^)
     return mem^

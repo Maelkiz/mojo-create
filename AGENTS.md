@@ -19,6 +19,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
 | `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the windowed entry point |
+| `src/create/core/frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/core/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
@@ -100,10 +101,18 @@ boundary lives in `CanvasState` (style, loaded fonts, letterbox colour), moved i
 back out by `_release`. The transform stack deliberately does **not**: every frame starts unrotated
 and untranslated, so a missing pop cannot leak into the next one.
 
-Two consequences for library code. A `Surface` must be taken *after* event processing — `Window._resize`
-reallocates the pixel buffer inside `win.events()`, so a pointer grabbed earlier can dangle — and its
-extent must come from the window, not from the viewport, which was measured before the resize. And
-nothing may hold a `Canvas` across frames; hold the `CanvasState` instead.
+Both loops share [frame.mojo](src/create/core/frame.mojo)'s `step` for the frame body, so the windowed
+and headless paths cannot drift in what a frame *is*; they differ only in how one gets started (SDL
+events and a clock, versus a counter).
+
+**A `Canvas` takes its geometry from the `Viewport` and its extent from the `Surface`**, and the two
+can legitimately disagree for one frame. `Window._resize` reallocates the pixel buffer inside
+`win.events()`, after the viewport was measured — so a `Surface` must be taken *after* event
+processing, and its width and height must come from the window, never from the viewport. A lagging
+mapping is one crooked frame; a lying extent is memory corruption, because the extent is baked into
+the `Surface` and so defeats the clipping every raster loop otherwise does.
+
+Nothing may hold a `Canvas` across frames; hold the `CanvasState` instead.
 
 **Transform scope:**
 ```mojo
