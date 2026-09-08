@@ -1,4 +1,4 @@
-from std.testing import TestSuite, assert_equal, assert_true
+from std.testing import TestSuite, assert_equal, assert_true, assert_raises
 from create.audio import Sound
 
 
@@ -49,6 +49,26 @@ def test_load_flac() raises -> None:
     # and they match tone.wav's, since both are the same source signal.
     assert_equal(Int(ptr[unsafe_offset=0]), 34)
     assert_equal(Int(ptr[unsafe_offset=1]), 1)
+
+
+def test_load_dispatches_on_magic_bytes_not_extension() raises -> None:
+    # tone_disguised.flac holds tone.wav's exact bytes under a `.flac` name --
+    # `load` dispatches on the RIFF magic, not the extension, so this must
+    # still take the WAV branch.
+    var s = Sound.load("tests/fixtures/tone_disguised.flac")
+    assert_equal(s.channels, 1)
+    assert_equal(s.freq, 8000)
+    assert_equal(len(s.pcm), 160)
+
+
+def test_load_nonexistent_path_raises() raises -> None:
+    with assert_raises():
+        _ = Sound.load("tests/fixtures/does_not_exist.wav")
+
+
+def test_load_too_short_file_raises() raises -> None:
+    with assert_raises():
+        _ = Sound.load("tests/fixtures/too_short.bin")
 
 
 def main() raises:
