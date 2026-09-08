@@ -103,13 +103,18 @@ Consequences worth internalising:
 
 **Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
 
-**Autoscale:** set `ctx.autoscale` in `create` to keep the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
+**Autoscale** keeps the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. `run` turns it on as `FIT`; `create` can set `ctx.autoscale` to either other mode. Three modes:
 
 | `AutoScale` | Behaviour |
 |---|---|
-| `OFF` (default) | No scaling — `ctx.width`/`height` are the window in pixels |
-| `FIT` | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
+| `FIT` (default) | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
 | `EXTEND` | Same scale factor as `FIT`, but anchored at the origin with no bars — `ctx.width`/`height` grow so the leftover becomes extra world. A wider window shows more horizontal space, a taller one more vertical |
+| `OFF` | No scaling — `ctx.width`/`height` are the window in pixels, so layout must survive any window size on its own |
+
+`FIT` is the default because `OFF` punishes the obvious way to write a program: coordinates laid out
+against the size the author had, silently rearranged on any other display. It also makes both jobs of
+the `run` size live — under `OFF` the design resolution is unused, so `run("T", 1280, 720,
+fullscreen=True)` would ignore the numbers entirely.
 
 **Design resolution comes from the `run` arguments, not from the window.** `run[T](title, w, h)` sets
 both, but the two are independent afterwards: `w`/`h` are the space the program is authored in, and
@@ -117,11 +122,11 @@ they are seeded from what the caller asked for even when SDL hands back somethin
 `run[App]("T", 1000, 1000, fullscreen=True)` means *author at 1000x1000, present fullscreen* — the
 design space is a property of the program, not of whichever monitor it lands on.
 
-| call | `AutoScale.OFF` (default) | `FIT` / `EXTEND` |
+| call | `FIT` (default) / `EXTEND` | `AutoScale.OFF` |
 |---|---|---|
-| `run("T", 1000, 1000)` | 1000x1000 window, world = window | design 1000x1000, scaled to the window |
-| `run("T", 1000, 1000, fullscreen=True)` | fullscreen, world = monitor pixels | design 1000x1000, scaled to the monitor |
-| `run("T", fullscreen=True)` | fullscreen, world = monitor pixels | design 800x600 (the default), scaled to the monitor |
+| `run("T", 1000, 1000)` | design 1000x1000, scaled to the window | 1000x1000 window, world = window |
+| `run("T", 1000, 1000, fullscreen=True)` | design 1000x1000, scaled to the monitor | fullscreen, world = monitor pixels |
+| `run("T", fullscreen=True)` | design 1280x720 (the default), scaled to the monitor | fullscreen, world = monitor pixels |
 
 Under `OFF` the design size is unused and the world is simply the window — in a fullscreen window as
 much as in a sized one.
@@ -131,7 +136,7 @@ that pins its own coordinate space no matter how it is launched. It recomputes t
 spot, so `ctx.width`/`height` and the edge helpers are correct for the rest of `create` rather than
 one frame later.
 
-Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which toggles between the two modes on space.
+Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which cycles all three modes on space.
 
 **Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload.
 
@@ -166,10 +171,10 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.design(w, h, mode)`, `ctx.scale`, `ctx.quit()` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.FIT` default/`EXTEND`/`OFF`), `ctx.design(w, h, mode)`, `ctx.scale`, `ctx.quit()` |
 | `Time` | Frame timing, owned by `Context` and ticked by the run loop: `ctx.time.delta` (Float64, seconds since last frame), `ctx.time.delta_millis` (Int), `ctx.time.elapsed` (Float64, seconds since the first frame), `ctx.time.frame_count` (Int, 1 during the first `update`) |
 | World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Context._base_matrix()` |
-| Design resolution | The size passed to `run` (or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
+| Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |

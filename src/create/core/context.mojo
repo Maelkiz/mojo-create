@@ -53,7 +53,7 @@ struct Context(Movable):
 
         With autoscale on, the program keeps the resolution it was authored
         against and the content is scaled to fit inside the window — so a
-        sketch built for 800x600 looks the same on any screen. Both modes
+        sketch built for 1280x720 looks the same on any screen. Both modes
         derive the same uniform factor and differ only in what happens to the
         window area the design does not cover: `FIT` centres the design and
         leaves letterbox bars, `EXTEND` anchors it at the origin and grows the

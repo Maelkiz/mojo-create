@@ -3,11 +3,13 @@ from create.core import *
 
 @fieldwise_init
 struct Player:
-    # y grows upward, so gravity is negative and a jump is positive.
-    comptime GRAVITY: Float64 = -1.5
-    comptime JUMP_FORCE: Float64 = 30.0
-    comptime JUMP_HOLD_FORCE: Float64 = 0.3
-    comptime SPEED: Float64 = 14.0
+    # All rates are per second, integrated with ctx.time.delta so the feel is
+    # the same at any frame rate. y grows upward, so gravity is negative and a
+    # jump is positive.
+    comptime GRAVITY: Float64 = -5400.0  # units/s^2
+    comptime JUMP_FORCE: Float64 = 1800.0  # units/s
+    comptime JUMP_HOLD_FORCE: Float64 = 1080.0  # units/s^2
+    comptime SPEED: Float64 = 840.0  # units/s
 
     var x: Float64
     var y: Float64
@@ -18,20 +20,22 @@ struct Player:
     var jumps_left: Int
 
     def update(mut self, mut ctx: Context, input: Input):
+        var dt = ctx.time.delta
+
         if input.is_key_down("a"):
-            self.x -= self.SPEED
+            self.x -= self.SPEED * dt
         if input.is_key_down("d"):
-            self.x += self.SPEED
+            self.x += self.SPEED * dt
 
         if input.just_pressed("w") and self.jumps_left > 0:
             self.vel_y = self.JUMP_FORCE
             self.jumps_left -= 1
 
         if input.is_key_down("w") and self.vel_y > 0:
-            self.vel_y += self.JUMP_HOLD_FORCE
+            self.vel_y += self.JUMP_HOLD_FORCE * dt
 
-        self.vel_y += self.GRAVITY
-        self.y += self.vel_y
+        self.vel_y += self.GRAVITY * dt
+        self.y += self.vel_y * dt
 
         var half_w = self.width / 2
         var half_h = self.height / 2

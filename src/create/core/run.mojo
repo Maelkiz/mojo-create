@@ -13,6 +13,7 @@ from window.event import (
 from .canvas import Canvas
 from .input import Input
 from .context import Context
+from .autoscale import AutoScale
 from .program import Program
 from std.math import floor
 from create.math.vector2 import Vector2
@@ -113,15 +114,18 @@ def run[
     P: Program
 ](
     title: String,
-    width: Int = 800,
-    height: Int = 600,
+    width: Int = 1280,
+    height: Int = 720,
     fullscreen: Bool = False,
 ) raises:
     """Open a window and run `P` in it until it quits.
 
     `width`/`height` are both the window size and the design resolution — the
     coordinate space the program is authored in. A fullscreen window covers the
-    display, so the size only shapes the design space there; see `ctx.autoscale`.
+    display, so the size only shapes the design space there.
+
+    The design is scaled to the window (`AutoScale.FIT`) unless `create` sets
+    `ctx.autoscale` otherwise, so a program keeps its layout on any display.
     """
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()
@@ -131,10 +135,16 @@ def run[
     # space a property of the user's monitor rather than of the program.
     ctx._design_w = width
     ctx._design_h = height
+    # Scaling the design to the window is the default because the alternative
+    # punishes the obvious way to write a program: laid-out coordinates that
+    # break on a display the author never had. `create` can opt back out with
+    # `ctx.autoscale = AutoScale.OFF`.
+    ctx.autoscale = AutoScale.FIT
     _wait_for_dimensions(win, ctx)
     var program = P.create(ctx)
-    # create() may have switched autoscale on, so the mapping derived above is
-    # stale by the time it returns — re-derive it before the first frame.
+    # create() may have changed the mode or pinned its own design size, so the
+    # mapping derived above is stale by the time it returns — re-derive it
+    # before the first frame.
     _update_dimensions(win, ctx)
     var input = Input()
     _run_loop(program, win, ctx, input)
