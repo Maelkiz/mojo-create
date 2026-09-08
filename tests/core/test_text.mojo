@@ -7,6 +7,7 @@ from std.testing import TestSuite, assert_equal, assert_true, assert_false
 
 from create.core.align import HAlign, VAlign
 from create.core.color import Color
+from create.core.font import FontWeight
 from create.core.style import Style
 from create.core.surface import MemorySurface
 from create.core.text import TextRenderer
@@ -119,6 +120,22 @@ def test_pixel_scale_grows_the_glyphs() raises -> None:
     assert_true(
         (big[2] - big[0]) > (small[2] - small[0]), "2x scale was not wider"
     )
+
+
+def test_style_defaults() raises -> None:
+    # What every frame starts with, since style does not survive the frame
+    # boundary — a wrong default here silently changes the first draw call of
+    # every render that doesn't set that field.
+    var s = Style()
+    assert_equal(s.fill, Color.WHITE)
+    assert_true(s.fill_enabled)
+    assert_equal(s.stroke, Color.BLACK)
+    assert_equal(s.stroke_width, 1)
+    assert_true(s.stroke_enabled)
+    assert_equal(s.font_size, 16)
+    assert_equal(s.font_weight, FontWeight.REGULAR)
+    assert_true(s.text_align == HAlign.LEFT)
+    assert_true(s.text_baseline == VAlign.TOP)
 
 
 def main() raises:
