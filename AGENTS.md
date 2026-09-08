@@ -197,6 +197,10 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 
 **Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload.
 
+**Mouse buttons:** `input.is_mouse_down()` / `input.mouse_just_pressed()` / `input.mouse_just_released()` take a button number (`1` = left, the default, so the common case needs no argument). `input.wheel` is this frame's scroll delta, zeroed every frame like the key edge bits. `input.mouse_press_pos` is the world position at the most recent press this frame — captured at the press event itself, so it doesn't drift if the mouse keeps moving before the frame ends.
+
+`Program` has no input callbacks — `update`'s `input` parameter is the only input surface, and it is complete: every window event either updates a field on `Input` or is otherwise already reflected in `Context` (`ctx.width`/`height` refresh every frame, so a resize needs no separate notification). This is also what makes input scriptable in a test: `Input` is a plain struct, so `run_headless` or a direct `step(...)` call can fill it in and drive click- or key-driven behaviour without a window — see [tests/core/test_frame.mojo](tests/core/test_frame.mojo).
+
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
 
 **What earns its own parameter** is decided by *who writes it*, not by who feeds it — feeding alone doesn't distinguish anything, since `Time` is fed every frame and is a field on `Context`.

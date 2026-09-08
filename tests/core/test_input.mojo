@@ -252,5 +252,58 @@ def test_unknown_named_key_returns_false() raises -> None:
     assert_equal(input.is_key_down("nonexistent_key"), False)
 
 
+def test_initial_wheel_and_press_pos_zero() raises -> None:
+    var input = Input()
+    assert_equal(input.wheel.x, 0.0)
+    assert_equal(input.wheel.y, 0.0)
+    assert_equal(input.mouse_press_pos.x, 0.0)
+    assert_equal(input.mouse_press_pos.y, 0.0)
+
+
+def test_no_mouse_buttons_down_initially() raises -> None:
+    var input = Input()
+    assert_equal(input.is_mouse_down(), False)
+    assert_equal(input.is_mouse_down(2), False)
+    assert_equal(input.mouse_just_pressed(), False)
+    assert_equal(input.mouse_just_released(), False)
+
+
+def test_is_mouse_down_default_button() raises -> None:
+    var input = Input()
+    input._held_buttons |= 1 << 1
+    assert_true(input.is_mouse_down())
+    assert_equal(input.is_mouse_down(2), False)
+
+
+def test_is_mouse_down_specific_button() raises -> None:
+    var input = Input()
+    input._held_buttons |= 1 << 3
+    assert_true(input.is_mouse_down(3))
+    assert_equal(input.is_mouse_down(1), False)
+
+
+def test_multiple_mouse_buttons_held_independently() raises -> None:
+    var input = Input()
+    input._held_buttons |= 1 << 1
+    input._held_buttons |= 1 << 2
+    assert_true(input.is_mouse_down(1))
+    assert_true(input.is_mouse_down(2))
+    assert_equal(input.is_mouse_down(3), False)
+
+
+def test_mouse_just_pressed_button() raises -> None:
+    var input = Input()
+    input._pressed_buttons |= 1 << 2
+    assert_true(input.mouse_just_pressed(2))
+    assert_equal(input.mouse_just_pressed(1), False)
+
+
+def test_mouse_just_released_button() raises -> None:
+    var input = Input()
+    input._released_buttons |= 1 << 1
+    assert_true(input.mouse_just_released())
+    assert_equal(input.mouse_just_released(2), False)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

@@ -34,11 +34,12 @@ def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
         _update_dimensions(win, ctx)
 
 
-def _process_events[
-    P: Program
-](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
+def _process_events(mut win: Window, mut ctx: Context, mut input: Input) raises:
     input._just_pressed.clear_all()
     input._just_released.clear_all()
+    input.wheel = Vector2(0, 0)
+    input._pressed_buttons = 0
+    input._released_buttons = 0
     var events = win.events()
     for event in events:
         if event.isa[Quit]():
@@ -50,12 +51,10 @@ def _process_events[
             if not input.is_key_down(keycode):
                 input._held_keys.set(keycode)
                 input._just_pressed.set(keycode)
-                program.on_key_down(keycode)
         elif event.isa[KeyUp]():
             var keycode = event[KeyUp].keycode
             input._held_keys.clear(keycode)
             input._just_released.set(keycode)
-            program.on_key_up(keycode)
         elif event.isa[MouseMoved]():
             var e = event[MouseMoved]
             # Pointer positions reach the program in the same space it draws in.
@@ -63,7 +62,6 @@ def _process_events[
             input.mouse = Vector2(p[0], p[1])
             input.mouse_x = Int(floor(p[0]))
             input.mouse_y = Int(floor(p[1]))
-            program.on_mouse_moved(input.mouse_x, input.mouse_y)
         elif event.isa[MouseButtonDown]():
             var e = event[MouseButtonDown]
             var p = ctx.to_world(Float64(e.x), Float64(e.y))
@@ -72,18 +70,22 @@ def _process_events[
             input.mouse = Vector2(p[0], p[1])
             input.mouse_x = Int(floor(p[0]))
             input.mouse_y = Int(floor(p[1]))
-            program.on_mouse_down(e.button, input.mouse_x, input.mouse_y)
+            input.mouse_press_pos = Vector2(p[0], p[1])
+            input._held_buttons |= 1 << e.button
+            input._pressed_buttons |= 1 << e.button
         elif event.isa[MouseButtonUp]():
             var e = event[MouseButtonUp]
             var p = ctx.to_world(Float64(e.x), Float64(e.y))
             input.mouse_pressed = False
-            program.on_mouse_up(e.button, Int(floor(p[0])), Int(floor(p[1])))
+            input.mouse_x = Int(floor(p[0]))
+            input.mouse_y = Int(floor(p[1]))
+            input._held_buttons &= ~(1 << e.button)
+            input._released_buttons |= 1 << e.button
         elif event.isa[MouseWheel]():
             var e = event[MouseWheel]
-            program.on_mouse_wheel(e.x, e.y)
+            input.wheel = Vector2(Float64(e.x), Float64(e.y))
         elif event.isa[Resized]():
-            var e = event[Resized]
-            program.on_resize(e.width, e.height)
+            pass  # ctx.width/height are refreshed every frame regardless.
 
 
 def _run_loop[
@@ -100,7 +102,7 @@ def _run_loop[
         # Dimensions are refreshed before events so pointer positions are
         # mapped with this frame's scale, not the previous one's.
         _update_dimensions(win, ctx)
-        _process_events(program, win, ctx, input)
+        _process_events(win, ctx, input)
         ctx.time._tick(win.ticks())
         # The Surface is taken here, after events, because Window._resize
         # reallocates the pixel buffer: one taken before them could point at

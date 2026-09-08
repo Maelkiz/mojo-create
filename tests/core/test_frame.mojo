@@ -65,5 +65,51 @@ def test_geometry_comes_from_the_viewport() raises -> None:
     assert_equal(m.pixel(100, 100), Color.BLUE)
 
 
+@fieldwise_init
+struct ClickPainter(Program):
+    """Paints red the frame the mouse is pressed, blue otherwise.
+
+    Nothing here is fed by SDL — `Input` is a plain struct a test can fill in
+    and hand straight to `step`, unlike the removed per-event callbacks,
+    which only the run loop could ever fire. This is what makes click-driven
+    behaviour assertable the same way the pixel tests already assert on
+    drawing.
+    """
+
+    var clicked: Bool
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> ClickPainter:
+        return ClickPainter(False)
+
+    def update(mut self, mut ctx: Context, input: Input) raises:
+        self.clicked = input.mouse_just_pressed()
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.RED if self.clicked else Color.BLUE)
+
+
+def test_scripted_click_drives_render() raises -> None:
+    var ctx = Context()
+    ctx.view.set_design(32, 32)
+    ctx.autoscale = AutoScale.FIT
+    ctx._set_viewport(32, 32)
+    var mem = MemorySurface(32, 32)
+
+    var idle_program = ClickPainter(False)
+    var idle_state = step(idle_program, ctx, Input(), mem.surface(), CanvasState())
+    assert_equal(mem.pixel(16, 16), Color.BLUE)
+    _ = idle_state^
+
+    var clicked_program = ClickPainter(False)
+    var clicked_input = Input()
+    clicked_input._pressed_buttons |= 1 << 1
+    var clicked_state = step(
+        clicked_program, ctx, clicked_input, mem.surface(), CanvasState()
+    )
+    assert_equal(mem.pixel(16, 16), Color.RED)
+    _ = clicked_state^
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
