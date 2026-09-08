@@ -11,7 +11,7 @@ struct App(Program):
         return App(0.0)
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
-        self.t += ctx.delta_time
+        self.t = ctx.time.elapsed
 
     def render(self, mut canvas: Canvas) raises:
         # A translucent background fades the previous frame instead of

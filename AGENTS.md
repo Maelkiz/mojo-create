@@ -8,7 +8,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 
 | Module | Path | Responsibility |
 |---|---|---|
-| `core` | `src/create/core/` | Program traits, Canvas, Context, Input, Font, Color |
+| `core` | `src/create/core/` | Program traits, Canvas, Context, Time, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
@@ -21,6 +21,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | `src/create/core/run.mojo` | `run[T](title)` / `run[T](title, w, h)` entry-point overloads |
 | `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/core/context.mojo` | `Context` — width/height/center/time passed to every frame |
+| `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
 | `src/create/core/input.mojo` | `Input` — keyboard state, mouse position/buttons |
 | `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
@@ -133,7 +134,8 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.delta_time` (Float64, seconds), `ctx.delta_millis` (Int), `ctx.frame_count` (Int), `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| `Time` | Frame timing, owned by `Context` and ticked by the run loop: `ctx.time.delta` (Float64, seconds since last frame), `ctx.time.delta_millis` (Int), `ctx.time.elapsed` (Float64, seconds since the first frame), `ctx.time.frame_count` (Int, 1 during the first `update`) |
 | World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Context._base_matrix()` |
 | Design resolution | The size passed to `run` — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |

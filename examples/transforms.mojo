@@ -13,7 +13,7 @@ struct Transforms(Program):
         return Transforms(elapsed=0.0, mouse_x=0, mouse_y=0)
 
     def update(mut self, mut ctx: Context, mut input: Input) raises:
-        self.elapsed += ctx.delta_time
+        self.elapsed = ctx.time.elapsed
         self.mouse_x = input.mouse_x
         self.mouse_y = input.mouse_y
 

@@ -83,14 +83,6 @@ def _process_events[
             program.on_resize(e.width, e.height)
 
 
-def _tick_time(mut win: Window, mut ctx: Context, mut last_ticks: Int) raises:
-    var now = win.ticks()
-    ctx.delta_millis = now - last_ticks
-    ctx.delta_time = Float64(ctx.delta_millis) / 1000.0
-    ctx.frame_count += 1
-    last_ticks = now
-
-
 def _run_loop[
     P: Program
 ](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
@@ -98,7 +90,9 @@ def _run_loop[
     # than passed in: no single call may take both `win` and `canvas` mutably.
     # Building it once also keeps font loading out of the frame path.
     var canvas = Canvas(win)
-    var last_ticks = win.ticks()
+    # Seeded here rather than in _start so the program's create() — which may
+    # load fonts or decode audio — does not land in the first frame's delta.
+    ctx.time._start(win.ticks())
     while win.is_open() and not ctx._quit:
         # Dimensions are refreshed before events so pointer positions are
         # mapped with this frame's scale, not the previous one's.
@@ -108,7 +102,7 @@ def _run_loop[
         # cannot be updated inside _update_dimensions because that call already
         # borrows the window.
         canvas._sync(ctx)
-        _tick_time(win, ctx, last_ticks)
+        ctx.time._tick(win.ticks())
         program.update(ctx, input)
         program.render(canvas)
         canvas._draw_letterbox()

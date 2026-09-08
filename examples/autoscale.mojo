@@ -23,7 +23,7 @@ struct App(Program):
                 ctx.autoscale = AutoScale.EXTEND
             else:
                 ctx.autoscale = AutoScale.FIT
-        self.x += self.dir * 200.0 * ctx.delta_time
+        self.x += self.dir * 200.0 * ctx.time.delta
         if self.x > ctx.right() - 40.0 or self.x < ctx.left() + 40.0:
             self.dir = -self.dir
 

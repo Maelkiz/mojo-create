@@ -1,12 +1,11 @@
 from std.math import min
 from create.math.matrix import Matrix, scale as mat_scale, translate as mat_translate
 from .autoscale import AutoScale
+from .time import Time
 
 
 struct Context(Movable):
-    var frame_count: Int
-    var delta_time: Float64
-    var delta_millis: Int
+    var time: Time
     var width: Int
     var height: Int
     var exit_on_escape: Bool
@@ -21,9 +20,7 @@ struct Context(Movable):
     var _quit: Bool
 
     def __init__(out self):
-        self.frame_count = 0
-        self.delta_time = 0.0
-        self.delta_millis = 0
+        self.time = Time()
         self.width = 0
         self.height = 0
         self.exit_on_escape = True

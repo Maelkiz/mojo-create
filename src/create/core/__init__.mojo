@@ -16,5 +16,6 @@ from .input import Input
 from .key import Key
 from .canvas import Canvas, TransformGuard as TransformGuard
 from .context import Context
+from .time import Time
 from .program import Program
 from .run import run
