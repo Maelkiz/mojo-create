@@ -48,5 +48,33 @@ def test_different_seeds_differ() raises -> None:
     assert_equal(a.float() == b.float(), False)
 
 
+def test_float_golden_vectors() raises -> None:
+    # First eight float() outputs for seed 42 — pins SplitMix64 seeding and
+    # the xoroshiro128+ step so a change to either fails loudly instead of
+    # staying "deterministic".
+    var rng = Random(42)
+    assert_equal(rng.float(), 0.09216857653620139)
+    assert_equal(rng.float(), 0.37809197770204533)
+    assert_equal(rng.float(), 6.418922274806796e-05)
+    assert_equal(rng.float(), 0.6636138713760317)
+    assert_equal(rng.float(), 0.8932261481311833)
+    assert_equal(rng.float(), 0.46157633621021904)
+    assert_equal(rng.float(), 0.9560477333629563)
+    assert_equal(rng.float(), 0.2836676123496478)
+
+
+def test_int_golden_vectors() raises -> None:
+    # First eight int(0, 1_000_000) outputs for seed 42
+    var rng = Random(42)
+    assert_equal(rng.int(0, 1000000), 418247)
+    assert_equal(rng.int(0, 1000000), 329168)
+    assert_equal(rng.int(0, 1000000), 323945)
+    assert_equal(rng.int(0, 1000000), 265373)
+    assert_equal(rng.int(0, 1000000), 314372)
+    assert_equal(rng.int(0, 1000000), 425446)
+    assert_equal(rng.int(0, 1000000), 565016)
+    assert_equal(rng.int(0, 1000000), 204856)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
