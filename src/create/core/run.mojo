@@ -35,11 +35,7 @@ def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
 
 
 def _process_events(mut win: Window, mut ctx: Context, mut input: Input) raises:
-    input._just_pressed.clear_all()
-    input._just_released.clear_all()
-    input.wheel = Vector2(0, 0)
-    input._pressed_buttons = 0
-    input._released_buttons = 0
+    input._new_frame()
     var events = win.events()
     for event in events:
         if event.isa[Quit]():

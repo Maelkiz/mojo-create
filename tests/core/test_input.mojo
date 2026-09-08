@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true
 from create.core.input import Input
+from create.math.vector2 import Vector2
 
 
 def test_initial_mouse_position() raises -> None:
@@ -303,6 +304,38 @@ def test_mouse_just_released_button() raises -> None:
     input._released_buttons |= 1 << 1
     assert_true(input.mouse_just_released())
     assert_equal(input.mouse_just_released(2), False)
+
+
+def test_new_frame_clears_just_pressed_and_released() raises -> None:
+    var input = Input()
+    input._just_pressed.set(65)
+    input._just_released.set(66)
+    input._new_frame()
+    assert_equal(input.just_pressed(65), False)
+    assert_equal(input.just_released(66), False)
+
+
+def test_new_frame_clears_wheel_and_edge_buttons() raises -> None:
+    var input = Input()
+    input.wheel = Vector2(3.0, -2.0)
+    input._pressed_buttons |= 1 << 1
+    input._released_buttons |= 1 << 2
+    input._new_frame()
+    assert_equal(input.wheel.x, 0.0)
+    assert_equal(input.wheel.y, 0.0)
+    assert_equal(input.mouse_just_pressed(1), False)
+    assert_equal(input.mouse_just_released(2), False)
+
+
+def test_new_frame_leaves_held_state_alone() raises -> None:
+    # A key or button held across the frame boundary is not an edge — only
+    # the "just" bits and the per-frame wheel delta reset.
+    var input = Input()
+    input._held_keys.set(65)
+    input._held_buttons |= 1 << 1
+    input._new_frame()
+    assert_true(input.is_key_down(65))
+    assert_true(input.is_mouse_down(1))
 
 
 def main() raises:
