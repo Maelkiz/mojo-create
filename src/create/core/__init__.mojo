@@ -14,7 +14,12 @@ from .autoscale import AutoScale
 from .font_weight import FontWeight
 from .input import Input
 from .key import Key
-from .canvas import Canvas, CanvasState, TransformGuard as TransformGuard
+from .canvas import (
+    Canvas,
+    CanvasState,
+    StyleGuard as StyleGuard,
+    TransformGuard as TransformGuard,
+)
 from .context import Context
 from .time import Time
 from .program import Program
