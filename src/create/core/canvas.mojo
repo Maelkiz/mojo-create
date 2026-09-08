@@ -45,12 +45,12 @@ struct CanvasState(Movable):
         self.letterbox = Color(0x22)
 
 
-struct TransformGuard[
-    surf_origin: Origin[mut=True], origin: Origin[mut=True]
-](Movable):
+struct TransformGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
+    Movable
+):
     var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
 
-    def __init__(out self, ref [Self.origin] canvas: Canvas[Self.surf_origin]):
+    def __init__(out self, ref[Self.origin] canvas: Canvas[Self.surf_origin]):
         self._canvas = Pointer(to=canvas)
 
     def __enter__(mut self):
@@ -60,9 +60,9 @@ struct TransformGuard[
         self._canvas[]._pop_transform()
 
 
-struct StyleGuard[
-    surf_origin: Origin[mut=True], origin: Origin[mut=True]
-](Movable):
+struct StyleGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
+    Movable
+):
     """Restores the style the canvas had when the scope was entered.
 
     `Style` is a plain value, so the guard carries its own snapshot and no
@@ -72,7 +72,7 @@ struct StyleGuard[
     var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
     var _saved: Style
 
-    def __init__(out self, ref [Self.origin] canvas: Canvas[Self.surf_origin]):
+    def __init__(out self, ref[Self.origin] canvas: Canvas[Self.surf_origin]):
         self._saved = canvas._style.copy()
         self._canvas = Pointer(to=canvas)
 
@@ -166,9 +166,7 @@ struct Canvas[origin: Origin[mut=True]]:
     def top(self) -> Float64:
         return self.view.top()
 
-    def _fill_pixels(
-        mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
-    ):
+    def _fill_pixels(mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color):
         fill_pixels(self._surf, x0, y0, x1, y1, c)
 
     def _draw_letterbox(mut self):
@@ -277,7 +275,10 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def _stroke_width_px(self) -> Int:
         """Stroke width in framebuffer pixels, never thinner than one."""
-        return max(Int(Float64(self._style.stroke_width) * self._pixel_scale() + 0.5), 1)
+        return max(
+            Int(Float64(self._style.stroke_width) * self._pixel_scale() + 0.5),
+            1,
+        )
 
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
@@ -451,9 +452,7 @@ struct Canvas[origin: Origin[mut=True]]:
                         elif self._style.stroke_enabled and d2 > r_inner2:
                             blend(surf, off, self._style.stroke)
 
-    def line(
-        mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
-    ):
+    def line(mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64):
         if not self._style.stroke_enabled:
             return
         var p0 = mat_apply(self._transform, x0, y0)
@@ -561,9 +560,7 @@ struct Canvas[origin: Origin[mut=True]]:
     def sprite(mut self, s: Sprite, pos: Vector2):
         self.sprite(s, pos.x, pos.y)
 
-    def sprite(
-        mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int
-    ):
+    def sprite(mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int):
         # Rotation and shear are not resampled — only position and scale apply.
         var p = mat_apply(self._transform, cx, cy)
         var sf = self._pixel_scale()
