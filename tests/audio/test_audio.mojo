@@ -205,5 +205,24 @@ def test_volume_field_does_not_raise_before_play() raises -> None:
     assert_equal(audio.volume, Float32(1.0))
 
 
+def _play_and_drop_scope() raises:
+    var audio = Audio()
+    _ = audio.play(_tone())
+    _ = audio.play(_tone(), loop=True)
+    _ = audio.play(_tone())
+
+
+def test_clean_teardown_with_live_voices() raises -> None:
+    # `audio` from the helper above drops at the end of its scope, exercising
+    # `__deinit__` with live one-shot and looping voices still open. There is
+    # little to assert since `__deinit__` swallows exceptions -- that's the
+    # finding -- but a second `Audio` working afterward proves teardown
+    # didn't abort the process or leave the device in a broken state.
+    _play_and_drop_scope()
+    var audio = Audio()
+    var id = audio.play(_tone())
+    assert_true(audio.is_playing(id))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
