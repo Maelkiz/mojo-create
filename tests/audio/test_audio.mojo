@@ -93,5 +93,37 @@ def test_looping_voice_shares_sound_via_refcount() raises -> None:
     assert_equal(sound.count(), 1)
 
 
+def test_id_zero_is_never_valid() raises -> None:
+    var audio = Audio()
+    assert_false(audio.is_playing(0))
+    audio.stop(0)
+    audio.pause(0)
+    audio.resume(0)
+    audio.set_volume(0, 1.0)
+    var id = audio.play(_tone())
+    assert_false(audio.is_playing(0))
+    assert_true(audio.is_playing(id))
+
+
+def test_negative_id_is_invalid() raises -> None:
+    var audio = Audio()
+    var id = audio.play(_tone())
+    assert_false(audio.is_playing(-1))
+    audio.stop(-1)
+    assert_true(audio.is_playing(id))
+
+
+def test_out_of_range_id_is_invalid() raises -> None:
+    var audio = Audio()
+    var id = audio.play(_tone())
+    var out_of_range = (1 << 32) | 9999  # index past the end of _voices
+    assert_false(audio.is_playing(out_of_range))
+    audio.stop(out_of_range)
+    audio.pause(out_of_range)
+    audio.resume(out_of_range)
+    audio.set_volume(out_of_range, 1.0)
+    assert_true(audio.is_playing(id))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
