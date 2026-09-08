@@ -281,6 +281,32 @@ def test_sprite_blits_unflipped() raises -> None:
     assert_equal(m.pixel(50, 50), Color.WHITE)
 
 
+struct PngSpriteBlit(Program):
+    var sprite: Sprite
+
+    def __init__(out self, var sprite: Sprite):
+        self.sprite = sprite^
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> PngSpriteBlit:
+        return PngSpriteBlit(Sprite.load("tests/fixtures/test_2x2.png"))
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.sprite(self.sprite, 0.0, 0.0)
+
+
+def test_png_sprite_blits_unflipped() raises -> None:
+    # test_2x2.png: top-left=red, top-right=green, bottom-left=blue,
+    # bottom-right=white -- proves the decode-to-screen path for a format
+    # other than BMP, sharing the already-covered raster blit.
+    var m = run_headless[PngSpriteBlit](100, 100)
+    assert_equal(m.pixel(49, 49), Color.RED)
+    assert_equal(m.pixel(50, 49), Color(0, 255, 0))
+    assert_equal(m.pixel(49, 50), Color.BLUE)
+    assert_equal(m.pixel(50, 50), Color.WHITE)
+
+
 @fieldwise_init
 struct StyleAcrossFrames(Program):
     # Frame 1 sets a style and draws nothing; frame 2 draws without setting
