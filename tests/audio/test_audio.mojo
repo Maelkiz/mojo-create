@@ -3,6 +3,7 @@
 
 from std.memory import ArcPointer
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
+from std.time import sleep
 from create.audio import Audio, Sound
 
 
@@ -123,6 +124,35 @@ def test_out_of_range_id_is_invalid() raises -> None:
     audio.resume(out_of_range)
     audio.set_volume(out_of_range, 1.0)
     assert_true(audio.is_playing(id))
+
+
+def test_update_reaps_finished_one_shot_but_keeps_looping_voice() raises -> None:
+    """The suite's only wall-clock-dependent test. Under the dummy driver a
+    256-sample buffer drains in real time, so the leak `update()` is meant to
+    fix can only be observed by actually waiting for it."""
+    var audio = Audio()
+    var one_shot = audio.play(_tone())
+    var looping = audio.play(_tone(), loop=True)
+
+    # Point 1: with no `update()` call, a finished one-shot leaks. There is no
+    # public symptom to poll for while `update()` is absent, so this can only
+    # be a fixed sleep past the drain, not a condition-gated wait.
+    sleep(0.2)
+    assert_true(audio.is_playing(one_shot))
+
+    # Point 2: `update()` reaps it once the drain has happened. Poll rather
+    # than assume one call suffices, so this stays robust on a slow machine.
+    var reaped = False
+    for _ in range(200):
+        audio.update()
+        if not audio.is_playing(one_shot):
+            reaped = True
+            break
+        sleep(0.01)
+    assert_true(reaped)
+
+    # Point 3: the looping voice survives the same `update()` calls.
+    assert_true(audio.is_playing(looping))
 
 
 def main() raises:
