@@ -32,7 +32,7 @@ def test_background_fills_every_pixel() raises -> None:
     var want = Color(10, 20, 30)
     for y in range(16):
         for x in range(16):
-            assert_equal(m.pixel(x, y), want)
+            assert_equal(m.pixel(x, y), want, "pixel " + String(x) + "," + String(y))
 
 
 @fieldwise_init
@@ -185,7 +185,7 @@ def test_stroke_width_scales_to_pixels() raises -> None:
     # pixels thick: rows 47..52 around the centre row.
     var m = run_headless[ThickLine](50, 50, 1, 100, 100)
     for row in range(47, 53):
-        assert_equal(m.pixel(50, row), Color.WHITE)
+        assert_equal(m.pixel(50, row), Color.WHITE, "pixel 50," + String(row))
     assert_equal(m.pixel(50, 46), Color.BLACK)
     assert_equal(m.pixel(50, 53), Color.BLACK)
 
@@ -671,7 +671,7 @@ def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> 
     # thick, not 18.
     var m = run_headless[ThickLineUnderNonUniformScale](50, 50, 1, 100, 100)
     for row in range(47, 53):
-        assert_equal(m.pixel(50, row), Color.WHITE)
+        assert_equal(m.pixel(50, row), Color.WHITE, "pixel 50," + String(row))
     assert_equal(m.pixel(50, 46), Color.BLACK)
     assert_equal(m.pixel(50, 53), Color.BLACK)
 
