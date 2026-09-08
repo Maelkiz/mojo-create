@@ -4,14 +4,14 @@
 # shapes, source-over alpha — are checked rather than eyeballed.
 
 from std.math import pi
-from std.testing import TestSuite, assert_equal
+from std.testing import TestSuite, assert_equal, assert_almost_equal
 
 from create.core import *
 from create.core.headless import run_headless
 from create.core.surface import MemorySurface
 from create.graphics.sprite import Sprite
 from create.math.geometry import Circle, Line, Rectangle, Triangle
-from create.math.matrix import rotate
+from create.math.matrix import rotate, scale, translate
 from create.math.vector2 import Vector2
 
 
@@ -615,6 +615,65 @@ def test_geometry_overloads_dispatch_correctly() raises -> None:
     assert_equal(m.pixel(150, 160), Color.ORANGE)  # line(Vector2, Vector2)
     assert_equal(m.pixel(210, 165), Color.LIGHT_GRAY)  # triangle(Vector2 x3)
     assert_equal(m.pixel(5, 5), Color.BLACK)
+
+
+@fieldwise_init
+struct ToWorldRoundTrip(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> ToWorldRoundTrip:
+        return ToWorldRoundTrip(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        with canvas.transform(translate(10.0, 20.0)):
+            var origin = canvas.to_local(10.0, 20.0)
+            assert_almost_equal(origin[0], 0.0)
+            assert_almost_equal(origin[1], 0.0)
+            var back = canvas.to_world(0.0, 0.0)
+            assert_almost_equal(back[0], 10.0)
+            assert_almost_equal(back[1], 20.0)
+
+        with canvas.transform(translate(5.0, -8.0) @ rotate(pi / 3.0)):
+            var world = canvas.to_world(7.0, -2.0)
+            var local = canvas.to_local(world[0], world[1])
+            assert_almost_equal(local[0], 7.0)
+            assert_almost_equal(local[1], -2.0)
+
+
+def test_to_world_and_to_local_round_trip_through_a_transform() raises -> None:
+    # Asserted inline in render — render's self is not mut, so there is no
+    # field to stash a result in for the test function to read afterwards.
+    _ = run_headless[ToWorldRoundTrip](100, 100)
+
+
+@fieldwise_init
+struct ThickLineUnderNonUniformScale(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> ThickLineUnderNonUniformScale:
+        return ThickLineUnderNonUniformScale(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.stroke(Color.WHITE)
+        canvas.stroke_width(3)
+        with canvas.transform(scale(3.0, 1.0)):
+            canvas.line(-10.0 / 3.0, 0.0, 10.0 / 3.0, 0.0)
+
+
+def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> None:
+    # scale(3.0, 1.0) makes the transform non-uniform, so _pixel_scale must
+    # fall back to canvas.scale (the autoscale factor, 2x here) rather than
+    # the local transform's own 3x — a 3-unit stroke comes out 6 pixels
+    # thick, not 18.
+    var m = run_headless[ThickLineUnderNonUniformScale](50, 50, 1, 100, 100)
+    for row in range(47, 53):
+        assert_equal(m.pixel(50, row), Color.WHITE)
+    assert_equal(m.pixel(50, 46), Color.BLACK)
+    assert_equal(m.pixel(50, 53), Color.BLACK)
 
 
 def main() raises:
