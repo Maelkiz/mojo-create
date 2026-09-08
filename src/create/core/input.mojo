@@ -96,11 +96,27 @@ struct Input(Movable):
     def just_released(self, key: String) -> Bool:
         return self._check(key, self._just_released)
 
-    def is_mouse_down(self, button: Int = 1) -> Bool:
+    def is_mouse_down(self, button: Int = MouseButton.LEFT) -> Bool:
         return (self._held_buttons & (1 << button)) != 0
 
-    def mouse_just_pressed(self, button: Int = 1) -> Bool:
+    def mouse_just_pressed(self, button: Int = MouseButton.LEFT) -> Bool:
         return (self._pressed_buttons & (1 << button)) != 0
 
-    def mouse_just_released(self, button: Int = 1) -> Bool:
+    def mouse_just_released(self, button: Int = MouseButton.LEFT) -> Bool:
         return (self._released_buttons & (1 << button)) != 0
+
+
+struct MouseButton:
+    """Names for `is_mouse_down`/`mouse_just_pressed`/`mouse_just_released`.
+
+    Matches SDL's own button numbering, not named after it: `BACK`/`FORWARD`
+    are the side thumb buttons (SDL's X1/X2) — named for what a mouse driver
+    or browser calls them, not SDL's internal label, since nobody looks at
+    their mouse and thinks "that's my X1 button."
+    """
+
+    comptime LEFT = 1
+    comptime MIDDLE = 2
+    comptime RIGHT = 3
+    comptime BACK = 4
+    comptime FORWARD = 5

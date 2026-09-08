@@ -12,7 +12,7 @@ from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale
 from .font_weight import FontWeight
-from .input import Input
+from .input import Input, MouseButton
 from .key import Key
 from .canvas import (
     Canvas,

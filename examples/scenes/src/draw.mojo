@@ -23,9 +23,8 @@ struct Draw:
 
     def update(mut self, mut ctx: Context, input: Input) raises:
         self._entering = False
-        # SDL button indices: 1 = left, 2 = middle, 3 = right.
-        self.back_pressed = input.mouse_just_pressed(3)
-        self.drawing = input.is_mouse_down(1)
+        self.back_pressed = input.mouse_just_pressed(MouseButton.RIGHT)
+        self.drawing = input.is_mouse_down(MouseButton.LEFT)
         self.pen = input.mouse
 
     def render(self, mut canvas: Canvas) raises:
