@@ -65,6 +65,47 @@ def test_load_bmp_pixels() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=10]), 255)
 
 
+def test_load_bmp_32bit_pixels_and_alpha() raises -> None:
+    # test_2x2_32bit.bmp: same colour layout as test_2x2.bmp (TL=red,
+    # TR=white, BL=blue, BR=white) but 32-bit BI_RGB with four distinct,
+    # file-supplied alpha values -- the only decode path that reads alpha
+    # from disk rather than synthesising it.
+    var s = Sprite.load("tests/fixtures/test_2x2_32bit.bmp")
+    assert_equal(s.width, 2)
+    assert_equal(s.height, 2)
+    var ptr = s.pixels.unsafe_ptr()
+    assert_equal(Int(ptr[unsafe_offset=0]), 255)  # (0,0) R -- red
+    assert_equal(Int(ptr[unsafe_offset=1]), 0)
+    assert_equal(Int(ptr[unsafe_offset=2]), 0)
+    assert_equal(Int(ptr[unsafe_offset=3]), 0)    # (0,0) A
+    assert_equal(Int(ptr[unsafe_offset=4]), 255)  # (1,0) -- white
+    assert_equal(Int(ptr[unsafe_offset=5]), 255)
+    assert_equal(Int(ptr[unsafe_offset=6]), 255)
+    assert_equal(Int(ptr[unsafe_offset=7]), 85)   # (1,0) A
+    assert_equal(Int(ptr[unsafe_offset=8]), 0)    # (0,1) -- blue
+    assert_equal(Int(ptr[unsafe_offset=9]), 0)
+    assert_equal(Int(ptr[unsafe_offset=10]), 255)
+    assert_equal(Int(ptr[unsafe_offset=11]), 170) # (0,1) A
+    assert_equal(Int(ptr[unsafe_offset=12]), 255) # (1,1) -- white
+    assert_equal(Int(ptr[unsafe_offset=13]), 255)
+    assert_equal(Int(ptr[unsafe_offset=14]), 255)
+    assert_equal(Int(ptr[unsafe_offset=15]), 255) # (1,1) A
+
+
+def test_load_topdown_bmp_matches_bottom_up() raises -> None:
+    # test_2x2_topdown.bmp carries a negative height and top-down row order,
+    # but the same final image as test_2x2.bmp. Identical output here is the
+    # only proof the row flip fires for one file and not the other.
+    var top_down = Sprite.load("tests/fixtures/test_2x2_topdown.bmp")
+    var bottom_up = Sprite.load("tests/fixtures/test_2x2.bmp")
+    assert_equal(top_down.width, bottom_up.width)
+    assert_equal(top_down.height, bottom_up.height)
+    var a = top_down.pixels.unsafe_ptr()
+    var b = bottom_up.pixels.unsafe_ptr()
+    for i in range(2 * 2 * 4):
+        assert_equal(Int(a[unsafe_offset=i]), Int(b[unsafe_offset=i]))
+
+
 def test_load_png() raises -> None:
     var s = Sprite.load("tests/assets/sprite.png")
     assert_equal(s.width, 500)
