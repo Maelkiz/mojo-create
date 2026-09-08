@@ -370,6 +370,30 @@ def test_resize_from_zero_width_stays_blank() raises -> None:
         assert_equal(Int(ptr[unsafe_offset=i]), 0)
 
 
+def test_extension_simple() raises -> None:
+    assert_equal(Sprite._extension("sprite.png"), "png")
+
+
+def test_extension_uppercase_is_lowercased() raises -> None:
+    assert_equal(Sprite._extension("SPRITE.PNG"), "png")
+
+
+def test_extension_no_dot() raises -> None:
+    assert_equal(Sprite._extension("sprite"), "")
+
+
+def test_extension_trailing_dot() raises -> None:
+    assert_equal(Sprite._extension("sprite."), "")
+
+
+def test_extension_dot_in_directory_no_file_extension() raises -> None:
+    assert_equal(Sprite._extension("assets/v1.2/sprite"), "2/sprite")
+
+
+def test_extension_double_extension() raises -> None:
+    assert_equal(Sprite._extension("archive.tar.gz"), "gz")
+
+
 def test_load_bmp_alpha_channel() raises -> None:
     var s = Sprite.load("tests/fixtures/test_2x2.bmp")
     var ptr = s.pixels.unsafe_ptr()
