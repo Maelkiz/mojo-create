@@ -5,25 +5,34 @@ from create.math.random import Random
 def test_float_in_unit_interval() raises -> None:
     # float() is half-open [0, 1), matching int(low, high)'s convention
     var rng = Random(42)
+    var out_of_range = 0
     for _ in range(1000):
         var v = rng.float()
-        assert_true(v >= 0.0 and v < 1.0)
+        if not (v >= 0.0 and v < 1.0):
+            out_of_range += 1
+    assert_equal(out_of_range, 0, "draws outside [0, 1) out of 1000")
 
 
 def test_float_range() raises -> None:
     # float(low, high) inherits float()'s half-open convention
     var rng = Random(1)
+    var out_of_range = 0
     for _ in range(1000):
         var v = rng.float(5.0, 10.0)
-        assert_true(v >= 5.0 and v < 10.0)
+        if not (v >= 5.0 and v < 10.0):
+            out_of_range += 1
+    assert_equal(out_of_range, 0, "draws outside [5, 10) out of 1000")
 
 
 def test_int_range() raises -> None:
     # int(low, high) is half-open — the convention float() now matches
     var rng = Random(7)
+    var out_of_range = 0
     for _ in range(1000):
         var v = rng.int(3, 8)
-        assert_true(v >= 3 and v < 8)
+        if not (v >= 3 and v < 8):
+            out_of_range += 1
+    assert_equal(out_of_range, 0, "draws outside [3, 8) out of 1000")
 
 
 def test_bool_roughly_half() raises -> None:
@@ -32,7 +41,9 @@ def test_bool_roughly_half() raises -> None:
     for _ in range(1000):
         if rng.bool():
             true_count += 1
-    assert_true(true_count > 400 and true_count < 600)
+    # Expect ~500 of 1000; tolerate a 100-draw (10 percentage point) band
+    var deviation = abs(true_count - 500)
+    assert_true(deviation <= 100, "true_count=" + String(true_count) + ", deviation=" + String(deviation))
 
 
 def test_deterministic_seed() raises -> None:
