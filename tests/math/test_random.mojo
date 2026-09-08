@@ -74,6 +74,13 @@ def test_float_golden_vectors() raises -> None:
     assert_equal(rng.float(), 0.2836676123496478)
 
 
+def test_entropy_seeded_default_ctor_differs() raises -> None:
+    var a = Random()
+    var b = Random()
+    # Astronomically unlikely to collide on the nanosecond timer seed
+    assert_equal(a.float() == b.float(), False)
+
+
 def test_int_golden_vectors() raises -> None:
     # First eight int(0, 1_000_000) outputs for seed 42
     var rng = Random(42)
