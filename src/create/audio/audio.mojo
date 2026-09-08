@@ -23,7 +23,11 @@ struct Voice(Movable):
 
     def __init__(out self):
         self.stream = 0
-        self.generation = 0
+        # Starts at 1, not 0: id 0 would otherwise be indistinguishable from
+        # a zero-initialised `Int` field, so `_encode(0, 0) == 0` must never
+        # be issuable. `reset` already bumps a recycled slot's generation, so
+        # this only needs to hold for the append path.
+        self.generation = 1
         self.paused = False
         self.looping = False
         self.loop_sound = None
