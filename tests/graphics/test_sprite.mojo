@@ -79,6 +79,54 @@ def test_load_jpeg() raises -> None:
     assert_equal(len(s.pixels), 500 * 500 * 4)
 
 
+def test_load_png_pixels() raises -> None:
+    # test_2x2.png: top-left=red, top-right=green, bottom-left=blue,
+    # bottom-right=white. Source has no alpha channel -- decoder must
+    # synthesise 255.
+    var s = Sprite.load("tests/fixtures/test_2x2.png")
+    var ptr = s.pixels.unsafe_ptr()
+    assert_equal(Int(ptr[unsafe_offset=0]), 255)   # (0,0) R -- red
+    assert_equal(Int(ptr[unsafe_offset=1]), 0)
+    assert_equal(Int(ptr[unsafe_offset=2]), 0)
+    assert_equal(Int(ptr[unsafe_offset=3]), 255)   # synthesised alpha
+    assert_equal(Int(ptr[unsafe_offset=4]), 0)     # (1,0) -- green
+    assert_equal(Int(ptr[unsafe_offset=5]), 255)
+    assert_equal(Int(ptr[unsafe_offset=6]), 0)
+    assert_equal(Int(ptr[unsafe_offset=8]), 0)     # (0,1) -- blue
+    assert_equal(Int(ptr[unsafe_offset=9]), 0)
+    assert_equal(Int(ptr[unsafe_offset=10]), 255)
+    assert_equal(Int(ptr[unsafe_offset=12]), 255)  # (1,1) -- white
+    assert_equal(Int(ptr[unsafe_offset=13]), 255)
+    assert_equal(Int(ptr[unsafe_offset=14]), 255)
+
+
+def _assert_close(got: Int, want: Int, tolerance: Int) raises:
+    var diff = got - want if got > want else want - got
+    assert_true(diff <= tolerance)
+
+
+def test_load_jpeg_pixels() raises -> None:
+    # test_2x2.jpeg: same layout as test_2x2.png, encoded at quality 100 with
+    # no chroma subsampling. Lossy, so compare within a band far tighter than
+    # the gap between any two of these colours -- a red/blue channel swap
+    # would blow well past this tolerance.
+    var s = Sprite.load("tests/fixtures/test_2x2.jpeg")
+    var ptr = s.pixels.unsafe_ptr()
+    var tol = 16
+    _assert_close(Int(ptr[unsafe_offset=0]), 255, tol)  # (0,0) -- red
+    _assert_close(Int(ptr[unsafe_offset=1]), 0, tol)
+    _assert_close(Int(ptr[unsafe_offset=2]), 0, tol)
+    _assert_close(Int(ptr[unsafe_offset=4]), 0, tol)    # (1,0) -- green
+    _assert_close(Int(ptr[unsafe_offset=5]), 255, tol)
+    _assert_close(Int(ptr[unsafe_offset=6]), 0, tol)
+    _assert_close(Int(ptr[unsafe_offset=8]), 0, tol)    # (0,1) -- blue
+    _assert_close(Int(ptr[unsafe_offset=9]), 0, tol)
+    _assert_close(Int(ptr[unsafe_offset=10]), 255, tol)
+    _assert_close(Int(ptr[unsafe_offset=12]), 255, tol) # (1,1) -- white
+    _assert_close(Int(ptr[unsafe_offset=13]), 255, tol)
+    _assert_close(Int(ptr[unsafe_offset=14]), 255, tol)
+
+
 def test_load_with_dimensions() raises -> None:
     var s = Sprite.load("tests/fixtures/test_2x2.bmp", 4, 4)
     assert_equal(s.width, 4)
