@@ -8,7 +8,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 
 | Module | Path | Responsibility |
 |---|---|---|
-| `core` | `src/create/core/` | Program traits, Canvas, Context, Time, Input, Font, Color |
+| `core` | `src/create/core/` | Program trait, run loops, Canvas, Surface, Viewport, Context, Time, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
@@ -18,8 +18,14 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | File | Purpose |
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
-| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the single entry point |
+| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the windowed entry point |
+| `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
+| `src/create/core/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
+| `src/create/core/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, sprite and glyph blits |
+| `src/create/core/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
+| `src/create/core/style.mojo` | `Style` — fill, stroke, font settings; the part of a `Canvas` that outlives a frame |
+| `src/create/core/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
 | `src/create/core/context.mojo` | `Context` — width/height/center/time passed to every frame |
 | `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
 | `src/create/core/input.mojo` | `Input` — keyboard state, mouse position/buttons |
@@ -68,6 +74,14 @@ method that no longer exists — but not a broken library function nothing calls
 the reverse: it type-checks the whole library and is blind to drift. Hence a smoke build on commit
 and both, plus every example, on push.
 
+Rendering is tested for real. `run_headless[T]` runs the same sequence as `run` — `create`, then
+`update` and `render` per frame, letterbox after — over an owned `MemorySurface`, with synthetic 16ms
+frames and empty input, and hands the buffer back. `MemorySurface.pixel(x, y)` reads one pixel out, so
+[tests/core/test_canvas.mojo](tests/core/test_canvas.mojo) asserts on centring, y-up orientation,
+alpha compositing, stroke scaling, letterbox bars and sprite blits instead of eyeballing them. Pass
+`pixel_width`/`pixel_height` to give the framebuffer a different shape from the design size — a 1:1
+mapping has no scale factor and no bars, so autoscale is untestable without it.
+
 `tests/core/test_smoke.mojo` is both: the pre-commit hook builds it, and `pixi run test` runs it
 through `run_headless`. Its `_windowed_entry_point` is never called — `run[T]` opens a window and
 blocks — but an uncalled `def` body is still type-checked, so the windowed path stays gated. Keep the
@@ -78,6 +92,18 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 **Defining a program:** implement `Program` (`create` + `render`, optional `update`) and pass it to `run[T]`. See [examples/movement/src/main.mojo](examples/movement/src/main.mojo) for the full shape, or [tests/core/test_smoke.mojo](tests/core/test_smoke.mojo) for the minimum. Both are compile-gated, so neither can go stale.
 
 > Input arrives as the `Input` argument to `update`, **not** via `Context`. `ctx.input` was removed; `Context` has no `input` field.
+
+**`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
+over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
+pointer, which is what makes `run_headless` possible at all. Anything that must survive the frame
+boundary lives in `CanvasState` (style, loaded fonts, letterbox colour), moved in at construction and
+back out by `_release`. The transform stack deliberately does **not**: every frame starts unrotated
+and untranslated, so a missing pop cannot leak into the next one.
+
+Two consequences for library code. A `Surface` must be taken *after* event processing — `Window._resize`
+reallocates the pixel buffer inside `win.events()`, so a pointer grabbed earlier can dangle — and its
+extent must come from the window, not from the viewport, which was measured before the resize. And
+nothing may hold a `Canvas` across frames; hold the `CanvasState` instead.
 
 **Transform scope:**
 ```mojo
@@ -165,7 +191,24 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 
 3. **Hooks block on breakage.** `pre-commit` builds `tests/core/test_smoke.mojo`; `pre-push` type-checks the library, builds every example, then runs the test suite. Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. Don't commit broken. `--no-verify` (it skips both hooks) is for WIP checkpoints on a scratch branch that get squashed or amended before landing — never on `main`.
 
-4. **Tests are plain Mojo programs, not a test framework.** Each `test_*.mojo` file calls `assert` directly and terminates. There is no `unittest` module or runner. `pixi run test` aborts on first non-zero exit (`set -e`), so a failing file stops the suite.
+4. **`Canvas` must keep exactly one parameter.** `Program.render(self, mut canvas: Canvas)` relies on
+   `Canvas[origin]` having a single inferred parameter so user code can write a bare `Canvas`. Adding a
+   second breaks every program in the repo at once.
+
+   This is also why the framebuffer is refreshed by rebuilding the `Canvas` rather than by handing it
+   a new `Surface`. That was tried and does not work: `Canvas`'s type embeds the window's pixel origin,
+   so a call like `canvas._sync(Surface(win.pixels(), ...))` gives the call site a second mutable path
+   to the same window and the compiler rejects it —
+
+   ```
+   error: aliasing values passed mutably to 'self' argument and passed mutably to 's' argument in '_sync' call
+   ```
+
+   Origin erasure would sidestep it, but `MutableAnyOrigin` is not a known declaration in this Mojo
+   version. Constructing a fresh `Canvas` takes `out self`, so there is no existing borrow to alias
+   against. Don't retry the `_sync` shape.
+
+5. **Tests are plain Mojo programs, not a test framework.** Each `test_*.mojo` file calls `assert` directly and terminates. There is no `unittest` module or runner. `pixi run test` aborts on first non-zero exit (`set -e`), so a failing file stops the suite.
 
 ## Terminology
 
@@ -174,8 +217,11 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 | `Program` | Full interactive program: update + render + event callbacks |
 | `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.FIT` default/`EXTEND`/`OFF`), `ctx.design(w, h, mode)`, `ctx.scale`, `ctx.quit()` |
 | `Time` | Frame timing, owned by `Context` and ticked by the run loop: `ctx.time.delta` (Float64, seconds since last frame), `ctx.time.delta_millis` (Int), `ctx.time.elapsed` (Float64, seconds since the first frame), `ctx.time.frame_count` (Int, 1 during the first `update`) |
-| World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Context._base_matrix()` |
+| World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
+| `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
+| `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
+| `CanvasState` | What survives the frame boundary — `Style`, loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
@@ -192,5 +238,7 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 
 - Don't use `alias` it has been depricated in favor of `comptime`
 - Don't use `UnsafePointer` it has been depricated in favor of `Pointer`
+- Don't use `fn` it has been removed — `error: 'fn' has been removed; use 'def' instead`
 - Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard` — use origin-tracked references.
 - Don't name new test files without the `test_` prefix — the test runner won't pick them up.
+- Don't add a second parameter to `Canvas`, and don't import `window` from `canvas.mojo` — both undo the seam `run_headless` sits in.

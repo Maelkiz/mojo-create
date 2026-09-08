@@ -15,10 +15,10 @@ from create.core import *
 struct MyApp(Program):
 
     @staticmethod
-    def create(mut ctx: Context) raises -> App:
-        return App() # Set initial application state here
+    def create(mut ctx: Context) raises -> MyApp:
+        return MyApp() # Set initial application state here
 
-    def update(mut self, mut ctx: Context) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         pass # Executes once per frame
 
     def render(self, mut canvas: Canvas) raises:
