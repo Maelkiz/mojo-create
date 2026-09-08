@@ -20,7 +20,7 @@ struct AudioDemo(Program):
         var ambience = ArcPointer(Sound.load(script_dir() + "/../assets/ambience.wav"))
         return AudioDemo(audio^, chime, ambience, 0, False)
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         self.audio.update()
 
         if input.just_pressed("space"):

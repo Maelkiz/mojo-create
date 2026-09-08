@@ -24,7 +24,7 @@ struct Smoke(Program):
         ctx.exit_on_escape = True
         return Smoke(0.0, Audio())
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         self.audio.update()
         if input.is_key_down("right"):
             self.x += 100.0 * ctx.time.delta

@@ -10,7 +10,7 @@ struct App(Program):
     def create(mut ctx: Context) raises -> App:
         return App(0.0)
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         self.t = ctx.time.elapsed
 
     def render(self, mut canvas: Canvas) raises:

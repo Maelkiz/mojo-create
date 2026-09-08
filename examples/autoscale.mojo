@@ -17,7 +17,7 @@ struct App(Program):
         ctx.autoscale = AutoScale.FIT
         return App(100.0, 1.0)
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         if input.just_pressed("space"):
             if ctx.autoscale == AutoScale.FIT:
                 ctx.autoscale = AutoScale.EXTEND

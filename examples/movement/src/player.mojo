@@ -17,7 +17,7 @@ struct Player:
     var on_ground: Bool
     var jumps_left: Int
 
-    def update(mut self, mut ctx: Context, mut input: Input):
+    def update(mut self, mut ctx: Context, input: Input):
         if input.is_key_down("a"):
             self.x -= self.SPEED
         if input.is_key_down("d"):

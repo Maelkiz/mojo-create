@@ -12,7 +12,7 @@ struct Game(Program):
         var h: Float64 = 80
         return Game(Player(0.0, 0.0, w, h, 0.0, False, 2))
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         self.player.update(ctx, input)
 
     def render(self, mut canvas: Canvas) raises:

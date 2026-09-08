@@ -16,7 +16,7 @@ struct Game(Program):
         )
         return Game(sprite^, 0, 0)
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         var speed = 15
         if input.is_key_down("w"):
             self.y += speed

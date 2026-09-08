@@ -13,7 +13,7 @@ struct App(Program):
             mouse=Circle(0, 0, 100),
         )
 
-    def update(mut self, mut ctx: Context, mut input: Input) raises:
+    def update(mut self, mut ctx: Context, input: Input) raises:
         self.mouse.move_to(input.mouse)
 
     def render(self, mut canvas: Canvas) raises:

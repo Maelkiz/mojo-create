@@ -117,6 +117,18 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
 
+**What earns its own parameter** is decided by *who writes it*, not by who feeds it — feeding alone doesn't distinguish anything, since `Time` is fed every frame and is a field on `Context`.
+
+| | Loop writes | Program writes | Shape |
+|---|---|---|---|
+| `Context` (and its `Time`) | yes | yes | `mut` parameter |
+| `Canvas` | yes | yes | `mut` parameter |
+| `Input` | yes | **no** | read-only parameter |
+
+`Input` is the only one the program never writes, and that is exactly why it stays out of `Context`: `ctx` must be `mut` for `quit()` and `autoscale`, so anything living on it inherits that mutability. As a separate argument, `input` is borrowed read-only and the one-way flow is enforced by the compiler. (`ctx.time` is the case that shows the cost — the program never writes it either, but `ctx.time.frame_count = 99` compiles.)
+
+Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` in `run.mojo`, so `create` cannot read a fabricated input state. A zeroed `Time` is honest (`frame_count == 0`); a zeroed `Input` would report the mouse at `(0, 0)` — screen centre in this coordinate system, not a corner.
+
 **Audio:** construct `Audio()` once in `create`, hold it as a field, and call `audio.update()` once per frame from `update` — SDL never tells `Audio` a stream finished on its own, so skipping `update()` stalls a loop after its first buffer drains and leaks one-shot voice slots forever. Hold `Sound`s as `ArcPointer[Sound]` fields (`from std.memory import ArcPointer`) — `audio.play(sound, loop=True)` takes an `ArcPointer[Sound]` so a looping voice shares the PCM buffer (refcount bump) instead of copying it. `play` returns a voice id for `stop`/`pause`/`resume`/`is_playing`; ids are generation-counted so a stale id from a finished/recycled slot can't affect a later voice. See [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
 
 ## Critical Gotchas
