@@ -8,11 +8,13 @@ from create.math.geometry import (
     Triangle,
 )
 from create.math.vector2 import Vector2
+from create.math.matrix import Matrix, identity, translate, rotate, scale
+from create.graphics.sprite import Sprite
 from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale
 from .input import Input, MouseButton
-from .font import FontWeight
+from .font import Font, FontWeight
 from .key import Key
 from .canvas import (
     Canvas,
