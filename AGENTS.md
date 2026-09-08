@@ -204,9 +204,12 @@ Consequences worth internalising:
 `Vector2` has `@implicit` constructors from `Tuple[Float64, Float64]`, `Tuple[Int, Int]` and both mixed pairs, so any `Vector2` position argument accepts a bare tuple: `canvas.rect((0, 0), 100, 100)`, `canvas.circle((-100, 0), 50)`.
 
 **Text and style defaults:** `canvas.font_size(n)`, `font_weight(FontWeight.BOLD)`,
-`text_align(HAlign.CENTER)`, `text_baseline(VAlign.MIDDLE)`, then `canvas.text("hi", pos)`.
+`text_align(HAlign.CENTER, VAlign.MIDDLE)`, then `canvas.text("hi", pos)`. `text_align` is
+overloaded on the axis: pass an `HAlign`, a `VAlign`, or both — there is no separate
+`text_baseline`, and `VAlign.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not typographic
+baselines.
 `canvas.font(f)` swaps the face. Every frame starts from `Style()`: fill `WHITE`, **stroke `BLACK`
-and enabled**, stroke width 1, font size 16, weight `REGULAR`, align `LEFT`, baseline `TOP`.
+and enabled**, stroke width 1, font size 16, weight `REGULAR`, halign `LEFT`, valign `TOP`.
 Stroke-on-by-default is the one that surprises — a `rect` drawn without `no_stroke()` gets a black
 outline.
 
@@ -325,7 +328,7 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `StyleGuard` | RAII wrapper from `canvas.style()` — restores fill, stroke and font settings on scope exit |
 | `Color` | `Color(r, g, b, a=255)` or `Color(gray)`; factories `Color.hex(0x336699)`, `Color.hsv(h, s, v)`, `Color.lerp(a, b, t)`; constants `BLACK`/`WHITE`/`DARK_GRAY`/`GRAY`/`LIGHT_GRAY`/`RED`/`GREEN`/`BLUE`/`CYAN`/`MAGENTA`/`YELLOW`/`ORANGE`; queries `.luminance()`, `.to_hsv()`, `.over(dst)` |
-| `HAlign` / `VAlign` | Text anchoring: `HAlign.LEFT`/`CENTER`/`RIGHT`, `VAlign.TOP`/`MIDDLE`/`BOTTOM` |
+| `HAlign` / `VAlign` | Text anchoring, set through the overloaded `canvas.text_align`: `HAlign.LEFT`/`CENTER`/`RIGHT`, `VAlign.TOP`/`MIDDLE`/`BOTTOM`. Stored on `Style` as `text_halign`/`text_valign` |
 | `Font` / `FontWeight` | Packaged Noto faces, lazily loaded on first text draw, with a symbols fallback for missing glyphs; weights `THIN`/`LIGHT`/`REGULAR`/`MEDIUM`/`BOLD`/`BLACK` |
 | `Key` / `MouseButton` | Named codes for the `Int` overloads of the `Input` queries |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |

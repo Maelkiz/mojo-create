@@ -587,11 +587,22 @@ struct Canvas[origin: Origin[mut=True]]:
     def font_weight(mut self, weight: Int):
         self._style.font_weight = weight
 
-    def text_align(mut self, align: HAlign):
-        self._style.text_align = align
+    def text_align(mut self, halign: HAlign):
+        """Anchor the next text horizontally.
 
-    def text_baseline(mut self, baseline: VAlign):
-        self._style.text_baseline = baseline
+        The argument's type picks the axis, so both are set through one verb:
+        `text_align(HAlign.CENTER)`, `text_align(VAlign.MIDDLE)`, or both at
+        once. `VAlign.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not
+        typographic baselines.
+        """
+        self._style.text_halign = halign
+
+    def text_align(mut self, valign: VAlign):
+        self._style.text_valign = valign
+
+    def text_align(mut self, halign: HAlign, valign: VAlign):
+        self._style.text_halign = halign
+        self._style.text_valign = valign
 
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))

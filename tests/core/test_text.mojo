@@ -35,21 +35,21 @@ def _ink_box(m: MemorySurface) -> Tuple[Int, Int, Int, Int]:
     return (x0, y0, x1, y1)
 
 
-def _style(align: HAlign, baseline: VAlign) -> Style:
+def _style(halign: HAlign, valign: VAlign) -> Style:
     var s = Style()
     s.fill = Color.WHITE
     s.font_size = 24
-    s.text_align = align
-    s.text_baseline = baseline
+    s.text_halign = halign
+    s.text_valign = valign
     return s^
 
 
 def _draw(
-    align: HAlign, baseline: VAlign, x: Float64, y: Float64
+    halign: HAlign, valign: VAlign, x: Float64, y: Float64
 ) raises -> MemorySurface:
     var m = MemorySurface(200, 120)
     var t = TextRenderer()
-    t.draw(m.surface(), "Hi", x, y, _style(align, baseline), 1.0)
+    t.draw(m.surface(), "Hi", x, y, _style(halign, valign), 1.0)
     return m^
 
 
@@ -134,8 +134,8 @@ def test_style_defaults() raises -> None:
     assert_true(s.stroke_enabled)
     assert_equal(s.font_size, 16)
     assert_equal(s.font_weight, FontWeight.REGULAR)
-    assert_true(s.text_align == HAlign.LEFT)
-    assert_true(s.text_baseline == VAlign.TOP)
+    assert_true(s.text_halign == HAlign.LEFT)
+    assert_true(s.text_valign == VAlign.TOP)
 
 
 def main() raises:

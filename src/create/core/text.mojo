@@ -83,19 +83,19 @@ struct TextRenderer(Movable):
 
         var draw_x = Int(tx)
         var draw_y = Int(ty)
-        if style.text_align == HAlign.CENTER:
+        if style.text_halign == HAlign.CENTER:
             draw_x -= tw // 2
-        elif style.text_align == HAlign.RIGHT:
+        elif style.text_halign == HAlign.RIGHT:
             draw_x -= tw
 
         var asc = self._font[0].ascender
         var desc = self._font[0].descender
         var baseline_y = draw_y
-        if style.text_baseline == VAlign.TOP:
+        if style.text_valign == VAlign.TOP:
             baseline_y += asc
-        elif style.text_baseline == VAlign.MIDDLE:
+        elif style.text_valign == VAlign.MIDDLE:
             baseline_y += (asc + desc) // 2
-        elif style.text_baseline == VAlign.BOTTOM:
+        elif style.text_valign == VAlign.BOTTOM:
             baseline_y += desc
 
         # Second pass: render
