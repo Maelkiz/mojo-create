@@ -39,5 +39,17 @@ def test_load_wav() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=1]), 1)
 
 
+def test_load_flac() raises -> None:
+    var s = Sound.load("tests/fixtures/tone.flac")
+    assert_equal(s.channels, 1)
+    assert_equal(s.freq, 8000)
+    assert_equal(len(s.pcm), 160)
+    var ptr = s.pcm.unsafe_ptr()
+    # Lossless, so this can assert exact sample values, not a tolerance --
+    # and they match tone.wav's, since both are the same source signal.
+    assert_equal(Int(ptr[unsafe_offset=0]), 34)
+    assert_equal(Int(ptr[unsafe_offset=1]), 1)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
