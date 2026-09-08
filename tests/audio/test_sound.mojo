@@ -1,5 +1,10 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_raises
 from create.audio import Sound
+from create.core import script_dir
+
+
+def _fixture(name: String) -> String:
+    return script_dir() + "/../fixtures/" + name
 
 
 def test_from_pcm_byte_length() raises -> None:
@@ -54,7 +59,7 @@ def test_from_pcm_int16_min() raises -> None:
 
 
 def test_load_wav() raises -> None:
-    var s = Sound.load("tests/fixtures/tone.wav")
+    var s = Sound.load(_fixture("tone.wav"))
     assert_equal(s.channels, 1)
     assert_equal(s.freq, 8000)
     assert_equal(len(s.pcm), 160)
@@ -64,7 +69,7 @@ def test_load_wav() raises -> None:
 
 
 def test_load_flac() raises -> None:
-    var s = Sound.load("tests/fixtures/tone.flac")
+    var s = Sound.load(_fixture("tone.flac"))
     assert_equal(s.channels, 1)
     assert_equal(s.freq, 8000)
     assert_equal(len(s.pcm), 160)
@@ -79,7 +84,7 @@ def test_load_dispatches_on_magic_bytes_not_extension() raises -> None:
     # tone_disguised.flac holds tone.wav's exact bytes under a `.flac` name --
     # `load` dispatches on the RIFF magic, not the extension, so this must
     # still take the WAV branch.
-    var s = Sound.load("tests/fixtures/tone_disguised.flac")
+    var s = Sound.load(_fixture("tone_disguised.flac"))
     assert_equal(s.channels, 1)
     assert_equal(s.freq, 8000)
     assert_equal(len(s.pcm), 160)
@@ -87,12 +92,12 @@ def test_load_dispatches_on_magic_bytes_not_extension() raises -> None:
 
 def test_load_nonexistent_path_raises() raises -> None:
     with assert_raises():
-        _ = Sound.load("tests/fixtures/does_not_exist.wav")
+        _ = Sound.load(_fixture("does_not_exist.wav"))
 
 
 def test_load_too_short_file_raises() raises -> None:
     with assert_raises():
-        _ = Sound.load("tests/fixtures/too_short.bin")
+        _ = Sound.load(_fixture("too_short.bin"))
 
 
 def main() raises:
