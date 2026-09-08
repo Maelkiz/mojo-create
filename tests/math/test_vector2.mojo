@@ -182,5 +182,17 @@ def test_idiv_by_zero() raises -> None:
     assert_true(isnan(v.y))
 
 
+def test_init_tuple_int_float() raises -> None:
+    var v: Vector2 = (3, 4.5)
+    assert_equal(v.x, 3.0)
+    assert_equal(v.y, 4.5)
+
+
+def test_init_tuple_float_int() raises -> None:
+    var v: Vector2 = (3.5, 4)
+    assert_equal(v.x, 3.5)
+    assert_equal(v.y, 4.0)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

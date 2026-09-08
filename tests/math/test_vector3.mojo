@@ -221,5 +221,47 @@ def test_idiv_by_zero() raises -> None:
     assert_true(isinf(v.z))
 
 
+def test_init_tuple_float_int_int() raises -> None:
+    var v: Vector3 = (1.5, 2, 3)
+    assert_equal(v.x, 1.5)
+    assert_equal(v.y, 2.0)
+    assert_equal(v.z, 3.0)
+
+
+def test_init_tuple_int_float_int() raises -> None:
+    var v: Vector3 = (1, 2.5, 3)
+    assert_equal(v.x, 1.0)
+    assert_equal(v.y, 2.5)
+    assert_equal(v.z, 3.0)
+
+
+def test_init_tuple_int_int_float() raises -> None:
+    var v: Vector3 = (1, 2, 3.5)
+    assert_equal(v.x, 1.0)
+    assert_equal(v.y, 2.0)
+    assert_equal(v.z, 3.5)
+
+
+def test_init_tuple_float_float_int() raises -> None:
+    var v: Vector3 = (1.5, 2.5, 3)
+    assert_equal(v.x, 1.5)
+    assert_equal(v.y, 2.5)
+    assert_equal(v.z, 3.0)
+
+
+def test_init_tuple_int_float_float() raises -> None:
+    var v: Vector3 = (1, 2.5, 3.5)
+    assert_equal(v.x, 1.0)
+    assert_equal(v.y, 2.5)
+    assert_equal(v.z, 3.5)
+
+
+def test_init_tuple_float_int_float() raises -> None:
+    var v: Vector3 = (1.5, 2, 3.5)
+    assert_equal(v.x, 1.5)
+    assert_equal(v.y, 2.0)
+    assert_equal(v.z, 3.5)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
