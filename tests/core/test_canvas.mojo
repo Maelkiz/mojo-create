@@ -85,6 +85,63 @@ def test_positive_y_draws_above_centre() raises -> None:
 
 
 @fieldwise_init
+struct CentredCircle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> CentredCircle:
+        return CentredCircle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.CYAN)
+        canvas.circle(0.0, 0.0, 20.0)
+
+
+def test_circle_is_centred_and_radial() raises -> None:
+    var m = run_headless[CentredCircle](100, 100)
+    assert_equal(m.pixel(50, 50), Color.CYAN)
+    # Well inside the radius on each axis — y up means both rows are in.
+    assert_equal(m.pixel(68, 50), Color.CYAN)
+    assert_equal(m.pixel(50, 32), Color.CYAN)
+    # Outside the radius, but inside the square that bounds it: the corner
+    # catches a circle rasterised as a box.
+    assert_equal(m.pixel(66, 66), Color.BLACK)
+    assert_equal(m.pixel(75, 50), Color.BLACK)
+    # And not anchored top-left.
+    assert_equal(m.pixel(5, 5), Color.BLACK)
+
+
+@fieldwise_init
+struct UprightTriangle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> UprightTriangle:
+        return UprightTriangle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.MAGENTA)
+        # Apex up, base below — in world terms, since y grows upward.
+        canvas.triangle(0.0, 30.0, -30.0, -30.0, 30.0, -30.0)
+
+
+def test_triangle_fills_its_interior_only() raises -> None:
+    var m = run_headless[UprightTriangle](100, 100)
+    # Centroid, and a point low in the wide part of the triangle.
+    assert_equal(m.pixel(50, 50), Color.MAGENTA)
+    assert_equal(m.pixel(35, 70), Color.MAGENTA)
+    # The apex is at the top of the buffer, so the upper corners are outside.
+    assert_equal(m.pixel(25, 25), Color.BLACK)
+    assert_equal(m.pixel(75, 25), Color.BLACK)
+    # Below the base.
+    assert_equal(m.pixel(50, 85), Color.BLACK)
+
+
+@fieldwise_init
 struct AlphaOverRed(Program):
     var _unused: Int
 
