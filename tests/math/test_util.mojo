@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 from create.math.util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
-from std.math import pi
+from std.math import pi, isnan, isinf
 
 
 def test_lerp_start() raises -> None:
@@ -161,6 +161,42 @@ def test_degrees_quarter_turn() raises -> None:
 def test_radians_quarter_turn() raises -> None:
     from std.math import pi as PI
     assert_almost_equal(radians(90.0), PI / 2.0, atol=1e-12)
+
+
+# Degenerate-input contract: in_low == in_high divides by zero. At the pinned
+# value that's 0/0 = nan; anywhere else it's a nonzero numerator over zero,
+# which is +/-inf.
+def test_map_degenerate_equal_input_range_at_value() raises -> None:
+    assert_true(isnan(map(5.0, 5.0, 5.0, 0.0, 100.0)))
+
+
+def test_map_degenerate_equal_input_range_away_from_value() raises -> None:
+    assert_true(isinf(map(6.0, 5.0, 5.0, 0.0, 100.0)))
+
+
+def test_norm_degenerate_equal_range_at_value() raises -> None:
+    assert_true(isnan(norm(5.0, 5.0, 5.0)))
+
+
+def test_norm_degenerate_equal_range_away_from_value() raises -> None:
+    assert_true(isinf(norm(6.0, 5.0, 5.0)))
+
+
+def test_smoothstep_degenerate_equal_edges() raises -> None:
+    # clamp(nan, 0, 1) resolves to the upper bound in this implementation
+    assert_equal(smoothstep(3.0, 3.0, 3.0), 1.0)
+    assert_equal(smoothstep(3.0, 3.0, 5.0), 1.0)
+    assert_equal(smoothstep(3.0, 3.0, 1.0), 0.0)
+
+
+def test_fmod_by_zero() raises -> None:
+    assert_true(isnan(fmod(5.0, 0.0)))
+    assert_true(isnan(fmod(0.0, 0.0)))
+    assert_true(isnan(fmod(-5.0, 0.0)))
+
+
+def test_sign_negative_zero() raises -> None:
+    assert_equal(sign(-0.0), 0.0)
 
 
 def main() raises:
