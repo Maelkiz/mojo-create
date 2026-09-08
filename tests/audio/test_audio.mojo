@@ -155,5 +155,33 @@ def test_update_reaps_finished_one_shot_but_keeps_looping_voice() raises -> None
     assert_true(audio.is_playing(looping))
 
 
+def test_many_concurrent_voices() raises -> None:
+    var audio = Audio()
+    var ids = List[Int]()
+    for _ in range(16):
+        ids.append(audio.play(_tone()))
+
+    for i in range(16):
+        assert_true(audio.is_playing(ids[i]))
+    for i in range(16):
+        for j in range(i + 1, 16):
+            assert_true(ids[i] != ids[j])
+
+    for i in range(0, 16, 2):
+        audio.stop(ids[i])
+    for i in range(16):
+        if i % 2 == 0:
+            assert_false(audio.is_playing(ids[i]))
+        else:
+            assert_true(audio.is_playing(ids[i]))
+
+    var more = List[Int]()
+    for _ in range(8):
+        more.append(audio.play(_tone()))
+    for i in range(8):
+        for j in range(0, 16, 2):
+            assert_true(more[i] != ids[j])
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
