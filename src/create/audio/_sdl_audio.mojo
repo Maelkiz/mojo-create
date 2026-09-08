@@ -28,6 +28,21 @@ comptime SDL_AUDIO_S16: Int32 = 0x8010
 comptime SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: UInt32 = 0xFFFFFFFF
 
 
+def _cstr(s: String) -> List[UInt8]:
+    """A NUL-terminated byte buffer for `s`.
+
+    `String.unsafe_ptr()` is not guaranteed NUL-terminated at `len(s)` --
+    passing it straight to a C API that scans for NUL can read past the
+    buffer into whatever memory follows. Building the terminator explicitly
+    sidesteps that.
+    """
+    var bytes = List[UInt8]()
+    for b in s.as_bytes():
+        bytes.append(b)
+    bytes.append(0)
+    return bytes^
+
+
 struct SDLAudio:
     """Thin wrapper over the dynamically-loaded SDL3 library's audio API."""
 
@@ -52,9 +67,10 @@ struct SDLAudio:
         var spec = List[Int32](length=3, fill=0)
         var buf_out = List[Int](length=1, fill=0)
         var len_out = List[Int32](length=1, fill=0)
+        var cpath = _cstr(path)
 
         if not self.lib.call["SDL_LoadWAV", Bool](
-            path.unsafe_ptr(), spec.unsafe_ptr(), buf_out.unsafe_ptr(), len_out.unsafe_ptr()
+            cpath.unsafe_ptr(), spec.unsafe_ptr(), buf_out.unsafe_ptr(), len_out.unsafe_ptr()
         ):
             raise Error("SDL_LoadWAV failed: " + self.get_error())
 

@@ -20,6 +20,21 @@ comptime _OFF_SAMPLERATE = 8
 comptime _OFF_CHANNELS = 12
 
 
+def _cstr(s: String) -> List[UInt8]:
+    """A NUL-terminated byte buffer for `s`.
+
+    `String.unsafe_ptr()` is not guaranteed NUL-terminated at `len(s)` --
+    passing it straight to a C API that scans for NUL can read past the
+    buffer into whatever memory follows. Building the terminator explicitly
+    sidesteps that.
+    """
+    var bytes = List[UInt8]()
+    for b in s.as_bytes():
+        bytes.append(b)
+    bytes.append(0)
+    return bytes^
+
+
 struct SndFile:
     var lib: _DLHandle
 
@@ -29,7 +44,8 @@ struct SndFile:
     def load(self, path: String) raises -> Tuple[List[Int16], Int32, Int32]:
         """Decode an audio file to interleaved S16 PCM. Returns (samples, channels, freq)."""
         var info = List[UInt8](length=_SF_INFO_SIZE, fill=0)
-        var handle = self.lib.call["sf_open", Int](path.unsafe_ptr(), SFM_READ, info.unsafe_ptr())
+        var cpath = _cstr(path)
+        var handle = self.lib.call["sf_open", Int](cpath.unsafe_ptr(), SFM_READ, info.unsafe_ptr())
         if handle == 0:
             var err = self.lib.call["sf_strerror", Pointer[UInt8, MutUntrackedOrigin]](Int(0))
             raise Error("sf_open failed: " + String(unsafe_from_utf8_ptr=err))
