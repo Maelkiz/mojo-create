@@ -40,6 +40,18 @@ struct Input(Movable):
         self._pressed_buttons = 0
         self._released_buttons = 0
 
+    def _new_frame(mut self):
+        """Clears the per-frame edge state: just-pressed/released keys and
+        buttons, and the scroll delta. Called once per frame before events are
+        processed, so a press held across frames stays in `_held_keys`/
+        `_held_buttons` but drops out of the "just" bits after the frame it
+        happened in."""
+        self._just_pressed.clear_all()
+        self._just_released.clear_all()
+        self.wheel = Vector2(0, 0)
+        self._pressed_buttons = 0
+        self._released_buttons = 0
+
     def _check(self, key: String, bits: KeyBits) -> Bool:
         var k = key.lower()
 
