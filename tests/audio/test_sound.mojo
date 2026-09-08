@@ -29,6 +29,30 @@ def test_from_pcm_defaults() raises -> None:
     assert_equal(s.freq, 44100)
 
 
+def test_from_pcm_empty() raises -> None:
+    var data = List[Int16]()
+    var s = Sound.from_pcm(data)
+    assert_equal(len(s.pcm), 0)
+
+
+def test_from_pcm_single_sample() raises -> None:
+    var data: List[Int16] = [12345]
+    var s = Sound.from_pcm(data)
+    assert_equal(len(s.pcm), 2)
+    var ptr = s.pcm.unsafe_ptr()
+    assert_equal(Int(ptr[unsafe_offset=0]), 57)
+    assert_equal(Int(ptr[unsafe_offset=1]), 48)
+
+
+def test_from_pcm_int16_min() raises -> None:
+    var data: List[Int16] = [Int16.MIN]
+    var s = Sound.from_pcm(data)
+    var ptr = s.pcm.unsafe_ptr()
+    # Int16.MIN == -32768 == 0x8000 LE
+    assert_equal(Int(ptr[unsafe_offset=0]), 0)
+    assert_equal(Int(ptr[unsafe_offset=1]), 128)
+
+
 def test_load_wav() raises -> None:
     var s = Sound.load("tests/fixtures/tone.wav")
     assert_equal(s.channels, 1)
