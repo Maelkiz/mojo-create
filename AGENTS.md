@@ -57,7 +57,7 @@ Two git hooks gate the repo; there is no CI, so these are the only automated che
 
 | Hook | Runs | Cost |
 |---|---|---|
-| `.githooks/pre-commit` | Builds `tests/compile/smoke.mojo` | ~1.5s, constant |
+| `.githooks/pre-commit` | Builds `tests/core/test_smoke.mojo` | ~1.5s, constant |
 | `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | ~16s |
 
 Neither runs until `pixi run setup` has been done in the clone.
@@ -68,13 +68,14 @@ method that no longer exists — but not a broken library function nothing calls
 the reverse: it type-checks the whole library and is blind to drift. Hence a smoke build on commit
 and both, plus every example, on push.
 
-`tests/compile/smoke.mojo` is built, never run — `run[T]` opens a window and blocks. It sits outside
-the `test_*.mojo` glob deliberately so `pixi run test` skips it. Keep it minimal: it runs on every
-commit, and its cost must not grow with the example count.
+`tests/core/test_smoke.mojo` is both: the pre-commit hook builds it, and `pixi run test` runs it
+through `run_headless`. Its `_windowed_entry_point` is never called — `run[T]` opens a window and
+blocks — but an uncalled `def` body is still type-checked, so the windowed path stays gated. Keep the
+file minimal: it builds on every commit, and its cost must not grow with the example count.
 
 ## Code Conventions
 
-**Defining a program:** implement `Program` (`create` + `render`, optional `update`) and pass it to `run[T]`. See [examples/movement/src/main.mojo](examples/movement/src/main.mojo) for the full shape, or [tests/compile/smoke.mojo](tests/compile/smoke.mojo) for the minimum. Both are compile-gated, so neither can go stale.
+**Defining a program:** implement `Program` (`create` + `render`, optional `update`) and pass it to `run[T]`. See [examples/movement/src/main.mojo](examples/movement/src/main.mojo) for the full shape, or [tests/core/test_smoke.mojo](tests/core/test_smoke.mojo) for the minimum. Both are compile-gated, so neither can go stale.
 
 > Input arrives as the `Input` argument to `update`, **not** via `Context`. `ctx.input` was removed; `Context` has no `input` field.
 
@@ -162,7 +163,7 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 
 2. **A window does not report its real size immediately.** In fullscreen SDL fires a bogus `(1, 1)` `Resized` before reporting real dimensions, so `_wait_for_dimensions` pumps events until width > 1 and height > 1. On Wayland the fullscreen transition is asynchronous on top of that: `run[T]("t", 1000, 1000, fullscreen=True)` reports the requested 1000x1000 for frame 1 and the display size from frame 2 on. The run loop refreshes dimensions every frame, so this self-corrects — but don't cache pixel dimensions from `create` or the first frame.
 
-3. **Hooks block on breakage.** `pre-commit` builds `tests/compile/smoke.mojo`; `pre-push` type-checks the library, builds every example, then runs the test suite. Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. Don't commit broken. `--no-verify` (it skips both hooks) is for WIP checkpoints on a scratch branch that get squashed or amended before landing — never on `main`.
+3. **Hooks block on breakage.** `pre-commit` builds `tests/core/test_smoke.mojo`; `pre-push` type-checks the library, builds every example, then runs the test suite. Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. Don't commit broken. `--no-verify` (it skips both hooks) is for WIP checkpoints on a scratch branch that get squashed or amended before landing — never on `main`.
 
 4. **Tests are plain Mojo programs, not a test framework.** Each `test_*.mojo` file calls `assert` directly and terminates. There is no `unittest` module or runner. `pixi run test` aborts on first non-zero exit (`set -e`), so a failing file stops the suite.
 

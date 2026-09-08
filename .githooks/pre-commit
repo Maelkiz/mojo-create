@@ -7,7 +7,7 @@
 # library type-check run on push.
 set -u
 
-smoke=tests/compile/smoke.mojo
+smoke=tests/core/test_smoke.mojo
 if [ ! -f "$smoke" ]; then
     echo "$smoke is missing — commit aborted."
     exit 1
