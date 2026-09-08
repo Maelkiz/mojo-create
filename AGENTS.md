@@ -25,7 +25,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | `src/create/core/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
 | `src/create/core/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, sprite and glyph blits |
 | `src/create/core/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
-| `src/create/core/style.mojo` | `Style` — fill, stroke, font settings; the part of a `Canvas` that outlives a frame |
+| `src/create/core/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
 | `src/create/core/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
 | `src/create/core/context.mojo` | `Context` — width/height/center/time passed to every frame |
 | `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
@@ -97,9 +97,15 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 **`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
 over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
 pointer, which is what makes `run_headless` possible at all. Anything that must survive the frame
-boundary lives in `CanvasState` (style, loaded fonts, letterbox colour), moved in at construction and
-back out by `_release`. The transform stack deliberately does **not**: every frame starts unrotated
-and untranslated, so a missing pop cannot leak into the next one.
+boundary lives in `CanvasState` (loaded fonts, letterbox colour), moved in at construction and
+back out by `_release`. The transform stack and the style deliberately do **not**: every frame starts
+unrotated, untranslated and at the default style, so a missing pop or a forgotten `no_stroke` cannot
+leak into the next one.
+
+Style is per-frame because nothing can usefully set it otherwise: `Canvas` is reachable only from
+`render`, so no program can seed a style in `create`, and every `render` sets what it draws with
+anyway. Carrying it forward would preserve nothing but the mistakes — a `render` that sets fill inside
+a branch would otherwise inherit the last frame that took the other branch.
 
 Both loops share [frame.mojo](src/create/core/frame.mojo)'s `step` for the frame body, so the windowed
 and headless paths cannot drift in what a frame *is*; they differ only in how one gets started (SDL
@@ -123,6 +129,21 @@ with canvas.transform(translate(50.0, 50.0)):
 # WRONG ✗ — manually pushing without guaranteed pop
 canvas._push_transform(m)
 ```
+
+**Style scope:** `fill`/`stroke`/`stroke_width`/`no_fill`/`no_stroke`/`font_size` and friends are bare
+mutators, and calling them straight from `render` is the normal path — the style resets next frame
+either way. `canvas.style()` is for the *callee*: a helper that sets style before drawing leaks it to
+whatever the caller draws next, which the guard scopes away.
+
+```mojo
+# In a draw helper — restores the caller's fill, stroke and font on exit
+with canvas.style():
+    canvas.no_stroke()
+    canvas.fill(Color(220, 80, 80))
+    canvas.rect(self.pos, 40, 40)
+```
+
+`Style` is a plain value, so each guard carries its own snapshot and nesting needs no stack.
 
 **Coordinate system is Unity-style, not Processing-style.** The origin is the **middle** of the design area and **y grows upward**. World `x` runs `[-width/2, +width/2]`, `y` runs `[-height/2, +height/2]`; `(0, 0)` is the centre of the screen and negative `y` is below it.
 
@@ -230,8 +251,9 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
-| `CanvasState` | What survives the frame boundary — `Style`, loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again |
+| `CanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: it is rebuilt per frame |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
+| `StyleGuard` | RAII wrapper from `canvas.style()` — restores fill, stroke and font settings on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
 | `Audio` | Program-owned playback device: `play`/`stop`/`stop_all`/`pause`/`resume`/`is_playing`/`set_volume`, plus `update()` (call once per frame) |
@@ -248,6 +270,6 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 - Don't use `alias` it has been depricated in favor of `comptime`
 - Don't use `UnsafePointer` it has been depricated in favor of `Pointer`
 - Don't use `fn` it has been removed — `error: 'fn' has been removed; use 'def' instead`
-- Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard` — use origin-tracked references.
+- Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard`/`StyleGuard` — use origin-tracked references.
 - Don't name new test files without the `test_` prefix — the test runner won't pick them up.
 - Don't add a second parameter to `Canvas`, and don't import `window` from `canvas.mojo` — both undo the seam `run_headless` sits in.
