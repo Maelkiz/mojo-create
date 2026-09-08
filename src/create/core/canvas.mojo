@@ -3,7 +3,7 @@ from window.window import Window
 from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale
-from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
+from .font import Font
 from .context import Context
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
@@ -15,6 +15,7 @@ from create.math.matrix import (
 )
 from create.graphics.sprite import Sprite
 from .style import Style
+from .text import TextRenderer
 from .surface import Surface
 from .raster import (
     blend,
@@ -57,9 +58,7 @@ struct Canvas[origin: Origin[mut=True]]:
     var _offset_x: Float64
     var _offset_y: Float64
     var _style: Style
-    var _font: List[Font]
-    var _fallback_font: List[Font]
-    var _fallback_attempted: Bool
+    var _text: TextRenderer
     # `_user` is the composition of the matrices the program pushed, mapping
     # local coordinates to world. `_base` maps world to pixels. Drawing uses
     # the product; `to_world`/`to_local` use `_user` alone, so a program never
@@ -85,9 +84,7 @@ struct Canvas[origin: Origin[mut=True]]:
         self._offset_x = 0.0
         self._offset_y = 0.0
         self._style = Style()
-        self._font = List[Font]()
-        self._fallback_font = List[Font]()
-        self._fallback_attempted = False
+        self._text = TextRenderer()
         self._user = identity[3]()
         self._user_inv = identity[3]()
         self._transform = identity[3]()
@@ -563,83 +560,13 @@ struct Canvas[origin: Origin[mut=True]]:
         self.text(s, pos.x, pos.y)
 
     def font(mut self, var f: Font):
-        self._font = List[Font]()
-        self._font.append(f^)
-
-    def _ensure_font(mut self) raises:
-        """Lazily load the packaged default/fallback fonts on first use.
-
-        Canvas construction never touches disk — a program that draws no
-        text pays no freetype cost and can't fail on a missing default. The
-        fallback load is attempted at most once; a missing fallback file
-        just means no fallback glyphs, not a draw failure.
-        """
-        if len(self._font) == 0:
-            self._font.append(Font(FONT_DEFAULT_PATH, self._style.font_size))
-        if not self._fallback_attempted:
-            self._fallback_attempted = True
-            try:
-                self._fallback_font.append(Font(FONT_FALLBACK_PATH, self._style.font_size))
-            except:
-                pass
+        self._text.set_font(f^)
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:
         if not self._style.fill_enabled:
             return
-        self._ensure_font()
-        # Only the anchor is mapped: glyphs rasterise upright in pixel space, so
-        # `VAlign.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
-        # however the world axes are oriented.
+        # Only the anchor is mapped — the layout itself happens in pixel space.
         var p = mat_apply(self._transform, x, y)
-        var tx = p[0]
-        var ty = p[1]
         var surf = self._surface()
-        var size = max(
-            Int(Float64(self._style.font_size) * self._pixel_scale() + 0.5), 1
-        )
-        self._font[0]._set_weight(self._style.font_weight)
-        var c = self._style.fill
-
-        # Two-pass: measure total advance for alignment, then render.
-        # First pass: measure (iterate codepoints for correct Unicode handling)
-        var tw = 0
-        for cp in s.codepoints():
-            var cpi = Int(cp)
-            var g: GlyphInfo
-            if len(self._fallback_font) > 0 and not self._font[0].has_glyph(cpi):
-                g = self._fallback_font[0].render(cpi, size)
-            else:
-                g = self._font[0].render(cpi, size)
-            tw += g.advance_x
-
-        var draw_x = Int(tx)
-        var draw_y = Int(ty)
-        if self._style.text_align == HAlign.CENTER:
-            draw_x -= tw // 2
-        elif self._style.text_align == HAlign.RIGHT:
-            draw_x -= tw
-
-        var asc = self._font[0].ascender
-        var desc = self._font[0].descender
-        var baseline_y = draw_y
-        if self._style.text_baseline == VAlign.TOP:
-            baseline_y += asc
-        elif self._style.text_baseline == VAlign.MIDDLE:
-            baseline_y += (asc + desc) // 2
-        elif self._style.text_baseline == VAlign.BOTTOM:
-            baseline_y += desc
-
-        # Second pass: render
-        var cx = draw_x
-        for cp in s.codepoints():
-            var cpi = Int(cp)
-            var g: GlyphInfo
-            if len(self._fallback_font) > 0 and not self._font[0].has_glyph(cpi):
-                g = self._fallback_font[0].render(cpi, size)
-            else:
-                g = self._font[0].render(cpi, size)
-            if g.width > 0 and g.height > 0:
-                blit_glyph(
-                    surf, g, cx + g.bearing_x, baseline_y - g.bearing_y, c
-                )
-            cx += g.advance_x
+        var scale = self._pixel_scale()
+        self._text.draw(surf, s, p[0], p[1], self._style, scale)
