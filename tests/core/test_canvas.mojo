@@ -4,7 +4,7 @@
 # shapes, source-over alpha — are checked rather than eyeballed.
 
 from std.math import pi
-from std.testing import TestSuite, assert_equal, assert_almost_equal
+from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 
 from create.core import *
 from create.core.headless import run_headless
@@ -674,6 +674,121 @@ def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> 
         assert_equal(m.pixel(50, row), Color.WHITE)
     assert_equal(m.pixel(50, 46), Color.BLACK)
     assert_equal(m.pixel(50, 53), Color.BLACK)
+
+
+def _non_background_box(m: MemorySurface, bg: Color) -> Tuple[Int, Int, Int, Int]:
+    """Bounding box of every pixel that differs from `bg` — `(x0, y0, x1, y1)`,
+    inclusive. Returns `(-1, -1, -1, -1)` when nothing was drawn.
+
+    Unlike test_text.mojo's transparent buffers, everything drawn here goes
+    onto an opaque background, so ink is found by difference from the known
+    background colour rather than by alpha.
+    """
+    var x0 = m.width
+    var y0 = m.height
+    var x1 = -1
+    var y1 = -1
+    for y in range(m.height):
+        for x in range(m.width):
+            if m.pixel(x, y) != bg:
+                x0 = min(x0, x)
+                y0 = min(y0, y)
+                x1 = max(x1, x)
+                y1 = max(y1, y)
+    if x1 < 0:
+        return (-1, -1, -1, -1)
+    return (x0, y0, x1, y1)
+
+
+@fieldwise_init
+struct TextThroughCanvas(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> TextThroughCanvas:
+        return TextThroughCanvas(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.WHITE)
+        canvas.font_size(24)
+        canvas.text_align(HAlign.LEFT)
+        canvas.text_baseline(VAlign.TOP)
+        canvas.text("Hi", 0.0, 0.0)
+
+
+def test_text_draws_below_and_right_of_a_top_left_anchor() raises -> None:
+    # The anchor is the buffer centre (100, 100); LEFT/TOP must put the ink
+    # at or past it on both axes, the same shape test_text.mojo checks
+    # against TextRenderer directly, but now through Canvas's own style and
+    # transform plumbing.
+    var m = run_headless[TextThroughCanvas](200, 200)
+    var box = _non_background_box(m, Color.BLACK)
+    assert_true(box[2] >= 0, "nothing was drawn")
+    assert_true(box[0] >= 100, "ink started left of the anchor")
+    assert_true(box[1] >= 100, "ink started above the anchor")
+
+
+@fieldwise_init
+struct NoFillText(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> NoFillText:
+        return NoFillText(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_fill()
+        canvas.text("Hi", 0.0, 0.0)
+
+
+def test_no_fill_suppresses_text() raises -> None:
+    var m = run_headless[NoFillText](200, 200)
+    assert_equal(_non_background_box(m, Color.BLACK)[2], -1)
+
+
+@fieldwise_init
+struct SmallText(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SmallText:
+        return SmallText(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.WHITE)
+        canvas.font_size(12)
+        canvas.text_align(HAlign.LEFT)
+        canvas.text_baseline(VAlign.TOP)
+        canvas.text("Hi", 0.0, 0.0)
+
+
+@fieldwise_init
+struct BigText(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> BigText:
+        return BigText(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.WHITE)
+        canvas.font_size(48)
+        canvas.text_align(HAlign.LEFT)
+        canvas.text_baseline(VAlign.TOP)
+        canvas.text("Hi", 0.0, 0.0)
+
+
+def test_font_size_grows_the_text_extent() raises -> None:
+    var small = _non_background_box(run_headless[SmallText](200, 200), Color.BLACK)
+    var big = _non_background_box(run_headless[BigText](200, 200), Color.BLACK)
+    assert_true(
+        (big[2] - big[0]) > (small[2] - small[0]),
+        "larger font_size was not wider",
+    )
 
 
 def main() raises:
