@@ -34,6 +34,20 @@ struct Context(Movable):
         self._offset_y = 0.0
         self._quit = False
 
+    def design(mut self, width: Int, height: Int, mode: Int = AutoScale.FIT):
+        """Author this program in a fixed world size, scaled to any window.
+
+        Overrides the size passed to `run`, so a program can pin its own
+        coordinate space no matter how it is launched — including fullscreen,
+        where the window size is the display's rather than the caller's. The
+        mapping is recomputed here rather than on the next frame, so `width`,
+        `height` and the edge helpers are correct for the rest of `create`.
+        """
+        self._design_w = width
+        self._design_h = height
+        self.autoscale = mode
+        self._set_viewport(self._pixel_w, self._pixel_h)
+
     def _set_viewport(mut self, pixel_w: Int, pixel_h: Int):
         """Recompute the design-space mapping for a framebuffer of this size.
 

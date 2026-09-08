@@ -6,9 +6,7 @@ from create.core.context import Context
 
 def _design(w: Int, h: Int, mode: Int) raises -> Context:
     var ctx = Context()
-    ctx.autoscale = mode
-    ctx._design_w = w
-    ctx._design_h = h
+    ctx.design(w, h, mode)
     return ctx^
 
 
@@ -189,6 +187,36 @@ def test_autoscale_ignored_before_design_size_known() raises -> None:
     ctx._set_viewport(1024, 768)
     assert_equal(ctx.width, 1024)
     assert_equal(ctx.scale, 1.0)
+
+
+def test_design_sets_size_and_mode() raises -> None:
+    var ctx = Context()
+    ctx.design(800, 600)
+    ctx._set_viewport(1600, 1200)
+    assert_equal(ctx.autoscale, AutoScale.FIT)
+    assert_equal(ctx.width, 800)
+    assert_equal(ctx.height, 600)
+
+
+def test_design_recomputes_viewport_immediately() raises -> None:
+    # The mapping must be live before create() returns, not one frame later.
+    var ctx = Context()
+    ctx._set_viewport(1600, 1200)
+    ctx.design(800, 600)
+    assert_equal(ctx.width, 800)
+    assert_equal(ctx.height, 600)
+    assert_almost_equal(ctx.scale, 2.0)
+
+
+def test_design_overrides_earlier_design() raises -> None:
+    var ctx = Context()
+    ctx.design(800, 600)
+    ctx.design(1000, 500, AutoScale.EXTEND)
+    ctx._set_viewport(2000, 1000)
+    assert_equal(ctx.autoscale, AutoScale.EXTEND)
+    assert_almost_equal(ctx.scale, 2.0)
+    assert_equal(ctx.width, 1000)
+    assert_equal(ctx.height, 500)
 
 
 def main() raises:

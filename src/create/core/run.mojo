@@ -90,7 +90,7 @@ def _run_loop[
     # than passed in: no single call may take both `win` and `canvas` mutably.
     # Building it once also keeps font loading out of the frame path.
     var canvas = Canvas(win)
-    # Seeded here rather than in _start so the program's create() — which may
+    # Seeded here rather than in run() so the program's create() — which may
     # load fonts or decode audio — does not land in the first frame's delta.
     ctx.time._start(win.ticks())
     while win.is_open() and not ctx._quit:
@@ -109,24 +109,32 @@ def _run_loop[
         win.present()
 
 
-def _start[P: Program](title: String, width: Int, height: Int) raises:
-    var fullscreen = width == 0 and height == 0
+def run[
+    P: Program
+](
+    title: String,
+    width: Int = 800,
+    height: Int = 600,
+    fullscreen: Bool = False,
+) raises:
+    """Open a window and run `P` in it until it quits.
+
+    `width`/`height` are both the window size and the design resolution — the
+    coordinate space the program is authored in. A fullscreen window covers the
+    display, so the size only shapes the design space there; see `ctx.autoscale`.
+    """
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()
+    # The size the program is authored against is always what the caller asked
+    # for, never what the display handed back. In fullscreen SDL ignores the
+    # requested size, so seeding this from the window would make the design
+    # space a property of the user's monitor rather than of the program.
+    ctx._design_w = width
+    ctx._design_h = height
     _wait_for_dimensions(win, ctx)
-    # The size the program is authored against: whatever it starts at. It fixes
-    # the scale factor for programs that set ctx.autoscale in create(), so they
-    # keep their proportions no matter how the window is later resized.
-    ctx._design_w = ctx.width
-    ctx._design_h = ctx.height
     var program = P.create(ctx)
+    # create() may have switched autoscale on, so the mapping derived above is
+    # stale by the time it returns — re-derive it before the first frame.
+    _update_dimensions(win, ctx)
     var input = Input()
     _run_loop(program, win, ctx, input)
-
-
-def run[P: Program](title: String) raises:
-    _start[P](title, 0, 0)
-
-
-def run[P: Program](title: String, width: Int, height: Int) raises:
-    _start[P](title, width, height)

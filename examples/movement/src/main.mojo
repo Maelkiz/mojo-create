@@ -21,4 +21,4 @@ struct Game(Program):
 
 
 def main() raises:
-    run[Game]("Player Movement")
+    run[Game]("Player Movement", fullscreen=True)

@@ -18,7 +18,7 @@ Creative coding / interactive graphics library for Mojo, inspired by Processing 
 | File | Purpose |
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
-| `src/create/core/run.mojo` | `run[T](title)` / `run[T](title, w, h)` entry-point overloads |
+| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the single entry point |
 | `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/core/context.mojo` | `Context` — width/height/center/time passed to every frame |
 | `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
@@ -103,13 +103,33 @@ Consequences worth internalising:
 
 **Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
 
-**Autoscale:** set `ctx.autoscale` in `create` to keep the program in the resolution passed to `run` while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
+**Autoscale:** set `ctx.autoscale` in `create` to keep the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes:
 
 | `AutoScale` | Behaviour |
 |---|---|
 | `OFF` (default) | No scaling — `ctx.width`/`height` are the window in pixels |
 | `FIT` | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
 | `EXTEND` | Same scale factor as `FIT`, but anchored at the origin with no bars — `ctx.width`/`height` grow so the leftover becomes extra world. A wider window shows more horizontal space, a taller one more vertical |
+
+**Design resolution comes from the `run` arguments, not from the window.** `run[T](title, w, h)` sets
+both, but the two are independent afterwards: `w`/`h` are the space the program is authored in, and
+they are seeded from what the caller asked for even when SDL hands back something else. So
+`run[App]("T", 1000, 1000, fullscreen=True)` means *author at 1000x1000, present fullscreen* — the
+design space is a property of the program, not of whichever monitor it lands on.
+
+| call | `AutoScale.OFF` (default) | `FIT` / `EXTEND` |
+|---|---|---|
+| `run("T", 1000, 1000)` | 1000x1000 window, world = window | design 1000x1000, scaled to the window |
+| `run("T", 1000, 1000, fullscreen=True)` | fullscreen, world = monitor pixels | design 1000x1000, scaled to the monitor |
+| `run("T", fullscreen=True)` | fullscreen, world = monitor pixels | design 800x600 (the default), scaled to the monitor |
+
+Under `OFF` the design size is unused and the world is simply the window — in a fullscreen window as
+much as in a sized one.
+
+`ctx.design(w, h, mode=AutoScale.FIT)` overrides the `run` size from inside `create`, for a program
+that pins its own coordinate space no matter how it is launched. It recomputes the mapping on the
+spot, so `ctx.width`/`height` and the edge helpers are correct for the rest of `create` rather than
+one frame later.
 
 Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which toggles between the two modes on space.
 
@@ -135,7 +155,7 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 
 1. **`-I src` is required for every `mojo run`.** Without it, `from create.core import *` fails with a module-not-found error. All pixi tasks include it; bare `mojo run` calls must add it manually.
 
-2. **`run[T]("title")` with no size opens fullscreen** — SDL fires a bogus `(1, 1)` `Resized` event before reporting real dimensions. `_wait_for_dimensions` pumps events until width > 1 and height > 1. Do not pass `(0, 0)` directly to `run`.
+2. **A window does not report its real size immediately.** In fullscreen SDL fires a bogus `(1, 1)` `Resized` before reporting real dimensions, so `_wait_for_dimensions` pumps events until width > 1 and height > 1. On Wayland the fullscreen transition is asynchronous on top of that: `run[T]("t", 1000, 1000, fullscreen=True)` reports the requested 1000x1000 for frame 1 and the display size from frame 2 on. The run loop refreshes dimensions every frame, so this self-corrects — but don't cache pixel dimensions from `create` or the first frame.
 
 3. **Hooks block on breakage.** `pre-commit` builds `tests/compile/smoke.mojo`; `pre-push` type-checks the library, builds every example, then runs the test suite. Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. Don't commit broken. `--no-verify` (it skips both hooks) is for WIP checkpoints on a scratch branch that get squashed or amended before landing — never on `main`.
 
@@ -146,10 +166,10 @@ Second reason, smaller but real: `Input` is constructed *after* `P.create(ctx)` 
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: update + render + event callbacks |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.scale`, `ctx.quit()` |
+| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.OFF`/`FIT`/`EXTEND`), `ctx.design(w, h, mode)`, `ctx.scale`, `ctx.quit()` |
 | `Time` | Frame timing, owned by `Context` and ticked by the run loop: `ctx.time.delta` (Float64, seconds since last frame), `ctx.time.delta_millis` (Int), `ctx.time.elapsed` (Float64, seconds since the first frame), `ctx.time.frame_count` (Int, 1 during the first `update`) |
 | World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Context._base_matrix()` |
-| Design resolution | The size passed to `run` — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
+| Design resolution | The size passed to `run` (or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
