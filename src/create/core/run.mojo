@@ -10,7 +10,8 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from .canvas import Canvas
+from .canvas import Canvas, CanvasState
+from .surface import Surface
 from .input import Input
 from .context import Context
 from .autoscale import AutoScale
@@ -87,10 +88,10 @@ def _process_events[
 def _run_loop[
     P: Program
 ](mut program: P, mut win: Window, mut ctx: Context, mut input: Input) raises:
-    # Canvas borrows the window for the whole loop, so it is built here rather
-    # than passed in: no single call may take both `win` and `canvas` mutably.
-    # Building it once also keeps font loading out of the frame path.
-    var canvas = Canvas(win)
+    # Style and loaded fonts live here rather than in the Canvas, which is
+    # rebuilt every frame; the transform stack deliberately does not, so each
+    # frame starts unrotated and untranslated.
+    var state = CanvasState()
     # Seeded here rather than in run() so the program's create() — which may
     # load fonts or decode audio — does not land in the first frame's delta.
     ctx.time._start(win.ticks())
@@ -99,14 +100,25 @@ def _run_loop[
         # mapped with this frame's scale, not the previous one's.
         _update_dimensions(win, ctx)
         _process_events(program, win, ctx, input)
-        # Canvas mirrors the frame dimensions and the design-space mapping; it
-        # cannot be updated inside _update_dimensions because that call already
-        # borrows the window.
-        canvas._sync(ctx)
         ctx.time._tick(win.ticks())
         program.update(ctx, input)
+        # Built here, after events, because Window._resize reallocates the
+        # pixel buffer: a Surface taken before them could point at freed
+        # memory. Its extent comes from the window rather than the viewport
+        # for the same reason — the viewport was measured before the resize,
+        # and a stale width would run the raster loops off the new buffer.
+        var pixel_w = win.width()
+        var pixel_h = win.height()
+        var canvas = Canvas(
+            Surface(win.pixels(), pixel_w, pixel_h), ctx.view, state^
+        )
         program.render(canvas)
+        # The letterbox doubles as the clip for anything drawn out of bounds,
+        # so it must land while the Canvas still holds the framebuffer.
         canvas._draw_letterbox()
+        # Releasing the Canvas ends its borrow of the window, which is what
+        # lets the frame be presented.
+        state = canvas^._release()
         win.present()
 
 

@@ -1,10 +1,9 @@
 from std.math import max, min, abs
-from window.window import Window
 from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale
 from .font import Font
-from .context import Context
+from .viewport import Viewport
 from create.math.geometry import Rectangle, Circle, Line, Triangle
 from create.math.vector2 import Vector2
 from create.math.matrix import (
@@ -28,12 +27,31 @@ from .raster import (
 )
 
 
-struct TransformGuard[
-    win_origin: Origin[mut=True], origin: Origin[mut=True]
-](Movable):
-    var _canvas: Pointer[Canvas[Self.win_origin], Self.origin]
+struct CanvasState(Movable):
+    """The part of a `Canvas` that outlives the frame it was drawn in.
 
-    def __init__(out self, ref [Self.origin] canvas: Canvas[Self.win_origin]):
+    A `Canvas` is built fresh over each frame's framebuffer, so anything it
+    must remember between frames — the current style, the loaded fonts — is
+    moved out at the end of one frame and into the next. The transform stack
+    is deliberately absent: it starts empty every frame by construction.
+    """
+
+    var style: Style
+    var text: TextRenderer
+    var letterbox: Color
+
+    def __init__(out self):
+        self.style = Style()
+        self.text = TextRenderer()
+        self.letterbox = Color(0x22)
+
+
+struct TransformGuard[
+    surf_origin: Origin[mut=True], origin: Origin[mut=True]
+](Movable):
+    var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
+
+    def __init__(out self, ref [Self.origin] canvas: Canvas[Self.surf_origin]):
         self._canvas = Pointer(to=canvas)
 
     def __enter__(mut self):
@@ -44,21 +62,24 @@ struct TransformGuard[
 
 
 struct Canvas[origin: Origin[mut=True]]:
-    var _win: Pointer[Window, Self.origin]
+    """A drawing surface for one frame.
+
+    Built fresh each frame over that frame's `Surface`, which is why it has
+    exactly one parameter: `Program.render(self, mut canvas: Canvas)` infers
+    it, so user code never spells the backend. State that must survive the
+    frame goes in and out through `CanvasState`.
+    """
+
     var width: Int
     var height: Int
     var autoscale: Int
     var scale: Float64
     var letterbox: Color
-    var _pixel_w: Int
-    var _pixel_h: Int
+    var view: Viewport
+    var _surf: Surface[Self.origin]
+    var _state: CanvasState
     var _base: Matrix[3, 3]
     var _base_inv: Matrix[3, 3]
-    var _scaled: Bool
-    var _offset_x: Float64
-    var _offset_y: Float64
-    var _style: Style
-    var _text: TextRenderer
     # `_user` is the composition of the matrices the program pushed, mapping
     # local coordinates to world. `_base` maps world to pixels. Drawing uses
     # the product; `to_world`/`to_local` use `_user` alone, so a program never
@@ -69,52 +90,40 @@ struct Canvas[origin: Origin[mut=True]]:
     var _transform_inv: Matrix[3, 3]
     var _transform_stack: List[Matrix[3, 3]]
 
-    def __init__(out self, ref [Self.origin] win: Window) raises:
-        self._win = Pointer(to=win)
-        self.width = win.width()
-        self.height = win.height()
-        self.autoscale = AutoScale.OFF
-        self.scale = 1.0
-        self.letterbox = Color(0x22)
-        self._pixel_w = self.width
-        self._pixel_h = self.height
-        self._base = identity[3]()
-        self._base_inv = identity[3]()
-        self._scaled = False
-        self._offset_x = 0.0
-        self._offset_y = 0.0
-        self._style = Style()
-        self._text = TextRenderer()
-        self._user = identity[3]()
-        self._user_inv = identity[3]()
-        self._transform = identity[3]()
-        self._transform_inv = identity[3]()
-        self._transform_stack = List[Matrix[3, 3]]()
-
-    def _sync(mut self, ctx: Context):
-        """Adopt this frame's dimensions and world-space mapping from `ctx`.
-
-        `width`/`height` are the design-space extent — equal to the window
-        size unless autoscale is on. `_pixel_w`/`_pixel_h` stay the real
-        framebuffer size, which every raster loop clips against.
-        """
-        self._pixel_w = self._win[].width()
-        self._pixel_h = self._win[].height()
-        self.width = ctx.width
-        self.height = ctx.height
-        self.autoscale = ctx.autoscale
-        self.scale = ctx.scale
-        self._scaled = ctx.view.scaled()
-        self._offset_x = ctx.view.offset_x
-        self._offset_y = ctx.view.offset_y
-        self._base = ctx._base_matrix()
+    def __init__(
+        out self,
+        surf: Surface[Self.origin],
+        view: Viewport,
+        var state: CanvasState,
+    ):
+        """Adopt this frame's framebuffer, mapping and carried-over state."""
+        self._surf = surf
+        self.view = view.copy()
+        self.width = view.width
+        self.height = view.height
+        self.autoscale = view.autoscale
+        self.scale = view.scale
+        self.letterbox = state.letterbox
+        self._state = state^
+        self._base = view.base_matrix()
         self._base_inv = inverse(self._base)
-        # Render always starts with an empty stack, so the base mapping is the
-        # current transform; user transforms compose on top of it.
+        # The stack starts empty, so the base mapping is the current transform;
+        # user transforms compose on top of it.
         self._user = identity[3]()
         self._user_inv = identity[3]()
         self._transform = self._base
         self._transform_inv = self._base_inv
+        self._transform_stack = List[Matrix[3, 3]]()
+
+    def _release(deinit self) -> CanvasState:
+        """Hand back the state the next frame's `Canvas` should start from.
+
+        Consumes the canvas, so the borrow on the framebuffer ends here — the
+        run loop cannot present while a `Canvas` is still alive.
+        """
+        var state = self._state^
+        state.letterbox = self.letterbox
+        return state^
 
     def left(self) -> Float64:
         """World x of the left edge — negative, since the origin is centred."""
@@ -130,18 +139,10 @@ struct Canvas[origin: Origin[mut=True]]:
     def top(self) -> Float64:
         return Float64(self.height) / 2.0
 
-    def _surface(mut self) -> Surface[origin_of(self._win[]._pixels)]:
-        """This frame's framebuffer as a plain value the raster loops take.
-
-        Re-fetched per call because `Window._resize` reallocates the pixel
-        buffer, so a pointer cached across frames would dangle.
-        """
-        return Surface(self._win[].pixels(), self._pixel_w, self._pixel_h)
-
     def _fill_pixels(
         mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
     ):
-        fill_pixels(self._surface(), x0, y0, x1, y1, c)
+        fill_pixels(self._surf, x0, y0, x1, y1, c)
 
     def _draw_letterbox(mut self):
         """Paint the window area outside the design bounds.
@@ -152,14 +153,18 @@ struct Canvas[origin: Origin[mut=True]]:
         nor an out-of-bounds region to clip — and rounding the extended size
         could otherwise leave a one-pixel seam along an edge.
         """
-        if not self._scaled or self.autoscale == AutoScale.EXTEND:
+        if not self.view.scaled() or self.autoscale == AutoScale.EXTEND:
             return
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var cx0 = Int(self._offset_x)
-        var cy0 = Int(self._offset_y)
-        var cx1 = Int(self._offset_x + Float64(self.width) * self.scale + 0.5)
-        var cy1 = Int(self._offset_y + Float64(self.height) * self.scale + 0.5)
+        var W = self._surf.width
+        var H = self._surf.height
+        var cx0 = Int(self.view.offset_x)
+        var cy0 = Int(self.view.offset_y)
+        var cx1 = Int(
+            self.view.offset_x + Float64(self.width) * self.scale + 0.5
+        )
+        var cy1 = Int(
+            self.view.offset_y + Float64(self.height) * self.scale + 0.5
+        )
         var c = self.letterbox
         if cy0 > 0:
             self._fill_pixels(0, 0, W, cy0, c)
@@ -237,43 +242,43 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def _stroke_width_px(self) -> Int:
         """Stroke width in framebuffer pixels, never thinner than one."""
-        return max(Int(Float64(self._style.stroke_width) * self._pixel_scale() + 0.5), 1)
+        return max(Int(Float64(self._state.style.stroke_width) * self._pixel_scale() + 0.5), 1)
 
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ):
         line_pixels(
-            self._surface(),
+            self._surf,
             x0,
             y0,
             x1,
             y1,
-            self._style.stroke,
+            self._state.style.stroke,
             self._stroke_width_px(),
         )
 
     def fill(mut self, color: Color):
-        self._style.fill = color
-        self._style.fill_enabled = True
+        self._state.style.fill = color
+        self._state.style.fill_enabled = True
 
     def no_fill(mut self):
-        self._style.fill_enabled = False
+        self._state.style.fill_enabled = False
 
     def stroke(mut self, color: Color):
-        self._style.stroke = color
-        self._style.stroke_enabled = True
+        self._state.style.stroke = color
+        self._state.style.stroke_enabled = True
 
     def no_stroke(mut self):
-        self._style.stroke_enabled = False
+        self._state.style.stroke_enabled = False
 
     def stroke_width(mut self, w: Int):
-        self._style.stroke_width = w
+        self._state.style.stroke_width = w
 
     def background(mut self, color: Color):
-        fill_all(self._surface(), color)
+        fill_all(self._surf, color)
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
-        var surf = self._surface()
+        var surf = self._surf
         var W = surf.width
         var H = surf.height
         var lx0 = x - w / 2.0
@@ -291,11 +296,11 @@ struct Canvas[origin: Origin[mut=True]]:
             var y0 = Int(min(p0[1], p1[1]))
             var iw = Int(abs(p1[0] - p0[0]))
             var ih = Int(abs(p1[1] - p0[1]))
-            if self._style.fill_enabled:
-                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._style.fill)
-            if self._style.stroke_enabled:
+            if self._state.style.fill_enabled:
+                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._state.style.fill)
+            if self._state.style.stroke_enabled:
                 var sw = self._stroke_width_px()
-                var c = self._style.stroke
+                var c = self._state.style.stroke
                 fill_pixels(surf, x0, y0, x0 + iw, y0 + sw, c)
                 fill_pixels(surf, x0, y0 + ih - sw, x0 + iw, y0 + ih, c)
                 fill_pixels(surf, x0, y0 + sw, x0 + sw, y0 + ih - sw, c)
@@ -315,7 +320,7 @@ struct Canvas[origin: Origin[mut=True]]:
             var sy_max = min(
                 Int(max(max(c0[1], c1[1]), max(c2[1], c3[1]))) + 1, H
             )
-            var sw_f = Float64(self._style.stroke_width)
+            var sw_f = Float64(self._state.style.stroke_width)
             for row in range(sy_min, sy_max):
                 for col in range(sx_min, sx_max):
                     var local = mat_apply(
@@ -332,19 +337,19 @@ struct Canvas[origin: Origin[mut=True]]:
                         and ly >= ly0 + sw_f
                         and ly <= ly1 - sw_f
                     )
-                    if self._style.fill_enabled and (
-                        not self._style.stroke_enabled or in_inner
+                    if self._state.style.fill_enabled and (
+                        not self._state.style.stroke_enabled or in_inner
                     ):
-                        blend(surf, off, self._style.fill)
-                    elif self._style.stroke_enabled and not in_inner:
-                        blend(surf, off, self._style.stroke)
+                        blend(surf, off, self._state.style.fill)
+                    elif self._state.style.stroke_enabled and not in_inner:
+                        blend(surf, off, self._state.style.stroke)
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64):
-        var surf = self._surface()
+        var surf = self._surf
         var W = surf.width
         var H = surf.height
         var r2 = r * r
-        var r_inner = r - Float64(self._style.stroke_width)
+        var r_inner = r - Float64(self._state.style.stroke_width)
         var r_inner2 = r_inner * r_inner
 
         if self._uniform():
@@ -368,14 +373,14 @@ struct Canvas[origin: Origin[mut=True]]:
                     var d2 = dx * dx + dy * dy
                     if d2 <= pr2:
                         var off = (row * W + col) * 4
-                        if self._style.fill_enabled and (
-                            not self._style.stroke_enabled
+                        if self._state.style.fill_enabled and (
+                            not self._state.style.stroke_enabled
                             or pr_inner <= 0.0
                             or d2 <= pr_inner2
                         ):
-                            blend(surf, off, self._style.fill)
-                        elif self._style.stroke_enabled and d2 > pr_inner2:
-                            blend(surf, off, self._style.stroke)
+                            blend(surf, off, self._state.style.fill)
+                        elif self._state.style.stroke_enabled and d2 > pr_inner2:
+                            blend(surf, off, self._state.style.stroke)
         else:
             var p0 = mat_apply(self._transform, cx - r, cy)
             var p1 = mat_apply(self._transform, cx + r, cy)
@@ -399,19 +404,19 @@ struct Canvas[origin: Origin[mut=True]]:
                     var d2 = dx * dx + dy * dy
                     if d2 <= r2:
                         var off = (row * W + col) * 4
-                        if self._style.fill_enabled and (
-                            not self._style.stroke_enabled
+                        if self._state.style.fill_enabled and (
+                            not self._state.style.stroke_enabled
                             or r_inner <= 0.0
                             or d2 <= r_inner2
                         ):
-                            blend(surf, off, self._style.fill)
-                        elif self._style.stroke_enabled and d2 > r_inner2:
-                            blend(surf, off, self._style.stroke)
+                            blend(surf, off, self._state.style.fill)
+                        elif self._state.style.stroke_enabled and d2 > r_inner2:
+                            blend(surf, off, self._state.style.stroke)
 
     def line(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ):
-        if not self._style.stroke_enabled:
+        if not self._state.style.stroke_enabled:
             return
         var p0 = mat_apply(self._transform, x0, y0)
         var p1 = mat_apply(self._transform, x1, y1)
@@ -435,11 +440,11 @@ struct Canvas[origin: Origin[mut=True]]:
         var sy2 = p2[1]
         var sx3 = p3[0]
         var sy3 = p3[1]
-        if self._style.fill_enabled:
+        if self._state.style.fill_enabled:
             fill_triangle(
-                self._surface(), sx1, sy1, sx2, sy2, sx3, sy3, self._style.fill
+                self._surf, sx1, sy1, sx2, sy2, sx3, sy3, self._state.style.fill
             )
-        if self._style.stroke_enabled:
+        if self._state.style.stroke_enabled:
             self._line_pixels(sx1, sy1, sx2, sy2)
             self._line_pixels(sx2, sy2, sx3, sy3)
             self._line_pixels(sx3, sy3, sx1, sy1)
@@ -507,7 +512,7 @@ struct Canvas[origin: Origin[mut=True]]:
             return
         var p = mat_apply(self._transform, cx, cy)
         blit_sprite(
-            self._surface(),
+            self._surf,
             s,
             Int(p[0]) - s.width // 2,
             Int(p[1]) - s.height // 2,
@@ -527,7 +532,7 @@ struct Canvas[origin: Origin[mut=True]]:
         var dw = max(Int(Float64(w) * sf + 0.5), 1)
         var dh = max(Int(Float64(h) * sf + 0.5), 1)
         blit_sprite(
-            self._surface(),
+            self._surf,
             s,
             Int(p[0]) - dw // 2,
             Int(p[1]) - dh // 2,
@@ -542,16 +547,16 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(s, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
-        self._style.font_size = size
+        self._state.style.font_size = size
 
     def font_weight(mut self, weight: Int):
-        self._style.font_weight = weight
+        self._state.style.font_weight = weight
 
     def text_align(mut self, align: HAlign):
-        self._style.text_align = align
+        self._state.style.text_align = align
 
     def text_baseline(mut self, baseline: VAlign):
-        self._style.text_baseline = baseline
+        self._state.style.text_baseline = baseline
 
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))
@@ -560,13 +565,13 @@ struct Canvas[origin: Origin[mut=True]]:
         self.text(s, pos.x, pos.y)
 
     def font(mut self, var f: Font):
-        self._text.set_font(f^)
+        self._state.text.set_font(f^)
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:
-        if not self._style.fill_enabled:
+        if not self._state.style.fill_enabled:
             return
         # Only the anchor is mapped — the layout itself happens in pixel space.
         var p = mat_apply(self._transform, x, y)
-        var surf = self._surface()
+        var surf = self._surf
         var scale = self._pixel_scale()
-        self._text.draw(surf, s, p[0], p[1], self._style, scale)
+        self._state.text.draw(surf, s, p[0], p[1], self._state.style, scale)
