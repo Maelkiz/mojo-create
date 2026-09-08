@@ -3,7 +3,6 @@ from window.window import Window
 from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale
-from .font_weight import FontWeight
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from .context import Context
 from create.math.geometry import Rectangle, Circle, Line, Triangle
@@ -15,6 +14,7 @@ from create.math.matrix import (
     apply as mat_apply,
 )
 from create.graphics.sprite import Sprite
+from .style import Style
 from .surface import Surface
 from .raster import (
     blend,
@@ -56,15 +56,7 @@ struct Canvas[origin: Origin[mut=True]]:
     var _scaled: Bool
     var _offset_x: Float64
     var _offset_y: Float64
-    var _fill: Color
-    var _fill_enabled: Bool
-    var _stroke: Color
-    var _stroke_width: Int
-    var _stroke_enabled: Bool
-    var _font_size: Int
-    var _font_weight: Int
-    var _text_align: HAlign
-    var _text_baseline: VAlign
+    var _style: Style
     var _font: List[Font]
     var _fallback_font: List[Font]
     var _fallback_attempted: Bool
@@ -92,15 +84,7 @@ struct Canvas[origin: Origin[mut=True]]:
         self._scaled = False
         self._offset_x = 0.0
         self._offset_y = 0.0
-        self._fill = Color.WHITE
-        self._fill_enabled = True
-        self._stroke = Color.BLACK
-        self._stroke_width = 1
-        self._stroke_enabled = True
-        self._font_size = 16
-        self._font_weight = FontWeight.REGULAR
-        self._text_align = HAlign.LEFT
-        self._text_baseline = VAlign.TOP
+        self._style = Style()
         self._font = List[Font]()
         self._fallback_font = List[Font]()
         self._fallback_attempted = False
@@ -256,7 +240,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def _stroke_width_px(self) -> Int:
         """Stroke width in framebuffer pixels, never thinner than one."""
-        return max(Int(Float64(self._stroke_width) * self._pixel_scale() + 0.5), 1)
+        return max(Int(Float64(self._style.stroke_width) * self._pixel_scale() + 0.5), 1)
 
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
@@ -267,26 +251,26 @@ struct Canvas[origin: Origin[mut=True]]:
             y0,
             x1,
             y1,
-            self._stroke,
+            self._style.stroke,
             self._stroke_width_px(),
         )
 
     def fill(mut self, color: Color):
-        self._fill = color
-        self._fill_enabled = True
+        self._style.fill = color
+        self._style.fill_enabled = True
 
     def no_fill(mut self):
-        self._fill_enabled = False
+        self._style.fill_enabled = False
 
     def stroke(mut self, color: Color):
-        self._stroke = color
-        self._stroke_enabled = True
+        self._style.stroke = color
+        self._style.stroke_enabled = True
 
     def no_stroke(mut self):
-        self._stroke_enabled = False
+        self._style.stroke_enabled = False
 
     def stroke_width(mut self, w: Int):
-        self._stroke_width = w
+        self._style.stroke_width = w
 
     def background(mut self, color: Color):
         fill_all(self._surface(), color)
@@ -310,11 +294,11 @@ struct Canvas[origin: Origin[mut=True]]:
             var y0 = Int(min(p0[1], p1[1]))
             var iw = Int(abs(p1[0] - p0[0]))
             var ih = Int(abs(p1[1] - p0[1]))
-            if self._fill_enabled:
-                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._fill)
-            if self._stroke_enabled:
+            if self._style.fill_enabled:
+                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._style.fill)
+            if self._style.stroke_enabled:
                 var sw = self._stroke_width_px()
-                var c = self._stroke
+                var c = self._style.stroke
                 fill_pixels(surf, x0, y0, x0 + iw, y0 + sw, c)
                 fill_pixels(surf, x0, y0 + ih - sw, x0 + iw, y0 + ih, c)
                 fill_pixels(surf, x0, y0 + sw, x0 + sw, y0 + ih - sw, c)
@@ -334,7 +318,7 @@ struct Canvas[origin: Origin[mut=True]]:
             var sy_max = min(
                 Int(max(max(c0[1], c1[1]), max(c2[1], c3[1]))) + 1, H
             )
-            var sw_f = Float64(self._stroke_width)
+            var sw_f = Float64(self._style.stroke_width)
             for row in range(sy_min, sy_max):
                 for col in range(sx_min, sx_max):
                     var local = mat_apply(
@@ -351,19 +335,19 @@ struct Canvas[origin: Origin[mut=True]]:
                         and ly >= ly0 + sw_f
                         and ly <= ly1 - sw_f
                     )
-                    if self._fill_enabled and (
-                        not self._stroke_enabled or in_inner
+                    if self._style.fill_enabled and (
+                        not self._style.stroke_enabled or in_inner
                     ):
-                        blend(surf, off, self._fill)
-                    elif self._stroke_enabled and not in_inner:
-                        blend(surf, off, self._stroke)
+                        blend(surf, off, self._style.fill)
+                    elif self._style.stroke_enabled and not in_inner:
+                        blend(surf, off, self._style.stroke)
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64):
         var surf = self._surface()
         var W = surf.width
         var H = surf.height
         var r2 = r * r
-        var r_inner = r - Float64(self._stroke_width)
+        var r_inner = r - Float64(self._style.stroke_width)
         var r_inner2 = r_inner * r_inner
 
         if self._uniform():
@@ -387,14 +371,14 @@ struct Canvas[origin: Origin[mut=True]]:
                     var d2 = dx * dx + dy * dy
                     if d2 <= pr2:
                         var off = (row * W + col) * 4
-                        if self._fill_enabled and (
-                            not self._stroke_enabled
+                        if self._style.fill_enabled and (
+                            not self._style.stroke_enabled
                             or pr_inner <= 0.0
                             or d2 <= pr_inner2
                         ):
-                            blend(surf, off, self._fill)
-                        elif self._stroke_enabled and d2 > pr_inner2:
-                            blend(surf, off, self._stroke)
+                            blend(surf, off, self._style.fill)
+                        elif self._style.stroke_enabled and d2 > pr_inner2:
+                            blend(surf, off, self._style.stroke)
         else:
             var p0 = mat_apply(self._transform, cx - r, cy)
             var p1 = mat_apply(self._transform, cx + r, cy)
@@ -418,19 +402,19 @@ struct Canvas[origin: Origin[mut=True]]:
                     var d2 = dx * dx + dy * dy
                     if d2 <= r2:
                         var off = (row * W + col) * 4
-                        if self._fill_enabled and (
-                            not self._stroke_enabled
+                        if self._style.fill_enabled and (
+                            not self._style.stroke_enabled
                             or r_inner <= 0.0
                             or d2 <= r_inner2
                         ):
-                            blend(surf, off, self._fill)
-                        elif self._stroke_enabled and d2 > r_inner2:
-                            blend(surf, off, self._stroke)
+                            blend(surf, off, self._style.fill)
+                        elif self._style.stroke_enabled and d2 > r_inner2:
+                            blend(surf, off, self._style.stroke)
 
     def line(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ):
-        if not self._stroke_enabled:
+        if not self._style.stroke_enabled:
             return
         var p0 = mat_apply(self._transform, x0, y0)
         var p1 = mat_apply(self._transform, x1, y1)
@@ -454,11 +438,11 @@ struct Canvas[origin: Origin[mut=True]]:
         var sy2 = p2[1]
         var sx3 = p3[0]
         var sy3 = p3[1]
-        if self._fill_enabled:
+        if self._style.fill_enabled:
             fill_triangle(
-                self._surface(), sx1, sy1, sx2, sy2, sx3, sy3, self._fill
+                self._surface(), sx1, sy1, sx2, sy2, sx3, sy3, self._style.fill
             )
-        if self._stroke_enabled:
+        if self._style.stroke_enabled:
             self._line_pixels(sx1, sy1, sx2, sy2)
             self._line_pixels(sx2, sy2, sx3, sy3)
             self._line_pixels(sx3, sy3, sx1, sy1)
@@ -561,16 +545,16 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(s, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
-        self._font_size = size
+        self._style.font_size = size
 
     def font_weight(mut self, weight: Int):
-        self._font_weight = weight
+        self._style.font_weight = weight
 
     def text_align(mut self, align: HAlign):
-        self._text_align = align
+        self._style.text_align = align
 
     def text_baseline(mut self, baseline: VAlign):
-        self._text_baseline = baseline
+        self._style.text_baseline = baseline
 
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))
@@ -591,16 +575,16 @@ struct Canvas[origin: Origin[mut=True]]:
         just means no fallback glyphs, not a draw failure.
         """
         if len(self._font) == 0:
-            self._font.append(Font(FONT_DEFAULT_PATH, self._font_size))
+            self._font.append(Font(FONT_DEFAULT_PATH, self._style.font_size))
         if not self._fallback_attempted:
             self._fallback_attempted = True
             try:
-                self._fallback_font.append(Font(FONT_FALLBACK_PATH, self._font_size))
+                self._fallback_font.append(Font(FONT_FALLBACK_PATH, self._style.font_size))
             except:
                 pass
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:
-        if not self._fill_enabled:
+        if not self._style.fill_enabled:
             return
         self._ensure_font()
         # Only the anchor is mapped: glyphs rasterise upright in pixel space, so
@@ -611,10 +595,10 @@ struct Canvas[origin: Origin[mut=True]]:
         var ty = p[1]
         var surf = self._surface()
         var size = max(
-            Int(Float64(self._font_size) * self._pixel_scale() + 0.5), 1
+            Int(Float64(self._style.font_size) * self._pixel_scale() + 0.5), 1
         )
-        self._font[0]._set_weight(self._font_weight)
-        var c = self._fill
+        self._font[0]._set_weight(self._style.font_weight)
+        var c = self._style.fill
 
         # Two-pass: measure total advance for alignment, then render.
         # First pass: measure (iterate codepoints for correct Unicode handling)
@@ -630,19 +614,19 @@ struct Canvas[origin: Origin[mut=True]]:
 
         var draw_x = Int(tx)
         var draw_y = Int(ty)
-        if self._text_align == HAlign.CENTER:
+        if self._style.text_align == HAlign.CENTER:
             draw_x -= tw // 2
-        elif self._text_align == HAlign.RIGHT:
+        elif self._style.text_align == HAlign.RIGHT:
             draw_x -= tw
 
         var asc = self._font[0].ascender
         var desc = self._font[0].descender
         var baseline_y = draw_y
-        if self._text_baseline == VAlign.TOP:
+        if self._style.text_baseline == VAlign.TOP:
             baseline_y += asc
-        elif self._text_baseline == VAlign.MIDDLE:
+        elif self._style.text_baseline == VAlign.MIDDLE:
             baseline_y += (asc + desc) // 2
-        elif self._text_baseline == VAlign.BOTTOM:
+        elif self._style.text_baseline == VAlign.BOTTOM:
             baseline_y += desc
 
         # Second pass: render
