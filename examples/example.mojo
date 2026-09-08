@@ -1,13 +1,3 @@
-# Mojo Create
-
-**Mojo Create** is a creative coding library for rapid prototyping and 
-interactive graphics, inspired by Processing but built to scale — from sketch to 
-game, prototype to full application. It provides a clean, modular API while 
-taking full advantage of Mojo's performance and language features.
-
-## The shape of a program
-
-```mojo
 from create.core import *
 
 
@@ -30,10 +20,3 @@ struct MyApp(Program):
 
 def main() raises:
     run[MyApp]("Example Sketch", fullscreen=True)
-```
-
-Run the example programs using the `create` pixi task:
-
-```bash
-pixi run create examples/sketch.mojo
-```
