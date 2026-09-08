@@ -3,20 +3,23 @@ from create.math.random import Random
 
 
 def test_float_in_unit_interval() raises -> None:
+    # float() is half-open [0, 1), matching int(low, high)'s convention
     var rng = Random(42)
     for _ in range(1000):
         var v = rng.float()
-        assert_true(v >= 0.0 and v <= 1.0)
+        assert_true(v >= 0.0 and v < 1.0)
 
 
 def test_float_range() raises -> None:
+    # float(low, high) inherits float()'s half-open convention
     var rng = Random(1)
     for _ in range(1000):
         var v = rng.float(5.0, 10.0)
-        assert_true(v >= 5.0 and v <= 10.0)
+        assert_true(v >= 5.0 and v < 10.0)
 
 
 def test_int_range() raises -> None:
+    # int(low, high) is half-open — the convention float() now matches
     var rng = Random(7)
     for _ in range(1000):
         var v = rng.int(3, 8)
