@@ -281,5 +281,58 @@ def test_sprite_blits_unflipped() raises -> None:
     assert_equal(m.pixel(50, 50), Color.WHITE)
 
 
+@fieldwise_init
+struct StyleAcrossFrames(Program):
+    # Frame 1 sets a style and draws nothing; frame 2 draws without setting
+    # one. Style is per-frame, so frame 2 must get the defaults back.
+    var frame: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> StyleAcrossFrames:
+        return StyleAcrossFrames(0)
+
+    def update(mut self, mut ctx: Context, input: Input) raises:
+        self.frame = ctx.time.frame_count
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        if self.frame == 1:
+            canvas.fill(Color.RED)
+            canvas.no_stroke()
+        else:
+            canvas.rect((0, 0), 20, 20)
+
+
+def test_style_does_not_survive_the_frame_boundary() raises -> None:
+    # Only the last frame's buffer comes back, so red here would mean frame
+    # 1's fill leaked forward.
+    var m = run_headless[StyleAcrossFrames](100, 100, 2)
+    assert_equal(m.pixel(50, 50), Color.WHITE)
+
+
+@fieldwise_init
+struct GuardedStyle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> GuardedStyle:
+        return GuardedStyle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.RED)
+        with canvas.style():
+            canvas.fill(Color.BLUE)
+            canvas.rect((-25, 0), 20, 20)
+        canvas.rect((25, 0), 20, 20)
+
+
+def test_style_guard_restores_on_scope_exit() raises -> None:
+    var m = run_headless[GuardedStyle](100, 100)
+    assert_equal(m.pixel(25, 50), Color.BLUE)
+    assert_equal(m.pixel(75, 50), Color.RED)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
