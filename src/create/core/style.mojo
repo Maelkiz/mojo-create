@@ -1,6 +1,6 @@
 from .align import HAlign, VAlign
 from .color import Color
-from .font_weight import FontWeight
+from .font import FontWeight
 
 
 struct Style(Copyable, Movable):

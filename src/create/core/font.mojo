@@ -5,6 +5,15 @@ from .color import Color
 comptime FONT_DEFAULT_PATH   = "defaults/fonts/NotoSans.ttf"
 comptime FONT_FALLBACK_PATH  = "defaults/fonts/NotoSansSymbols.ttf"
 
+
+struct FontWeight:
+    comptime THIN      = 100
+    comptime LIGHT     = 300
+    comptime REGULAR   = 400
+    comptime MEDIUM    = 500
+    comptime BOLD      = 700
+    comptime BLACK     = 900
+
 # FT_FaceRec offsets
 comptime _FACE_GLYPH = 152
 comptime _FACE_SIZE  = 160  # FT_Size* pointer
