@@ -437,5 +437,68 @@ def test_overlaps_symmetric_circle_triangle() raises -> None:
     assert_equal(overlaps(circ, tri), overlaps(tri, circ))
 
 
+# Degenerate geometry
+def test_line_zero_length() raises -> None:
+    var l = Line(2.0, 3.0, 2.0, 3.0)
+    assert_equal(l.length(), 0.0)
+    assert_equal(l.length_sq(), 0.0)
+
+
+def test_line_zero_length_never_intersects() raises -> None:
+    var l = Line(2.0, 3.0, 2.0, 3.0)
+    var crossing = Line(0.0, 0.0, 4.0, 4.0)
+    assert_equal(l.intersects(crossing), False)
+    var touching = Line(2.0, 3.0, 5.0, 6.0)
+    assert_equal(l.intersects(touching), False)
+    var far = Line(10.0, 10.0, 20.0, 20.0)
+    assert_equal(l.intersects(far), False)
+
+
+def test_circle_zero_radius_contains_only_center() raises -> None:
+    var c = Circle(3.0, 4.0, 0.0)
+    assert_true(c.contains(3.0, 4.0))
+    assert_equal(c.contains(3.001, 4.0), False)
+
+
+def test_circle_zero_radius_overlaps() raises -> None:
+    var c = Circle(3.0, 4.0, 0.0)
+    var covering = Circle(3.0, 4.0, 1.0)
+    assert_true(c.overlaps(covering))
+    var far = Circle(10.0, 10.0, 1.0)
+    assert_equal(c.overlaps(far), False)
+
+
+def test_circle_zero_radius_closest_point_is_center() raises -> None:
+    var c = Circle(3.0, 4.0, 0.0)
+    var p = c.closest_point(10.0, 4.0)
+    assert_equal(p.x, 3.0)
+    assert_equal(p.y, 4.0)
+
+
+def test_triangle_collinear_vertices_contains() raises -> None:
+    # Two coincident vertices plus a third: zero area, all three collinear.
+    var t = Triangle(0.0, 0.0, 0.0, 0.0, 4.0, 0.0)
+    assert_true(t.contains(0.0, 0.0))
+    assert_true(t.contains(2.0, 0.0))
+    # Off the shared line entirely — not contained
+    assert_equal(t.contains(2.0, 1.0), False)
+
+
+def test_triangle_collinear_vertices_closest_point_reaches_zero_length_edge() raises -> None:
+    # The (0,0)-(0,0) edge has len_sq == 0, exercising _closest_on_segment's
+    # explicit zero-length branch (otherwise unreached by any other test).
+    var t = Triangle(0.0, 0.0, 0.0, 0.0, 4.0, 0.0)
+    var p = t.closest_point(2.0, 5.0)
+    assert_equal(p.x, 2.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_triangle_collinear_vertices_overlaps() raises -> None:
+    var t = Triangle(0.0, 0.0, 0.0, 0.0, 4.0, 0.0)
+    var covering = Rectangle(2.0, 0.0, 2.0, 2.0)
+    assert_equal(overlaps(t, covering), overlaps(covering, t))
+    assert_true(overlaps(t, covering))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
