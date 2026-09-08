@@ -6,8 +6,9 @@ from .font import FontWeight
 struct Style(Copyable, Movable):
     """How the next shape or glyph is painted, independent of where it goes.
 
-    Set once and read by every draw call until changed, so this is the part of
-    a `Canvas` that must outlive a single frame.
+    Set once and read by every draw call until changed. Rebuilt fresh each
+    frame — carrying one forward would preserve only a forgotten setting,
+    never a useful one.
     """
 
     var fill: Color
