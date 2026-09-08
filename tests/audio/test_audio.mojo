@@ -82,5 +82,16 @@ def test_stop_all_releases_looping_and_one_shot_together() raises -> None:
     assert_false(audio.is_playing(looping))
 
 
+def test_looping_voice_shares_sound_via_refcount() raises -> None:
+    var audio = Audio()
+    var sound = _tone()
+    assert_equal(sound.count(), 1)
+    var id = audio.play(sound, loop=True)
+    # `play` copies the ArcPointer into Voice.loop_sound, a refcount bump.
+    assert_equal(sound.count(), 2)
+    audio.stop(id)
+    assert_equal(sound.count(), 1)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
