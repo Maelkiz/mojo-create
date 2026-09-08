@@ -15,17 +15,23 @@ sit above any one package.
 
 ## Baseline
 
-Recorded 2026-09-08 on `main` at `7a343c8`, via
-`SDL_AUDIO_DRIVER=dummy mojo run -I src <file>` per file.
+Originally recorded 2026-09-08 via `SDL_AUDIO_DRIVER=dummy mojo run -I src
+<file>` per file, at a commit hash (`7a343c8`) that does not exist in this
+repo's history — likely a transcription error from an unpushed or rebased
+state. Refreshed 2026-09-08 at `2ae8e3a`, after the audio package plan's
+proposed work landed and the plan itself was deleted (see
+`tests/audio/`'s history). Only `tests/audio/test_audio.mojo` and
+`tests/audio/test_sound.mojo` changed in that interval — every other file's
+row below is unchanged from the original recording.
 
-**20/20 files pass. 356 test functions, 844 assertions. ~32 s wall for the
+**20/20 files pass. 378 test functions, 893 assertions. ~32 s wall for the
 full sweep**, essentially all of it Mojo compile time — no single file's own
 execution is measurable.
 
 | File | Tests | Asserts | Wall |
 |---|---:|---:|---:|
-| `audio/test_audio.mojo` | 5 | 8 | ~2 s |
-| `audio/test_sound.mojo` | 3 | 9 | ~1 s |
+| `audio/test_audio.mojo` | 19 | 36 | ~2 s |
+| `audio/test_sound.mojo` | 11 | 30 | ~1 s |
 | `core/test_canvas.mojo` | 13 | 40 | ~3 s |
 | `core/test_color.mojo` | 43 | 126 | ~2 s |
 | `core/test_context.mojo` | 20 | 72 | ~1 s |
@@ -101,8 +107,9 @@ are written as plain `_assert_*` helpers (`_assert_base_round_trips` in
 extensions.
 
 **Assets are located by a repo-relative literal path** — `Sprite.load(
-"tests/fixtures/test_2x2.bmp")`, 7 sites across `test_sprite.mojo` and
-`test_canvas.mojo`. This is a real defect, see Gaps.
+"tests/fixtures/test_2x2.bmp")`, `Sound.load("tests/fixtures/tone.wav")` —
+12 sites across `test_sprite.mojo`, `test_canvas.mojo`, and (since the audio
+package plan landed) `test_sound.mojo`. This is a real defect, see Gaps.
 
 **Headless rendering is asserted for real.** The model is
 `tests/core/test_canvas.mojo`: declare a minimal `@fieldwise_init struct X(
@@ -195,15 +202,25 @@ indirect, executed on the way to some other assertion but not itself asserted;
 
 ### audio
 
+Refreshed against `2ae8e3a` — the audio package plan's proposed work has
+landed and the plan was deleted; the rows below supersede the original
+2026-09-08 recording.
+
 | Symbol | Test file | |
 |---|---|---|
-| `Audio.play`, `stop`, `stop_all`, `pause`, `resume`, `is_playing`, id generation counting | `test_audio.mojo` | C |
-| `Audio.update`, `set_volume`, `_free_slot`, `__deinit__`, `Voice.reset` | — | **U** |
-| `Sound.from_pcm` | `test_sound.mojo` | C |
-| `Sound.load` (WAV/OGG/FLAC/MP3) | — | **U** — no audio fixture exists |
+| `Audio.play`, `stop`, `stop_all`, `pause`, `resume`, `is_playing`, id generation counting (incl. id 0/negative/out-of-range) | `test_audio.mojo` | C |
+| `Audio.update` (reaping a finished one-shot, refilling a loop) | `test_audio.mojo` | C |
+| `Audio.set_volume` (incl. on a stale id, before any `play`) | `test_audio.mojo` | C |
+| `Audio.__deinit__` (clean teardown with live one-shot and looping voices) | `test_audio.mojo` | C |
+| `_free_slot`, `Voice.reset` | via `update`/teardown tests | I |
+| looping voice `ArcPointer[Sound]` refcount sharing; many concurrent voices | `test_audio.mojo` | C |
+| `Sound.from_pcm` (incl. empty, single-sample, `Int16.MIN` boundaries) | `test_sound.mojo` | C |
+| `Sound.load` — WAV, FLAC branches; magic-byte dispatch overriding a wrong extension | `test_sound.mojo` | C |
+| `Sound.load` — OGG, MP3 branches | — | **U** — no audio fixture exists |
+| `Sound.load` raise paths — nonexistent path, too-short file | `test_sound.mojo` | C |
 | `_sdl_audio.mojo` — `open_device_stream`, `put_data`, `resume`/`pause_stream`, `destroy_stream` | via `Audio` | I |
 | `_sdl_audio.mojo` — `load_wav`, `set_gain`, `available`, `clear_stream`, `get_error`, `quit` | — | **U** |
-| `_sndfile.mojo` — `SndFile.load` | — | **U** |
+| `_sndfile.mojo` — `SndFile.load` | `test_sound.mojo` (WAV/FLAC branches) | I |
 
 ## Rubric
 
@@ -221,7 +238,7 @@ score is to rank work, not to grade the author.
 | 6 | **Runtime cost** | Adds files or loops that materially grow the ~32 s sweep | Grows existing files; new files earn their ~1–2 s |
 | 7 | **Failure clarity** | A failure names a pixel index or a raw number with no way to tell what broke | The test name states the contract and the assertion's `left`/`right` shows the violation directly |
 
-**Axis 4 is the one to weigh hardest.** The suite's headline number — 844
+**Axis 4 is the one to weigh hardest.** The suite's headline number — 893
 assertions — is not evidence of much on its own; the question every package
 plan must answer per module is *could the implementation be wrong while these
 tests still pass?* `test_sprite.mojo`'s PNG and JPEG tests are the clearest
@@ -232,13 +249,29 @@ example: they assert the decoded dimensions and nothing about the pixels.
 Ranked by risk. These belong to no single package; they are fixed here or in a
 follow-up, not inside a package plan.
 
-1. **Tests only pass from the repo root.** Seven asset loads use the literal
-   path `tests/fixtures/…` / `tests/assets/…`. Run `test_sprite.mojo` from any
-   other directory and 6 of its 16 tests fail with `Failed to open file
-   'tests/fixtures/test_2x2.bmp'`. The library already ships the fix —
-   `create.core.path.script_dir()`, itself untested — so a test helper that
-   resolves fixtures relative to the script would close this and give
-   `script_dir` its first coverage at the same time.
+1. **Tests only pass from the repo root.** 12 asset loads (`test_sprite.mojo`,
+   `test_canvas.mojo`, and — since the audio package plan landed —
+   `test_sound.mojo`) use the literal path `tests/fixtures/…` /
+   `tests/assets/…`. Run `test_sprite.mojo` from any other directory and 6 of
+   its 16 tests fail with `Failed to open file 'tests/fixtures/test_2x2.bmp'`.
+
+   The original version of this gap proposed `create.core.path.script_dir()`
+   as the fix. That does not work: `script_dir()` (`src/create/core/path.mojo`)
+   returns the directory of `argv()[0]`, which under `mojo run` is the
+   compiled temp binary's location, not the `.mojo` source file's directory
+   and not the repo root — it cannot resolve `tests/fixtures/…` relative to
+   itself. `tests/core/TEST_PLAN.md` reached the same conclusion
+   independently and put `script_dir()` out of scope as "testable in
+   principle, worthless in practice." This master plan was never updated to
+   match, so the gap stood with a remedy that would not have closed it.
+
+   A real fix has to establish a repo-root-relative path some other way —
+   e.g. a `PIXI_PROJECT_ROOT`-style env var set by the `pixi run test` task
+   and read with a fallback to the literal path (so `mojo run` outside pixi
+   still works from the repo root as today), or simply documenting that the
+   suite is repo-root-only and enforcing it by having `pixi run test` `cd` to
+   the repo root before the sweep. Either closes the gap without giving
+   `script_dir()` a use it can't actually serve.
 2. **The sweep stops at the first failing file.** `set -e` in the `test` task
    means one broken file hides the state of every file sorted after it. The
    framework already isolates failures within a file; only the shell loop
@@ -251,25 +284,37 @@ follow-up, not inside a package plan.
    from a fresh clone, and `--no-verify` bypasses both.
 4. **No coverage tooling.** The map above was assembled by reading imports and
    call sites. Nothing detects a symbol falling out of coverage, so this map
-   goes stale silently the moment a new public method lands.
-5. **Runtime is compile-bound.** ~32 s for 356 tests, near-100% compilation.
+   goes stale silently the moment a new public method lands — this document's
+   own audio section drifted for exactly this reason between the audio
+   package plan landing and this refresh.
+5. **Runtime is compile-bound.** ~32 s for 378 tests, near-100% compilation.
    This caps how much the suite can grow before it stops being run casually,
    and is the reason axis 6 exists.
-6. **No `raise`-path testing anywhere in the suite.** Not one of the 844
-   assertions provokes an error. `assert_raises` is unused. The malformed-input
-   behaviour of `Sprite.load` and `Font.__init__` is entirely unverified.
+6. **`raise`-path testing is still the exception, not the rule.** The audio
+   package plan closed this for `Sound.load` — `test_sound.mojo` now provokes
+   both a missing-file and a too-short-file error with `assert_raises` — so
+   the pattern is proven out and cheap. But it is the only place it exists:
+   the malformed-input behaviour of `Sprite.load` (bad magic, unsupported DIB,
+   non-24/32-bit, compressed BMP — see `tests/graphics/TEST_PLAN.md`) and
+   `Font.__init__` is still entirely unverified.
 
 ## Deliverables of the remaining phases
 
 Each writes one `TEST_PLAN.md` into its own test directory, using the template
 below, scoring against the rubric above.
 
-| Phase | Report | Why this order |
-|---|---|---|
-| 1 | `tests/math/TEST_PLAN.md` | Smallest risk, best existing coverage — calibrates the rubric |
-| 2 | `tests/graphics/TEST_PLAN.md` | One module, decoders with a clear assertion-strength problem |
-| 3 | `tests/audio/TEST_PLAN.md` | Largest src-to-test gap |
-| 4 | `tests/core/TEST_PLAN.md` | Largest surface; benefits from a rubric already exercised three times |
+| Phase | Report | Why this order | Status |
+|---|---|---|---|
+| 1 | `tests/math/TEST_PLAN.md` | Smallest risk, best existing coverage — calibrates the rubric | Written, proposed work not yet implemented |
+| 2 | `tests/graphics/TEST_PLAN.md` | One module, decoders with a clear assertion-strength problem | Written, proposed work not yet implemented |
+| 3 | `tests/audio/TEST_PLAN.md` | Largest src-to-test gap | **Done** — proposed work implemented (see Baseline/Coverage map above); the report was deleted once its work items landed |
+| 4 | `tests/core/TEST_PLAN.md` | Largest surface; benefits from a rubric already exercised three times | Written, proposed work not yet implemented |
+
+Phases were written in the declared order but implemented out of it — audio's
+proposed work landed before math's or graphics's. Nothing in this plan
+requires implementation order to match the writing order; if that changes
+again, update this table rather than leaving it to imply the reports
+themselves are still pending.
 
 ### Report template
 

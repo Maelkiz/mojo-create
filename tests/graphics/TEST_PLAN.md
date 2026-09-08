@@ -99,7 +99,7 @@ that matter to a decoder: no zero-dimension sprite, no odd-vs-even width beyond
 the one fixture, no image large enough to cross a buffer boundary, and no
 truncated file.
 
-**3. Error and invalid input — 1/5.** `sprite.mojo` contains **nine `raise`
+**3. Error and invalid input — 1/5.** `sprite.mojo` contains **eleven `raise`
 sites** — five in the BMP branch, two in `_load_png`, two in `_load_jpeg`, plus
 two in `_jpeg_dimensions`. Not one is provoked by a test. There is also no test
 for the nonexistent-file case, which `open` raises. This is the package where
