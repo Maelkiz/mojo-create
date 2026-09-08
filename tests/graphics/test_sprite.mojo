@@ -217,7 +217,9 @@ def test_resize_dimensions() raises -> None:
     assert_equal(len(s.pixels), 2 * 2 * 4)
 
 
-def test_resize_preserves_color() raises -> None:
+def test_resize_uniform_sprite_stays_uniform() raises -> None:
+    # A uniform-colour source can't reveal which source pixel nearest-neighbour
+    # sampled -- only that whichever it picked was the same colour everywhere.
     var s = Sprite.solid(4, 4, 255, 0, 0)
     s.resize(2, 2)
     var ptr = s.pixels.unsafe_ptr()
@@ -227,6 +229,76 @@ def test_resize_preserves_color() raises -> None:
         assert_equal(Int(ptr[unsafe_offset=off + 1]), 0)    # G
         assert_equal(Int(ptr[unsafe_offset=off + 2]), 0)    # B
         assert_equal(Int(ptr[unsafe_offset=off + 3]), 255)  # A
+
+
+def test_resize_downscale_nearest_neighbour() raises -> None:
+    # A 4x4 source with four distinct quadrant colours, downscaled to 2x2 --
+    # each destination pixel must land in the matching source quadrant, which
+    # a uniform-colour source could never prove.
+    var s = Sprite(4, 4)
+    var ptr = s.pixels.unsafe_ptr()
+    for row in range(4):
+        for col in range(4):
+            var off = (row * 4 + col) * 4
+            if row < 2 and col < 2:
+                ptr[unsafe_offset=off] = 255      # top-left red
+            elif row < 2:
+                ptr[unsafe_offset=off + 1] = 255  # top-right green
+            elif col < 2:
+                ptr[unsafe_offset=off + 2] = 255  # bottom-left blue
+            else:
+                ptr[unsafe_offset=off] = 255      # bottom-right white
+                ptr[unsafe_offset=off + 1] = 255
+                ptr[unsafe_offset=off + 2] = 255
+            ptr[unsafe_offset=off + 3] = 255
+    s.resize(2, 2)
+    var dst = s.pixels.unsafe_ptr()
+    assert_equal(Int(dst[unsafe_offset=0]), 255)   # (0,0) red
+    assert_equal(Int(dst[unsafe_offset=1]), 0)
+    assert_equal(Int(dst[unsafe_offset=4]), 0)     # (1,0) green
+    assert_equal(Int(dst[unsafe_offset=5]), 255)
+    assert_equal(Int(dst[unsafe_offset=8]), 0)     # (0,1) blue
+    assert_equal(Int(dst[unsafe_offset=9]), 0)
+    assert_equal(Int(dst[unsafe_offset=10]), 255)
+    assert_equal(Int(dst[unsafe_offset=12]), 255)  # (1,1) white
+    assert_equal(Int(dst[unsafe_offset=13]), 255)
+    assert_equal(Int(dst[unsafe_offset=14]), 255)
+
+
+def test_resize_upscale_block_replication() raises -> None:
+    # Nearest-neighbour upscaling replicates each source pixel into a block --
+    # a 2x2 source blown up to 4x4 must show each quadrant colour unchanged
+    # across its whole 2x2 destination block, not blended or interpolated.
+    var s = Sprite(2, 2)
+    var ptr = s.pixels.unsafe_ptr()
+    ptr[unsafe_offset=0] = 255    # (0,0) red
+    ptr[unsafe_offset=3] = 255
+    ptr[unsafe_offset=5] = 255    # (1,0) green
+    ptr[unsafe_offset=7] = 255
+    ptr[unsafe_offset=10] = 255   # (0,1) blue
+    ptr[unsafe_offset=11] = 255
+    for i in range(4):
+        ptr[unsafe_offset=12 + i] = 255  # (1,1) white
+    s.resize(4, 4)
+    var dst = s.pixels.unsafe_ptr()
+    for row in range(2):
+        for col in range(2):
+            var off = (row * 4 + col) * 4
+            assert_equal(Int(dst[unsafe_offset=off]), 255)     # red block
+            assert_equal(Int(dst[unsafe_offset=off + 1]), 0)
+            assert_equal(Int(dst[unsafe_offset=off + 2]), 0)
+    for row in range(2):
+        for col in range(2, 4):
+            var off = (row * 4 + col) * 4
+            assert_equal(Int(dst[unsafe_offset=off]), 0)       # green block
+            assert_equal(Int(dst[unsafe_offset=off + 1]), 255)
+            assert_equal(Int(dst[unsafe_offset=off + 2]), 0)
+    for row in range(2, 4):
+        for col in range(2, 4):
+            var off = (row * 4 + col) * 4
+            assert_equal(Int(dst[unsafe_offset=off]), 255)     # white block
+            assert_equal(Int(dst[unsafe_offset=off + 1]), 255)
+            assert_equal(Int(dst[unsafe_offset=off + 2]), 255)
 
 
 def test_resize_upscale() raises -> None:
