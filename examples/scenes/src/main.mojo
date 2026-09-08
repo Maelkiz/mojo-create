@@ -1,0 +1,50 @@
+# Multi-scene composition, not a scene machine.
+#
+# `Program` stays exactly `create`/`update`/`render`. A scene switch is
+# nothing more than an int field and an if/elif in `update` and `render` —
+# `Menu` and `Draw` are plain structs in the same shape as `Program`, not
+# `Program`s themselves, which is what lets them take a shared field
+# (nothing shared here, but see AGENTS.md's "Program can own Programs").
+# See AGENTS.md for why this beats a generic scene-router: no dynamic trait
+# dispatch in Mojo, and a router would have nowhere to plug shared state in
+# anyway.
+
+from create.core import *
+from menu import Menu
+from draw import Draw
+
+comptime MENU = 0
+comptime DRAWING = 1
+
+
+@fieldwise_init
+struct App(Program):
+    var scene: Int
+    var menu: Menu
+    var draw: Draw
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> App:
+        ctx.autoscale = AutoScale.FIT
+        return App(MENU, Menu(False), Draw(False, False, False, Vector2(0, 0)))
+
+    def update(mut self, mut ctx: Context, input: Input) raises:
+        if self.scene == MENU:
+            self.menu.update(ctx, input)
+            if self.menu.start_pressed:
+                self.draw.enter()
+                self.scene = DRAWING
+        else:
+            self.draw.update(ctx, input)
+            if self.draw.back_pressed:
+                self.scene = MENU
+
+    def render(self, mut canvas: Canvas) raises:
+        if self.scene == MENU:
+            self.menu.render(canvas)
+        else:
+            self.draw.render(canvas)
+
+
+def main() raises:
+    run[App]("Scenes", 800, 600)

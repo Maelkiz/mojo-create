@@ -94,6 +94,29 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 > Input arrives as the `Input` argument to `update`, **not** via `Context`. `ctx.input` was removed; `Context` has no `input` field.
 
+**A `Program` can own `Program`s.** Multiple screens — a menu, a drawing
+surface, an options panel — are not a distinct feature: a root `Program`
+holds each screen as a plain field, in the same `update`/`render` shape as
+`Program` itself but *not* implementing the trait (Mojo has no dynamic trait
+dispatch, so nothing could hold them polymorphically anyway), and switches
+between them with an int field and an `if`/`elif` in `update` and `render`.
+Two lines of forwarding per scene, no separate machine:
+
+```mojo
+def update(mut self, mut ctx: Context, input: Input) raises:
+    if self.scene == MENU:
+        self.menu.update(ctx, input)
+    else:
+        self.game.update(ctx, input)
+```
+
+A scene that needs a one-shot reset on entry — clearing the canvas, say —
+gets a plain method (`enter()`) the parent calls right before flipping the
+scene field; it is not part of `Program` and costs nothing to the scenes
+that don't need it. See [examples/scenes/src/main.mojo](examples/scenes/src/main.mojo)
+for a full menu/drawing-surface pair built this way, including that hook and
+a deliberately-never-cleared canvas so drawn ink accumulates across frames.
+
 **`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
 over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
 pointer, which is what makes `run_headless` possible at all. Anything that must survive the frame
