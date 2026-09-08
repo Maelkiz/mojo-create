@@ -45,7 +45,7 @@ def test_fill_all_covers_every_pixel() raises -> None:
     var mem = _filled(3, 2, Color.WHITE)
     for y in range(2):
         for x in range(3):
-            assert_equal(mem.pixel(x, y), Color.WHITE)
+            assert_equal(mem.pixel(x, y), Color.WHITE, "pixel " + String(x) + "," + String(y))
 
 
 def test_fill_pixels_is_half_open() raises -> None:
@@ -64,14 +64,14 @@ def test_fill_pixels_clips_at_every_edge() raises -> None:
     fill_pixels(mem.surface(), -10, -10, 20, 20, Color.WHITE)
     for y in range(4):
         for x in range(4):
-            assert_equal(mem.pixel(x, y), Color.WHITE)
+            assert_equal(mem.pixel(x, y), Color.WHITE, "pixel " + String(x) + "," + String(y))
 
     var edge = MemorySurface(4, 4)
     fill_pixels(edge.surface(), -3, 0, 1, 4, Color.WHITE)
     for y in range(4):
-        assert_equal(edge.pixel(0, y), Color.WHITE)
+        assert_equal(edge.pixel(0, y), Color.WHITE, "pixel 0," + String(y))
         # A wrapped row would light up the right-hand column.
-        assert_equal(edge.pixel(3, y).a, 0)
+        assert_equal(edge.pixel(3, y).a, 0, "pixel 3," + String(y))
 
 
 def test_fill_pixels_wholly_outside_writes_nothing() raises -> None:
@@ -80,7 +80,7 @@ def test_fill_pixels_wholly_outside_writes_nothing() raises -> None:
     fill_pixels(mem.surface(), -20, -20, -10, -10, Color.WHITE)
     for y in range(4):
         for x in range(4):
-            assert_equal(mem.pixel(x, y).a, 0)
+            assert_equal(mem.pixel(x, y).a, 0, "pixel " + String(x) + "," + String(y))
 
 
 def test_line_pixels_covers_both_endpoints() raises -> None:
