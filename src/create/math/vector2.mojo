@@ -10,28 +10,23 @@ struct Vector2(Copyable, ImplicitlyCopyable, Movable, Writable):
         self.y = y
 
     def __init__(out self, x: Int, y: Int):
-        self.x = Float64(x)
-        self.y = Float64(y)
+        self = Vector2(Float64(x), Float64(y))
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Float64]):
-        self.x = t[0]
-        self.y = t[1]
+        self = Vector2(t[0], t[1])
 
     @implicit
     def __init__(out self, t: Tuple[Int, Int]):
-        self.x = Float64(t[0])
-        self.y = Float64(t[1])
+        self = Vector2(Float64(t[0]), Float64(t[1]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Float64]):
-        self.x = Float64(t[0])
-        self.y = t[1]
+        self = Vector2(Float64(t[0]), t[1])
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Int]):
-        self.x = t[0]
-        self.y = Float64(t[1])
+        self = Vector2(t[0], Float64(t[1]))
 
     @staticmethod
     def zero() -> Vector2:

@@ -44,14 +44,13 @@ struct Rectangle(Convex):
     var h: Float64
 
     def __init__(out self, x: Int, y: Int, w: Int, h: Int):
-        self.x = Float64(x); self.y = Float64(y)
-        self.w = Float64(w); self.h = Float64(h)
+        self = Rectangle(Float64(x), Float64(y), Float64(w), Float64(h))
 
     def __init__(out self, pos: Vector2, w: Float64, h: Float64):
-        self.x = pos.x; self.y = pos.y; self.w = w; self.h = h
+        self = Rectangle(pos.x, pos.y, w, h)
 
     def __init__(out self, pos: Vector2, size: Vector2):
-        self.x = pos.x; self.y = pos.y; self.w = size.x; self.h = size.y
+        self = Rectangle(pos.x, pos.y, size.x, size.y)
 
     def center(self) -> Vector2:
         return Vector2(self.x, self.y)
@@ -82,19 +81,19 @@ struct Rectangle(Convex):
         self.x = x; self.y = y
 
     def move_to(mut self, x: Int, y: Int):
-        self.x = Float64(x); self.y = Float64(y)
+        self.move_to(Float64(x), Float64(y))
 
     def move_to(mut self, pos: Vector2):
-        self.x = pos.x; self.y = pos.y
+        self.move_to(pos.x, pos.y)
 
     def translate(mut self, dx: Float64, dy: Float64):
         self.x += dx; self.y += dy
 
     def translate(mut self, dx: Int, dy: Int):
-        self.x += Float64(dx); self.y += Float64(dy)
+        self.translate(Float64(dx), Float64(dy))
 
     def translate(mut self, delta: Vector2):
-        self.x += delta.x; self.y += delta.y
+        self.translate(delta.x, delta.y)
 
     def overlaps(self, other: Rectangle) -> Bool:
         return (self.left() < other.right() and self.right() > other.left() and
@@ -115,13 +114,13 @@ struct Circle(Convex):
     var r: Float64
 
     def __init__(out self, x: Int, y: Int, r: Int):
-        self.x = Float64(x); self.y = Float64(y); self.r = Float64(r)
+        self = Circle(Float64(x), Float64(y), Float64(r))
 
     def __init__(out self, pos: Vector2, r: Float64):
-        self.x = pos.x; self.y = pos.y; self.r = r
+        self = Circle(pos.x, pos.y, r)
 
     def __init__(out self, pos: Vector2, r: Int):
-        self.x = pos.x; self.y = pos.y; self.r = Float64(r)
+        self = Circle(pos.x, pos.y, Float64(r))
 
     def center(self) -> Vector2:
         return Vector2(self.x, self.y)
@@ -156,19 +155,19 @@ struct Circle(Convex):
         self.x = x; self.y = y
 
     def move_to(mut self, x: Int, y: Int):
-        self.x = Float64(x); self.y = Float64(y)
+        self.move_to(Float64(x), Float64(y))
 
     def move_to(mut self, pos: Vector2):
-        self.x = pos.x; self.y = pos.y
+        self.move_to(pos.x, pos.y)
 
     def translate(mut self, dx: Float64, dy: Float64):
         self.x += dx; self.y += dy
 
     def translate(mut self, dx: Int, dy: Int):
-        self.x += Float64(dx); self.y += Float64(dy)
+        self.translate(Float64(dx), Float64(dy))
 
     def translate(mut self, delta: Vector2):
-        self.x += delta.x; self.y += delta.y
+        self.translate(delta.x, delta.y)
 
 
 @fieldwise_init
@@ -179,12 +178,10 @@ struct Line:
     var y1: Float64
 
     def __init__(out self, x0: Int, y0: Int, x1: Int, y1: Int):
-        self.x0 = Float64(x0); self.y0 = Float64(y0)
-        self.x1 = Float64(x1); self.y1 = Float64(y1)
+        self = Line(Float64(x0), Float64(y0), Float64(x1), Float64(y1))
 
     def __init__(out self, start: Vector2, end: Vector2):
-        self.x0 = start.x; self.y0 = start.y
-        self.x1 = end.x; self.y1 = end.y
+        self = Line(start.x, start.y, end.x, end.y)
 
     def length_sq(self) -> Float64:
         var dx = self.x1 - self.x0
@@ -211,14 +208,11 @@ struct Triangle(Convex):
     var y3: Float64
 
     def __init__(out self, x1: Int, y1: Int, x2: Int, y2: Int, x3: Int, y3: Int):
-        self.x1 = Float64(x1); self.y1 = Float64(y1)
-        self.x2 = Float64(x2); self.y2 = Float64(y2)
-        self.x3 = Float64(x3); self.y3 = Float64(y3)
+        self = Triangle(Float64(x1), Float64(y1), Float64(x2), Float64(y2),
+                        Float64(x3), Float64(y3))
 
     def __init__(out self, a: Vector2, b: Vector2, c: Vector2):
-        self.x1 = a.x; self.y1 = a.y
-        self.x2 = b.x; self.y2 = b.y
-        self.x3 = c.x; self.y3 = c.y
+        self = Triangle(a.x, a.y, b.x, b.y, c.x, c.y)
 
     def center(self) -> Vector2:
         return Vector2((self.x1 + self.x2 + self.x3) / 3.0,

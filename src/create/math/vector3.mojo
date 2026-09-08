@@ -12,57 +12,39 @@ struct Vector3(Copyable, ImplicitlyCopyable, Movable, Writable):
         self.z = z
 
     def __init__(out self, x: Int, y: Int, z: Int):
-        self.x = Float64(x)
-        self.y = Float64(y)
-        self.z = Float64(z)
+        self = Vector3(Float64(x), Float64(y), Float64(z))
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Float64, Float64]):
-        self.x = t[0]
-        self.y = t[1]
-        self.z = t[2]
+        self = Vector3(t[0], t[1], t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Int, Int, Int]):
-        self.x = Float64(t[0])
-        self.y = Float64(t[1])
-        self.z = Float64(t[2])
+        self = Vector3(Float64(t[0]), Float64(t[1]), Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Int, Int]):
-        self.x = t[0]
-        self.y = Float64(t[1])
-        self.z = Float64(t[2])
+        self = Vector3(t[0], Float64(t[1]), Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Float64, Int]):
-        self.x = Float64(t[0])
-        self.y = t[1]
-        self.z = Float64(t[2])
+        self = Vector3(Float64(t[0]), t[1], Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Int, Float64]):
-        self.x = Float64(t[0])
-        self.y = Float64(t[1])
-        self.z = t[2]
+        self = Vector3(Float64(t[0]), Float64(t[1]), t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Float64, Int]):
-        self.x = t[0]
-        self.y = t[1]
-        self.z = Float64(t[2])
+        self = Vector3(t[0], t[1], Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Float64, Float64]):
-        self.x = Float64(t[0])
-        self.y = t[1]
-        self.z = t[2]
+        self = Vector3(Float64(t[0]), t[1], t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Int, Float64]):
-        self.x = t[0]
-        self.y = Float64(t[1])
-        self.z = t[2]
+        self = Vector3(t[0], Float64(t[1]), t[2])
 
     @staticmethod
     def zero() -> Vector3:

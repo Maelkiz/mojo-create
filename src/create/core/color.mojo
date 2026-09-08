@@ -33,10 +33,7 @@ struct Color(Equatable, Writable, Copyable, ImplicitlyCopyable, Movable):
         self.a = a
 
     def __init__(out self, gray: UInt8):
-        self.r = gray
-        self.g = gray
-        self.b = gray
-        self.a = 255
+        self = Color(gray, gray, gray)
 
     def __eq__(self, other: Color) -> Bool:
         return (
