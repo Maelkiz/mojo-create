@@ -29,5 +29,15 @@ def test_from_pcm_defaults() raises -> None:
     assert_equal(s.freq, 44100)
 
 
+def test_load_wav() raises -> None:
+    var s = Sound.load("tests/fixtures/tone.wav")
+    assert_equal(s.channels, 1)
+    assert_equal(s.freq, 8000)
+    assert_equal(len(s.pcm), 160)
+    var ptr = s.pcm.unsafe_ptr()
+    assert_equal(Int(ptr[unsafe_offset=0]), 34)
+    assert_equal(Int(ptr[unsafe_offset=1]), 1)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
