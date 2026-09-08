@@ -15,34 +15,16 @@ from create.math.matrix import (
     apply as mat_apply,
 )
 from create.graphics.sprite import Sprite
-
-
-def _blend[o: Origin[mut=True]](px: Pointer[UInt8, o], off: Int, c: Color):
-    """Composite one color into the framebuffer at `off`, source-over.
-
-    Fully opaque and fully transparent colors skip the read-back, so the
-    common case costs no more than a raw store; `Color.over` owns the mixing.
-    """
-    if c.a == 0:
-        return
-    if c.a == 255:
-        px[unsafe_offset=off] = c.r
-        px[unsafe_offset=off + 1] = c.g
-        px[unsafe_offset=off + 2] = c.b
-        px[unsafe_offset=off + 3] = 255
-        return
-    var out = c.over(
-        Color(
-            px[unsafe_offset=off],
-            px[unsafe_offset=off + 1],
-            px[unsafe_offset=off + 2],
-            px[unsafe_offset=off + 3],
-        )
-    )
-    px[unsafe_offset=off] = out.r
-    px[unsafe_offset=off + 1] = out.g
-    px[unsafe_offset=off + 2] = out.b
-    px[unsafe_offset=off + 3] = out.a
+from .surface import Surface
+from .raster import (
+    blend,
+    blit_glyph,
+    blit_sprite,
+    fill_all,
+    fill_pixels,
+    fill_triangle,
+    line_pixels,
+)
 
 
 struct TransformGuard[
@@ -167,15 +149,18 @@ struct Canvas[origin: Origin[mut=True]]:
     def top(self) -> Float64:
         return Float64(self.height) / 2.0
 
+    def _surface(mut self) -> Surface[origin_of(self._win[]._pixels)]:
+        """This frame's framebuffer as a plain value the raster loops take.
+
+        Re-fetched per call because `Window._resize` reallocates the pixel
+        buffer, so a pointer cached across frames would dangle.
+        """
+        return Surface(self._win[].pixels(), self._pixel_w, self._pixel_h)
+
     def _fill_pixels(
         mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
     ):
-        var W = self._pixel_w
-        var px = self._win[].pixels()
-        for row in range(max(y0, 0), min(y1, self._pixel_h)):
-            for col in range(max(x0, 0), min(x1, W)):
-                var off = (row * W + col) * 4
-                _blend(px, off, c)
+        fill_pixels(self._surface(), x0, y0, x1, y1, c)
 
     def _draw_letterbox(mut self):
         """Paint the window area outside the design bounds.
@@ -276,44 +261,15 @@ struct Canvas[origin: Origin[mut=True]]:
     def _line_pixels(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
     ):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
-        var c = self._stroke
-        var sw = self._stroke_width_px()
-        var half = sw // 2
-        var ix0 = Int(x0)
-        var iy0 = Int(y0)
-        var ix1 = Int(x1)
-        var iy1 = Int(y1)
-        var dx = abs(ix1 - ix0)
-        var dy = -abs(iy1 - iy0)
-        var sx = 1 if ix0 < ix1 else -1
-        var sy = 1 if iy0 < iy1 else -1
-        var err = dx + dy
-        var x = ix0
-        var y = iy0
-        while True:
-            for ry in range(-half, sw - half):
-                for rx in range(-half, sw - half):
-                    var nx = x + rx
-                    var ny = y + ry
-                    if 0 <= nx < W and 0 <= ny < H:
-                        var off = (ny * W + nx) * 4
-                        _blend(px, off, c)
-            if x == ix1 and y == iy1:
-                break
-            var e2 = 2 * err
-            if e2 >= dy:
-                if x == ix1:
-                    break
-                err += dy
-                x += sx
-            if e2 <= dx:
-                if y == iy1:
-                    break
-                err += dx
-                y += sy
+        line_pixels(
+            self._surface(),
+            x0,
+            y0,
+            x1,
+            y1,
+            self._stroke,
+            self._stroke_width_px(),
+        )
 
     def fill(mut self, color: Color):
         self._fill = color
@@ -333,17 +289,12 @@ struct Canvas[origin: Origin[mut=True]]:
         self._stroke_width = w
 
     def background(mut self, color: Color):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
-        for i in range(W * H):
-            var off = i * 4
-            _blend(px, off, color)
+        fill_all(self._surface(), color)
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
+        var surf = self._surface()
+        var W = surf.width
+        var H = surf.height
         var lx0 = x - w / 2.0
         var ly0 = y - h / 2.0
         var lx1 = x + w / 2.0
@@ -360,29 +311,16 @@ struct Canvas[origin: Origin[mut=True]]:
             var iw = Int(abs(p1[0] - p0[0]))
             var ih = Int(abs(p1[1] - p0[1]))
             if self._fill_enabled:
-                var c = self._fill
-                for row in range(max(y0, 0), min(y0 + ih, H)):
-                    for col in range(max(x0, 0), min(x0 + iw, W)):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
+                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._fill)
             if self._stroke_enabled:
                 var sw = self._stroke_width_px()
                 var c = self._stroke
-                for row in range(max(y0, 0), min(y0 + sw, H)):
-                    for col in range(max(x0, 0), min(x0 + iw, W)):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
-                for row in range(max(y0 + ih - sw, 0), min(y0 + ih, H)):
-                    for col in range(max(x0, 0), min(x0 + iw, W)):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
-                for row in range(max(y0 + sw, 0), min(y0 + ih - sw, H)):
-                    for col in range(max(x0, 0), min(x0 + sw, W)):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
-                    for col in range(max(x0 + iw - sw, 0), min(x0 + iw, W)):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
+                fill_pixels(surf, x0, y0, x0 + iw, y0 + sw, c)
+                fill_pixels(surf, x0, y0 + ih - sw, x0 + iw, y0 + ih, c)
+                fill_pixels(surf, x0, y0 + sw, x0 + sw, y0 + ih - sw, c)
+                fill_pixels(
+                    surf, x0 + iw - sw, y0 + sw, x0 + iw, y0 + ih - sw, c
+                )
         else:
             var c0 = mat_apply(self._transform, lx0, ly0)
             var c1 = mat_apply(self._transform, lx1, ly0)
@@ -416,14 +354,14 @@ struct Canvas[origin: Origin[mut=True]]:
                     if self._fill_enabled and (
                         not self._stroke_enabled or in_inner
                     ):
-                        _blend(px, off, self._fill)
+                        blend(surf, off, self._fill)
                     elif self._stroke_enabled and not in_inner:
-                        _blend(px, off, self._stroke)
+                        blend(surf, off, self._stroke)
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
+        var surf = self._surface()
+        var W = surf.width
+        var H = surf.height
         var r2 = r * r
         var r_inner = r - Float64(self._stroke_width)
         var r_inner2 = r_inner * r_inner
@@ -454,9 +392,9 @@ struct Canvas[origin: Origin[mut=True]]:
                             or pr_inner <= 0.0
                             or d2 <= pr_inner2
                         ):
-                            _blend(px, off, self._fill)
+                            blend(surf, off, self._fill)
                         elif self._stroke_enabled and d2 > pr_inner2:
-                            _blend(px, off, self._stroke)
+                            blend(surf, off, self._stroke)
         else:
             var p0 = mat_apply(self._transform, cx - r, cy)
             var p1 = mat_apply(self._transform, cx + r, cy)
@@ -485,9 +423,9 @@ struct Canvas[origin: Origin[mut=True]]:
                             or r_inner <= 0.0
                             or d2 <= r_inner2
                         ):
-                            _blend(px, off, self._fill)
+                            blend(surf, off, self._fill)
                         elif self._stroke_enabled and d2 > r_inner2:
-                            _blend(px, off, self._stroke)
+                            blend(surf, off, self._stroke)
 
     def line(
         mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
@@ -507,9 +445,6 @@ struct Canvas[origin: Origin[mut=True]]:
         x3: Float64,
         y3: Float64,
     ):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
         var p1 = mat_apply(self._transform, x1, y1)
         var p2 = mat_apply(self._transform, x2, y2)
         var p3 = mat_apply(self._transform, x3, y3)
@@ -520,27 +455,9 @@ struct Canvas[origin: Origin[mut=True]]:
         var sx3 = p3[0]
         var sy3 = p3[1]
         if self._fill_enabled:
-            var min_x = max(Int(min(sx1, min(sx2, sx3))), 0)
-            var max_x = min(Int(max(sx1, max(sx2, sx3))), W - 1)
-            var min_y = max(Int(min(sy1, min(sy2, sy3))), 0)
-            var max_y = min(Int(max(sy1, max(sy2, sy3))), H - 1)
-            var c = self._fill
-            for row in range(min_y, max_y + 1):
-                for col in range(min_x, max_x + 1):
-                    var d1 = (sx2 - sx1) * (Float64(row) - sy1) - (
-                        sy2 - sy1
-                    ) * (Float64(col) - sx1)
-                    var d2 = (sx3 - sx2) * (Float64(row) - sy2) - (
-                        sy3 - sy2
-                    ) * (Float64(col) - sx2)
-                    var d3 = (sx1 - sx3) * (Float64(row) - sy3) - (
-                        sy1 - sy3
-                    ) * (Float64(col) - sx3)
-                    var has_neg = (d1 < 0.0) or (d2 < 0.0) or (d3 < 0.0)
-                    var has_pos = (d1 > 0.0) or (d2 > 0.0) or (d3 > 0.0)
-                    if not (has_neg and has_pos):
-                        var off = (row * W + col) * 4
-                        _blend(px, off, c)
+            fill_triangle(
+                self._surface(), sx1, sy1, sx2, sy2, sx3, sy3, self._fill
+            )
         if self._stroke_enabled:
             self._line_pixels(sx1, sy1, sx2, sy2)
             self._line_pixels(sx2, sy2, sx3, sy3)
@@ -607,36 +524,15 @@ struct Canvas[origin: Origin[mut=True]]:
         if not self._uniform() or self._pixel_scale() != 1.0:
             self.sprite(s, cx, cy, s.width, s.height)
             return
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
-        var sp = s.pixels.unsafe_ptr()
         var p = mat_apply(self._transform, cx, cy)
-        var x0 = Int(p[0]) - s.width // 2
-        var y0 = Int(p[1]) - s.height // 2
-        for row in range(s.height):
-            var dy = y0 + row
-            if dy < 0 or dy >= H:
-                continue
-            for col in range(s.width):
-                var dx = x0 + col
-                if dx < 0 or dx >= W:
-                    continue
-                var src_off = (row * s.width + col) * 4
-                var sa = sp[unsafe_offset=src_off + 3]
-                if sa == 0:
-                    continue
-                var dst_off = (dy * W + dx) * 4
-                _blend(
-                    px,
-                    dst_off,
-                    Color(
-                        sp[unsafe_offset=src_off],
-                        sp[unsafe_offset=src_off + 1],
-                        sp[unsafe_offset=src_off + 2],
-                        sa,
-                    ),
-                )
+        blit_sprite(
+            self._surface(),
+            s,
+            Int(p[0]) - s.width // 2,
+            Int(p[1]) - s.height // 2,
+            s.width,
+            s.height,
+        )
 
     def sprite(mut self, s: Sprite, pos: Vector2):
         self.sprite(s, pos.x, pos.y)
@@ -644,42 +540,19 @@ struct Canvas[origin: Origin[mut=True]]:
     def sprite(
         mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int
     ):
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
-        var sp = s.pixels.unsafe_ptr()
         # Rotation and shear are not resampled — only position and scale apply.
         var p = mat_apply(self._transform, cx, cy)
         var sf = self._pixel_scale()
         var dw = max(Int(Float64(w) * sf + 0.5), 1)
         var dh = max(Int(Float64(h) * sf + 0.5), 1)
-        var x0 = Int(p[0]) - dw // 2
-        var y0 = Int(p[1]) - dh // 2
-        for row in range(dh):
-            var dy = y0 + row
-            if dy < 0 or dy >= H:
-                continue
-            var src_row = row * s.height // dh
-            for col in range(dw):
-                var dx = x0 + col
-                if dx < 0 or dx >= W:
-                    continue
-                var src_col = col * s.width // dw
-                var src_off = (src_row * s.width + src_col) * 4
-                var sa = sp[unsafe_offset=src_off + 3]
-                if sa == 0:
-                    continue
-                var dst_off = (dy * W + dx) * 4
-                _blend(
-                    px,
-                    dst_off,
-                    Color(
-                        sp[unsafe_offset=src_off],
-                        sp[unsafe_offset=src_off + 1],
-                        sp[unsafe_offset=src_off + 2],
-                        sa,
-                    ),
-                )
+        blit_sprite(
+            self._surface(),
+            s,
+            Int(p[0]) - dw // 2,
+            Int(p[1]) - dh // 2,
+            dw,
+            dh,
+        )
 
     def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int):
         self.sprite(s, Float64(cx), Float64(cy), w, h)
@@ -736,15 +609,12 @@ struct Canvas[origin: Origin[mut=True]]:
         var p = mat_apply(self._transform, x, y)
         var tx = p[0]
         var ty = p[1]
-        var W = self._pixel_w
-        var H = self._pixel_h
-        var px = self._win[].pixels()
+        var surf = self._surface()
         var size = max(
             Int(Float64(self._font_size) * self._pixel_scale() + 0.5), 1
         )
         self._font[0]._set_weight(self._font_weight)
         var c = self._fill
-        var ca = Int(c.a)
 
         # Two-pass: measure total advance for alignment, then render.
         # First pass: measure (iterate codepoints for correct Unicode handling)
@@ -785,23 +655,7 @@ struct Canvas[origin: Origin[mut=True]]:
             else:
                 g = self._font[0].render(cpi, size)
             if g.width > 0 and g.height > 0:
-                var glyph_x0 = cx + g.bearing_x
-                var glyph_y0 = baseline_y - g.bearing_y
-                var gp = g.pixels.unsafe_ptr()
-                for row in range(g.height):
-                    for col in range(g.width):
-                        var cov = Int(gp[unsafe_offset=row * g.width + col])
-                        if cov == 0:
-                            continue
-                        var px_x = glyph_x0 + col
-                        var px_y = glyph_y0 + row
-                        if 0 <= px_x < W and 0 <= px_y < H:
-                            var off = (px_y * W + px_x) * 4
-                            # Glyph coverage scales the fill's alpha, so
-                            # antialiasing and a translucent fill compose.
-                            _blend(
-                                px,
-                                off,
-                                Color(c.r, c.g, c.b, UInt8(cov * ca // 255)),
-                            )
+                blit_glyph(
+                    surf, g, cx + g.bearing_x, baseline_y - g.bearing_y, c
+                )
             cx += g.advance_x
