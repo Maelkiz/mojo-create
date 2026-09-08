@@ -35,7 +35,7 @@ struct Random(Movable):
         return result
 
     def float(mut self) -> Float64:
-        return Float64(self._next()) / Float64(UInt64.MAX)
+        return Float64(self._next()) / (Float64(UInt64.MAX) + 1.0)
 
     def float(mut self, low: Float64, high: Float64) -> Float64:
         return low + self.float() * (high - low)
