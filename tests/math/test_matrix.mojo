@@ -1,5 +1,5 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal
-from std.math import pi
+from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
+from std.math import pi, abs
 from create.math.matrix import Matrix, identity, translate, rotate, scale, perspective, apply, inverse
 
 
@@ -214,6 +214,45 @@ def test_perspective_projects_point() raises -> None:
     assert_almost_equal(r[0], 0.2, atol=1e-9)
     assert_almost_equal(r[1], 0.4, atol=1e-9)
     assert_almost_equal(r[2], 0.9619619619619619, atol=1e-9)
+
+
+def test_inverse_with_pivot_swap() raises -> None:
+    # m[0,0] is zero, forcing the partial-pivot row swap before elimination.
+    var m = Matrix[3, 3]()
+    m[0, 0] = 0.0; m[0, 1] = 1.0; m[0, 2] = 2.0
+    m[1, 0] = 1.0; m[1, 1] = 0.0; m[1, 2] = 3.0
+    m[2, 0] = 4.0; m[2, 1] = 5.0; m[2, 2] = 6.0
+    var inv = inverse(m)
+    var prod = m @ inv
+    for i in range(3):
+        for j in range(3):
+            var expected = 1.0 if i == j else 0.0
+            assert_almost_equal(prod[i, j], expected, atol=1e-9)
+
+
+def test_inverse_of_singular_matrix_is_garbage() raises -> None:
+    # Row 2 = row 0 + row 1: exactly singular, determinant 0. This
+    # implementation has no singularity check, so a near-zero pivot from
+    # rounding error (not a true zero) is divided into rather than
+    # rejected — the result is huge, unusable finite values, not NaN and
+    # not a valid inverse.
+    var m = Matrix[3, 3]()
+    m[0, 0] = 1.0; m[0, 1] = 2.0; m[0, 2] = 3.0
+    m[1, 0] = 4.0; m[1, 1] = 5.0; m[1, 2] = 6.0
+    m[2, 0] = 5.0; m[2, 1] = 7.0; m[2, 2] = 9.0
+    var inv = inverse(m)
+    var max_abs = 0.0
+    for i in range(3):
+        for j in range(3):
+            var v = abs(inv[i, j])
+            if v > max_abs:
+                max_abs = v
+    assert_true(max_abs > 1e10)
+
+    var prod = m @ inv
+    # The product is nowhere near identity — this is not a usable inverse.
+    var off = abs(prod[0, 0] - 1.0)
+    assert_true(off > 0.01)
 
 
 def test_composition_translate_then_scale() raises -> None:
