@@ -204,6 +204,11 @@ def test_load_bmp_rle_compression_raises() raises -> None:
         _ = Sprite.load("tests/fixtures/bmp_rle_compressed.bmp")
 
 
+def test_load_bmp_bitfields_compression_raises() raises -> None:
+    with assert_raises(contains="Compressed BMP"):
+        _ = Sprite.load("tests/fixtures/bmp_bitfields_compressed.bmp")
+
+
 def test_resize_dimensions() raises -> None:
     var s = Sprite.solid(4, 4, 255, 0, 0)
     s.resize(2, 2)

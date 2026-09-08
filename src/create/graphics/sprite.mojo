@@ -191,7 +191,7 @@ struct Sprite(Movable):
 
             if bpp != 24 and bpp != 32:
                 raise Error("BMP must be 24-bit or 32-bit, got: " + path)
-            if compression != 0 and compression != 3:
+            if compression != 0:
                 raise Error("Compressed BMP not supported: " + path)
 
             var s = Sprite(w, h)
