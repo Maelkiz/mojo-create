@@ -791,5 +791,40 @@ def test_font_size_grows_the_text_extent() raises -> None:
     )
 
 
+struct QuitOnFrameTwo(Program):
+    var frame: Int
+
+    def __init__(out self):
+        self.frame = 0
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> QuitOnFrameTwo:
+        return QuitOnFrameTwo()
+
+    def update(mut self, mut ctx: Context, input: Input) raises:
+        self.frame = ctx.time.frame_count
+        if self.frame == 2:
+            ctx.quit()
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        if self.frame == 1:
+            canvas.fill(Color.RED)
+        elif self.frame == 2:
+            canvas.fill(Color.GREEN)
+        else:
+            canvas.fill(Color.BLUE)
+        canvas.rect(0.0, 0.0, 100.0, 100.0)
+
+
+def test_ctx_quit_stops_the_loop() raises -> None:
+    # update() quits on frame 2; run_headless checks ctx._quit before each
+    # iteration, so frames 3-5 must never run. If they did, the buffer would
+    # show frame 5's blue rather than frame 2's green.
+    var m = run_headless[QuitOnFrameTwo](50, 50, 5)
+    assert_equal(m.pixel(25, 25), Color.GREEN)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
