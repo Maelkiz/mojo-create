@@ -183,5 +183,27 @@ def test_many_concurrent_voices() raises -> None:
             assert_true(more[i] != ids[j])
 
 
+def test_set_volume_does_not_disturb_is_playing() raises -> None:
+    var audio = Audio()
+    var id = audio.play(_tone())
+    audio.set_volume(id, 0.3)
+    assert_true(audio.is_playing(id))
+
+
+def test_set_volume_on_stale_id_is_a_no_op() raises -> None:
+    var audio = Audio()
+    var first = audio.play(_tone())
+    audio.stop(first)
+    var second = audio.play(_tone())
+    audio.set_volume(first, 0.5)
+    assert_false(audio.is_playing(first))
+    assert_true(audio.is_playing(second))
+
+
+def test_volume_field_does_not_raise_before_play() raises -> None:
+    var audio = Audio()
+    assert_equal(audio.volume, Float32(1.0))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
