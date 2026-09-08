@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_raises
-from create.graphics.sprite import Sprite
+from create.graphics.sprite import Sprite, _jpeg_dimensions
 
 
 def test_solid_dimensions() raises -> None:
@@ -392,6 +392,46 @@ def test_extension_dot_in_directory_no_file_extension() raises -> None:
 
 def test_extension_double_extension() raises -> None:
     assert_equal(Sprite._extension("archive.tar.gz"), "gz")
+
+
+def test_jpeg_dimensions_sof0() raises -> None:
+    # SOI, then a baseline SOF0 marker (FF C0) with an 8-byte segment
+    # encoding precision=8, height=0x0010, width=0x0020, 0 components.
+    var data: List[UInt8] = [
+        0xFF, 0xD8,
+        0xFF, 0xC0, 0x00, 0x08, 0x08, 0x00, 0x10, 0x00, 0x20, 0x00,
+    ]
+    var dims = _jpeg_dimensions(data)
+    assert_equal(dims[0], 0x20)
+    assert_equal(dims[1], 0x10)
+
+
+def test_jpeg_dimensions_sof2_progressive() raises -> None:
+    # A leading non-SOF segment (a 4-byte APP0-like marker) must be skipped
+    # via its own length before the SOF2 (FF C2) marker is found.
+    var data: List[UInt8] = [
+        0xFF, 0xD8,
+        0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00,
+        0xFF, 0xC2, 0x00, 0x08, 0x08, 0x00, 0x05, 0x00, 0x07, 0x00,
+    ]
+    var dims = _jpeg_dimensions(data)
+    assert_equal(dims[0], 0x07)
+    assert_equal(dims[1], 0x05)
+
+
+def test_jpeg_dimensions_no_sof_raises() raises -> None:
+    # SOI immediately followed by EOI -- no SOF marker ever appears.
+    var data: List[UInt8] = [0xFF, 0xD8, 0xFF, 0xD9, 0x00, 0x00, 0x00, 0x00, 0x00]
+    with assert_raises(contains="No SOF marker"):
+        _ = _jpeg_dimensions(data)
+
+
+def test_jpeg_dimensions_bad_marker_raises() raises -> None:
+    # Byte 2 is 0x00 instead of the required 0xFF marker-lead byte. Padded to
+    # 12 bytes so the loop's `i < len(data) - 8` guard still lets it execute.
+    var data: List[UInt8] = [0xFF, 0xD8, 0x00, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    with assert_raises(contains="expected marker byte"):
+        _ = _jpeg_dimensions(data)
 
 
 def test_load_bmp_alpha_channel() raises -> None:
