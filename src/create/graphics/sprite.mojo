@@ -74,6 +74,13 @@ struct Sprite(Movable):
     def resize(mut self, new_w: Int, new_h: Int):
         """Resize pixel buffer in place using nearest-neighbour sampling."""
         var dst = List[UInt8](length=new_w * new_h * 4, fill=0)
+        if self.width == 0 or self.height == 0:
+            # No source pixel to sample -- leave the zero-filled buffer as is
+            # rather than computing an offset into an empty source.
+            self.pixels = dst^
+            self.width = new_w
+            self.height = new_h
+            return
         var src_ptr = self.pixels.unsafe_ptr()
         var dst_ptr = dst.unsafe_ptr()
         for row in range(new_h):
