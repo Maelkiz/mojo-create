@@ -133,8 +133,7 @@ def run[
     # for, never what the display handed back. In fullscreen SDL ignores the
     # requested size, so seeding this from the window would make the design
     # space a property of the user's monitor rather than of the program.
-    ctx._design_w = width
-    ctx._design_h = height
+    ctx.view.set_design(width, height)
     # Scaling the design to the window is the default because the alternative
     # punishes the obvious way to write a program: laid-out coordinates that
     # break on a display the author never had. `create` can opt back out with

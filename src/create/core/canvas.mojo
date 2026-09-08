@@ -141,11 +141,9 @@ struct Canvas[origin: Origin[mut=True]]:
         self.height = ctx.height
         self.autoscale = ctx.autoscale
         self.scale = ctx.scale
-        self._scaled = (
-            ctx.scale != 1.0 or ctx._offset_x != 0.0 or ctx._offset_y != 0.0
-        )
-        self._offset_x = ctx._offset_x
-        self._offset_y = ctx._offset_y
+        self._scaled = ctx.view.scaled()
+        self._offset_x = ctx.view.offset_x
+        self._offset_y = ctx.view.offset_y
         self._base = ctx._base_matrix()
         self._base_inv = inverse(self._base)
         # Render always starts with an empty stack, so the base mapping is the

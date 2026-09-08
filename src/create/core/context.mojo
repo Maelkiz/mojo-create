@@ -1,7 +1,7 @@
-from std.math import min
-from create.math.matrix import Matrix, scale as mat_scale, translate as mat_translate
+from create.math.matrix import Matrix
 from .autoscale import AutoScale
 from .time import Time
+from .viewport import Viewport
 
 
 struct Context(Movable):
@@ -11,12 +11,7 @@ struct Context(Movable):
     var exit_on_escape: Bool
     var autoscale: Int
     var scale: Float64
-    var _design_w: Int
-    var _design_h: Int
-    var _pixel_w: Int
-    var _pixel_h: Int
-    var _offset_x: Float64
-    var _offset_y: Float64
+    var view: Viewport
     var _quit: Bool
 
     def __init__(out self):
@@ -26,12 +21,7 @@ struct Context(Movable):
         self.exit_on_escape = True
         self.autoscale = AutoScale.OFF
         self.scale = 1.0
-        self._design_w = 0
-        self._design_h = 0
-        self._pixel_w = 0
-        self._pixel_h = 0
-        self._offset_x = 0.0
-        self._offset_y = 0.0
+        self.view = Viewport()
         self._quit = False
 
     def design(mut self, width: Int, height: Int, mode: Int = AutoScale.FIT):
@@ -43,92 +33,44 @@ struct Context(Movable):
         mapping is recomputed here rather than on the next frame, so `width`,
         `height` and the edge helpers are correct for the rest of `create`.
         """
-        self._design_w = width
-        self._design_h = height
+        self.view.set_design(width, height)
         self.autoscale = mode
-        self._set_viewport(self._pixel_w, self._pixel_h)
+        self._set_viewport(self.view.pixel_w, self.view.pixel_h)
 
     def _set_viewport(mut self, pixel_w: Int, pixel_h: Int):
-        """Recompute the design-space mapping for a framebuffer of this size.
+        """Remap onto a framebuffer of this size and republish the result.
 
-        With autoscale on, the program keeps the resolution it was authored
-        against and the content is scaled to fit inside the window — so a
-        sketch built for 1280x720 looks the same on any screen. Both modes
-        derive the same uniform factor and differ only in what happens to the
-        window area the design does not cover: `FIT` centres the design and
-        leaves letterbox bars, `EXTEND` anchors it at the origin and grows the
-        design size to fill the frame, so the leftover becomes extra world.
+        `autoscale` is a public field a program may have written since the last
+        frame, so it is pushed into the viewport before remapping; the reported
+        size and scale are mirrored back out after.
         """
-        self._pixel_w = pixel_w
-        self._pixel_h = pixel_h
-        if (
-            self.autoscale != AutoScale.OFF
-            and self._design_w > 1
-            and self._design_h > 1
-        ):
-            self.scale = min(
-                Float64(pixel_w) / Float64(self._design_w),
-                Float64(pixel_h) / Float64(self._design_h),
-            )
-            if self.autoscale == AutoScale.EXTEND:
-                # The axis that constrained the scale divides back out to its
-                # design size; the other one gains the slack as world space.
-                self.width = Int(Float64(pixel_w) / self.scale + 0.5)
-                self.height = Int(Float64(pixel_h) / self.scale + 0.5)
-                self._offset_x = 0.0
-                self._offset_y = 0.0
-            else:
-                self.width = self._design_w
-                self.height = self._design_h
-                self._offset_x = (
-                    Float64(pixel_w) - Float64(self._design_w) * self.scale
-                ) / 2.0
-                self._offset_y = (
-                    Float64(pixel_h) - Float64(self._design_h) * self.scale
-                ) / 2.0
-        else:
-            self.width = pixel_w
-            self.height = pixel_h
-            self.scale = 1.0
-            self._offset_x = 0.0
-            self._offset_y = 0.0
+        self.view.autoscale = self.autoscale
+        self.view.set_size(pixel_w, pixel_h)
+        self.width = self.view.width
+        self.height = self.view.height
+        self.scale = self.view.scale
 
     def left(self) -> Float64:
         """World x of the left edge — negative, since the origin is centred."""
-        return -Float64(self.width) / 2.0
+        return self.view.left()
 
     def right(self) -> Float64:
-        return Float64(self.width) / 2.0
+        return self.view.right()
 
     def bottom(self) -> Float64:
         """World y of the bottom edge — negative, since y grows upward."""
-        return -Float64(self.height) / 2.0
+        return self.view.bottom()
 
     def top(self) -> Float64:
-        return Float64(self.height) / 2.0
+        return self.view.top()
 
     def _base_matrix(self) -> Matrix[3, 3]:
-        """The world-to-pixel mapping: origin centred, y up.
-
-        Anchoring on the framebuffer centre covers all three autoscale modes
-        at once — `_offset_x + scale * width / 2` equals `pixel_w / 2` for
-        `OFF`, `FIT` and `EXTEND` alike — and avoids the rounding `EXTEND`
-        introduces when it stores the extended size as an Int.
-        """
-        return mat_translate(
-            Float64(self._pixel_w) / 2.0, Float64(self._pixel_h) / 2.0
-        ) @ mat_scale(self.scale, -self.scale)
+        """The world-to-pixel mapping: origin centred, y up."""
+        return self.view.base_matrix()
 
     def to_world(self, x: Float64, y: Float64) -> Tuple[Float64, Float64]:
-        """Map a window pixel position into world space.
-
-        The inverse of `_base_matrix`, done in arithmetic: pointer positions
-        reach the program in the same space it draws in.
-        """
-        return (
-            (x - Float64(self._pixel_w) / 2.0) / self.scale,
-            (Float64(self._pixel_h) / 2.0 - y) / self.scale,
-        )
+        """Map a window pixel position into world space."""
+        return self.view.to_world(x, y)
 
     def quit(mut self):
         """Ask the run loop to stop after the current frame.

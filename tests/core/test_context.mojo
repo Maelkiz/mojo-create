@@ -24,8 +24,8 @@ def test_viewport_passthrough_without_autoscale() raises -> None:
     assert_equal(ctx.width, 1024)
     assert_equal(ctx.height, 768)
     assert_equal(ctx.scale, 1.0)
-    assert_equal(ctx._offset_x, 0.0)
-    assert_equal(ctx._offset_y, 0.0)
+    assert_equal(ctx.view.offset_x, 0.0)
+    assert_equal(ctx.view.offset_y, 0.0)
 
 
 def test_fit_keeps_design_dimensions() raises -> None:
@@ -41,24 +41,24 @@ def test_fit_uniform_scale_no_letterbox() raises -> None:
     var ctx = _fit(800, 600)
     ctx._set_viewport(1600, 1200)
     assert_equal(ctx.scale, 2.0)
-    assert_equal(ctx._offset_x, 0.0)
-    assert_equal(ctx._offset_y, 0.0)
+    assert_equal(ctx.view.offset_x, 0.0)
+    assert_equal(ctx.view.offset_y, 0.0)
 
 
 def test_fit_letterboxes_wider_window() raises -> None:
     var ctx = _fit(800, 600)
     ctx._set_viewport(1600, 600)
     assert_equal(ctx.scale, 1.0)
-    assert_equal(ctx._offset_x, 400.0)
-    assert_equal(ctx._offset_y, 0.0)
+    assert_equal(ctx.view.offset_x, 400.0)
+    assert_equal(ctx.view.offset_y, 0.0)
 
 
 def test_fit_letterboxes_taller_window() raises -> None:
     var ctx = _fit(800, 600)
     ctx._set_viewport(800, 1200)
     assert_equal(ctx.scale, 1.0)
-    assert_equal(ctx._offset_x, 0.0)
-    assert_equal(ctx._offset_y, 300.0)
+    assert_equal(ctx.view.offset_x, 0.0)
+    assert_equal(ctx.view.offset_y, 300.0)
 
 
 def test_fit_shrinks_below_design_size() raises -> None:
@@ -73,8 +73,8 @@ def test_extend_widens_world_instead_of_letterboxing() raises -> None:
     assert_equal(ctx.scale, 1.0)
     assert_equal(ctx.width, 1600)
     assert_equal(ctx.height, 600)
-    assert_equal(ctx._offset_x, 0.0)
-    assert_equal(ctx._offset_y, 0.0)
+    assert_equal(ctx.view.offset_x, 0.0)
+    assert_equal(ctx.view.offset_y, 0.0)
     assert_equal(ctx.right(), 800.0)
     assert_equal(ctx.top(), 300.0)
 
@@ -85,8 +85,8 @@ def test_extend_heightens_world_instead_of_letterboxing() raises -> None:
     assert_equal(ctx.scale, 1.0)
     assert_equal(ctx.width, 800)
     assert_equal(ctx.height, 1200)
-    assert_equal(ctx._offset_x, 0.0)
-    assert_equal(ctx._offset_y, 0.0)
+    assert_equal(ctx.view.offset_x, 0.0)
+    assert_equal(ctx.view.offset_y, 0.0)
 
 
 def test_extend_matches_fit_when_aspect_matches() raises -> None:
