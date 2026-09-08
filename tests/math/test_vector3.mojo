@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 from create.math.vector3 import Vector3
+from std.math import isnan, isinf
 
 
 def test_init_float() raises -> None:
@@ -196,6 +197,28 @@ def test_write_to_contains_type_name() raises -> None:
     var s = String(v)
     assert_true(s.startswith("Vector3("))
     assert_true(s.endswith(")"))
+
+
+def test_normalize_zero_vector_is_nan() raises -> None:
+    var n = Vector3.zero().normalize()
+    assert_true(isnan(n.x))
+    assert_true(isnan(n.y))
+    assert_true(isnan(n.z))
+
+
+def test_div_by_zero() raises -> None:
+    var v = Vector3(3.0, 0.0, -2.0) / 0.0
+    assert_true(isinf(v.x))
+    assert_true(isnan(v.y))
+    assert_true(isinf(v.z))
+
+
+def test_idiv_by_zero() raises -> None:
+    var v = Vector3(3.0, 0.0, -2.0)
+    v /= 0.0
+    assert_true(isinf(v.x))
+    assert_true(isnan(v.y))
+    assert_true(isinf(v.z))
 
 
 def main() raises:
