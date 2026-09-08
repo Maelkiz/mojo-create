@@ -826,5 +826,14 @@ def test_ctx_quit_stops_the_loop() raises -> None:
     assert_equal(m.pixel(25, 25), Color.GREEN)
 
 
+def _takes_a_bare_canvas(mut canvas: Canvas) raises:
+    """Never called — an uncalled `def` body is still type-checked, so this is
+    a compile-time guard against `Canvas` ever gaining a second parameter. A
+    bare `Canvas` reference is what every `render` signature in the library
+    relies on; see AGENTS.md's "Canvas must keep exactly one parameter."
+    """
+    canvas.background(Color.BLACK)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
