@@ -341,6 +341,35 @@ def test_from_rgba_ignores_trailing_bytes() raises -> None:
     assert_equal(Int(s.pixels[3]), 4)
 
 
+def test_sprite_zero_dimensions() raises -> None:
+    var s = Sprite(0, 0)
+    assert_equal(s.width, 0)
+    assert_equal(s.height, 0)
+    assert_equal(len(s.pixels), 0)
+
+
+def test_resize_to_zero_dimension() raises -> None:
+    var s = Sprite.solid(4, 4, 255, 0, 0)
+    s.resize(0, 4)
+    assert_equal(s.width, 0)
+    assert_equal(s.height, 4)
+    assert_equal(len(s.pixels), 0)
+
+
+def test_resize_from_zero_width_stays_blank() raises -> None:
+    # A zero-width source has no pixel to sample -- the guard must skip the
+    # offset arithmetic entirely rather than dividing by/indexing an empty
+    # buffer, and leave the destination zero-filled.
+    var s = Sprite(0, 4)
+    s.resize(2, 2)
+    assert_equal(s.width, 2)
+    assert_equal(s.height, 2)
+    assert_equal(len(s.pixels), 2 * 2 * 4)
+    var ptr = s.pixels.unsafe_ptr()
+    for i in range(2 * 2 * 4):
+        assert_equal(Int(ptr[unsafe_offset=i]), 0)
+
+
 def test_load_bmp_alpha_channel() raises -> None:
     var s = Sprite.load("tests/fixtures/test_2x2.bmp")
     var ptr = s.pixels.unsafe_ptr()
