@@ -329,11 +329,16 @@ def test_solid_1x1() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=3]), 255)  # A
 
 
-def test_from_rgba_size_mismatch_uses_data() raises -> None:
-    # from_rgba trusts the caller's dimensions; just verify pixel count matches w*h
-    var data: List[UInt8] = [1, 2, 3, 4]
+def test_from_rgba_ignores_trailing_bytes() raises -> None:
+    # from_rgba trusts the caller's dimensions and copies exactly width*height*4
+    # bytes -- extra bytes past that must be ignored, not appended.
+    var data: List[UInt8] = [1, 2, 3, 4, 99, 99, 99, 99]
     var s = Sprite.from_rgba(1, 1, data)
     assert_equal(len(s.pixels), 4)
+    assert_equal(Int(s.pixels[0]), 1)
+    assert_equal(Int(s.pixels[1]), 2)
+    assert_equal(Int(s.pixels[2]), 3)
+    assert_equal(Int(s.pixels[3]), 4)
 
 
 def test_load_bmp_alpha_channel() raises -> None:

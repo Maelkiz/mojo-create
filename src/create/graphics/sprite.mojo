@@ -63,6 +63,7 @@ struct Sprite(Movable):
 
     @staticmethod
     def from_rgba(width: Int, height: Int, data: List[UInt8]) -> Sprite:
+        """Precondition: `data` holds at least `width * height * 4` bytes — not bounds-checked."""
         var s = Sprite(width, height)
         var src = data.unsafe_ptr()
         var dst = s.pixels.unsafe_ptr()
