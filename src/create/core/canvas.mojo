@@ -154,17 +154,17 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def left(self) -> Float64:
         """World x of the left edge — negative, since the origin is centred."""
-        return -Float64(self.width) / 2.0
+        return self.view.left()
 
     def right(self) -> Float64:
-        return Float64(self.width) / 2.0
+        return self.view.right()
 
     def bottom(self) -> Float64:
         """World y of the bottom edge — negative, since y grows upward."""
-        return -Float64(self.height) / 2.0
+        return self.view.bottom()
 
     def top(self) -> Float64:
-        return Float64(self.height) / 2.0
+        return self.view.top()
 
     def _fill_pixels(
         mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color
