@@ -8,8 +8,11 @@ from std.testing import TestSuite, assert_equal
 
 from create.core import *
 from create.core.headless import run_headless
+from create.core.surface import MemorySurface
 from create.graphics.sprite import Sprite
+from create.math.geometry import Circle, Line, Rectangle, Triangle
 from create.math.matrix import rotate
+from create.math.vector2 import Vector2
 
 
 @fieldwise_init
@@ -358,6 +361,260 @@ def test_style_guard_restores_on_scope_exit() raises -> None:
     var m = run_headless[GuardedStyle](100, 100)
     assert_equal(m.pixel(25, 50), Color.BLUE)
     assert_equal(m.pixel(75, 50), Color.RED)
+
+
+@fieldwise_init
+struct StrokedRect(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> StrokedRect:
+        return StrokedRect(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.RED)
+        canvas.stroke(Color.BLUE)
+        canvas.stroke_width(4)
+        canvas.rect(0.0, 0.0, 40.0, 40.0)
+
+
+def test_rect_stroke_draws_all_four_bands() raises -> None:
+    # The border is four separate fill_pixels calls, so a single-corner
+    # assertion would miss three of them.
+    var m = run_headless[StrokedRect](100, 100)
+    assert_equal(m.pixel(50, 31), Color.BLUE)  # top band
+    assert_equal(m.pixel(50, 68), Color.BLUE)  # bottom band
+    assert_equal(m.pixel(31, 50), Color.BLUE)  # left band
+    assert_equal(m.pixel(68, 50), Color.BLUE)  # right band
+    assert_equal(m.pixel(50, 50), Color.RED)  # well inside the border
+
+
+@fieldwise_init
+struct StrokedCircle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> StrokedCircle:
+        return StrokedCircle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.GREEN)
+        canvas.stroke(Color.WHITE)
+        canvas.stroke_width(4)
+        canvas.circle(0.0, 0.0, 20.0)
+
+
+def test_circle_stroke_draws_the_ring() raises -> None:
+    var m = run_headless[StrokedCircle](100, 100)
+    # Radius 20, stroke_width 4: the ring is d in (16, 20].
+    assert_equal(m.pixel(69, 50), Color.WHITE)  # just inside the outer radius
+    assert_equal(m.pixel(65, 50), Color.GREEN)  # just inside the inner radius
+    assert_equal(m.pixel(75, 50), Color.BLACK)  # outside the outer radius
+
+
+@fieldwise_init
+struct StrokedTriangle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> StrokedTriangle:
+        return StrokedTriangle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.fill(Color.ORANGE)
+        canvas.stroke(Color.WHITE)
+        canvas.stroke_width(4)
+        canvas.triangle(0.0, 30.0, -30.0, -30.0, 30.0, -30.0)
+
+
+def test_triangle_stroke_draws_the_edges() raises -> None:
+    var m = run_headless[StrokedTriangle](100, 100)
+    # (-15, 0) sits exactly on the apex-to-base-left edge.
+    assert_equal(m.pixel(35, 50), Color.WHITE)
+    assert_equal(m.pixel(50, 50), Color.ORANGE)  # well inside the fill
+
+
+@fieldwise_init
+struct NoFillRect(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> NoFillRect:
+        return NoFillRect(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_fill()
+        canvas.stroke(Color.WHITE)
+        canvas.stroke_width(4)
+        canvas.rect(0.0, 0.0, 40.0, 40.0)
+
+
+def test_no_fill_leaves_the_rect_interior_untouched() raises -> None:
+    var m = run_headless[NoFillRect](100, 100)
+    assert_equal(m.pixel(50, 50), Color.BLACK)  # interior stayed background
+    assert_equal(m.pixel(50, 31), Color.WHITE)  # border still strokes
+
+
+@fieldwise_init
+struct NoFillCircle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> NoFillCircle:
+        return NoFillCircle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_fill()
+        canvas.stroke(Color.WHITE)
+        canvas.stroke_width(4)
+        canvas.circle(0.0, 0.0, 20.0)
+
+
+def test_no_fill_leaves_the_circle_interior_untouched() raises -> None:
+    var m = run_headless[NoFillCircle](100, 100)
+    assert_equal(m.pixel(60, 50), Color.BLACK)  # interior stayed background
+    assert_equal(m.pixel(69, 50), Color.WHITE)  # ring still strokes
+
+
+@fieldwise_init
+struct RotatedCircle(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> RotatedCircle:
+        return RotatedCircle(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.CYAN)
+        with canvas.transform(rotate(pi / 4.0)):
+            canvas.circle(0.0, 0.0, 20.0)
+
+
+def test_circle_under_rotation_matches_the_axis_aligned_result() raises -> None:
+    # A circle centred on the origin is rotation-invariant, so a 45-degree
+    # turn — which forces the non-uniform, per-pixel path — must produce the
+    # exact same pixels as test_circle_is_centred_and_radial's axis-aligned
+    # fast path. This is what makes the check a cross-path equivalence test
+    # rather than a restatement of either implementation.
+    var m = run_headless[RotatedCircle](100, 100)
+    assert_equal(m.pixel(50, 50), Color.CYAN)
+    assert_equal(m.pixel(68, 50), Color.CYAN)
+    assert_equal(m.pixel(50, 32), Color.CYAN)
+    assert_equal(m.pixel(66, 66), Color.BLACK)
+    assert_equal(m.pixel(75, 50), Color.BLACK)
+    assert_equal(m.pixel(5, 5), Color.BLACK)
+
+
+@fieldwise_init
+struct QuarterTurnRect(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> QuarterTurnRect:
+        return QuarterTurnRect(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.YELLOW)
+        with canvas.transform(rotate(pi / 2.0)):
+            canvas.rect(0.0, 0.0, 20.0, 40.0)
+
+
+@fieldwise_init
+struct SwappedRect(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SwappedRect:
+        return SwappedRect(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.no_stroke()
+        canvas.fill(Color.YELLOW)
+        canvas.rect(0.0, 0.0, 40.0, 20.0)
+
+
+def _assert_quarter_turn_pixels(m: MemorySurface) raises:
+    assert_equal(m.pixel(50, 50), Color.YELLOW)  # centre
+    assert_equal(m.pixel(68, 50), Color.YELLOW)  # inside the wide axis
+    assert_equal(m.pixel(50, 32), Color.BLACK)  # outside the narrow axis
+    assert_equal(m.pixel(5, 5), Color.BLACK)
+
+
+def test_quarter_turn_matches_dimension_swapped_rect() raises -> None:
+    # A quarter turn fails _uniform() (m[0, 1] and m[1, 0] are non-zero) yet
+    # is an exact axis-aligned result: a 20x40 rect rotated 90 degrees must
+    # cover the same pixels as an unrotated 40x20 rect.
+    _assert_quarter_turn_pixels(run_headless[QuarterTurnRect](100, 100))
+    _assert_quarter_turn_pixels(run_headless[SwappedRect](100, 100))
+
+
+@fieldwise_init
+struct GeometryOverloads(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> GeometryOverloads:
+        return GeometryOverloads(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+
+        canvas.no_stroke()
+        canvas.fill(Color.RED)
+        canvas.rect(Rectangle(-90.0, 40.0, 20.0, 20.0))
+
+        canvas.fill(Color.GREEN)
+        canvas.circle(Circle(-30.0, 40.0, 10.0))
+
+        canvas.stroke(Color.BLUE)
+        canvas.stroke_width(3)
+        canvas.line(Line(20.0, 40.0, 40.0, 40.0))
+
+        canvas.no_stroke()
+        canvas.fill(Color.CYAN)
+        canvas.triangle(Triangle(90.0, 50.0, 80.0, 30.0, 100.0, 30.0))
+
+        canvas.fill(Color.MAGENTA)
+        canvas.rect(Vector2(-90.0, -40.0), 20.0, 20.0)
+
+        canvas.fill(Color.YELLOW)
+        canvas.circle(Vector2(-30.0, -40.0), 10.0)
+
+        canvas.stroke(Color.ORANGE)
+        canvas.stroke_width(3)
+        canvas.line(Vector2(20.0, -40.0), Vector2(40.0, -40.0))
+
+        canvas.no_stroke()
+        canvas.fill(Color.LIGHT_GRAY)
+        canvas.triangle(
+            Vector2(90.0, -30.0), Vector2(80.0, -50.0), Vector2(100.0, -50.0)
+        )
+
+
+def test_geometry_overloads_dispatch_correctly() raises -> None:
+    # These are one-line forwards, so the value is dispatch and argument
+    # order — that rect(Rectangle(x, y, w, h)) centres on (x, y) like the
+    # float form, not a corner — not the raster.
+    var m = run_headless[GeometryOverloads](240, 240)
+    assert_equal(m.pixel(30, 80), Color.RED)  # rect(Rectangle)
+    assert_equal(m.pixel(90, 80), Color.GREEN)  # circle(Circle)
+    assert_equal(m.pixel(150, 80), Color.BLUE)  # line(Line)
+    assert_equal(m.pixel(210, 85), Color.CYAN)  # triangle(Triangle)
+    assert_equal(m.pixel(30, 160), Color.MAGENTA)  # rect(Vector2, w, h)
+    assert_equal(m.pixel(90, 160), Color.YELLOW)  # circle(Vector2, r)
+    assert_equal(m.pixel(150, 160), Color.ORANGE)  # line(Vector2, Vector2)
+    assert_equal(m.pixel(210, 165), Color.LIGHT_GRAY)  # triangle(Vector2 x3)
+    assert_equal(m.pixel(5, 5), Color.BLACK)
 
 
 def main() raises:

@@ -417,10 +417,13 @@ struct Canvas[origin: Origin[mut=True]]:
                         elif self._style.stroke_enabled and d2 > pr_inner2:
                             blend(surf, off, self._style.stroke)
         else:
-            var p0 = mat_apply(self._transform, cx - r, cy)
-            var p1 = mat_apply(self._transform, cx + r, cy)
-            var p2 = mat_apply(self._transform, cx, cy - r)
-            var p3 = mat_apply(self._transform, cx, cy + r)
+            # The scan bounds must come from the bounding square's corners,
+            # not its edge midpoints: under a rotation the midpoints are no
+            # longer the extremes, and using them clips the circle.
+            var p0 = mat_apply(self._transform, cx - r, cy - r)
+            var p1 = mat_apply(self._transform, cx + r, cy - r)
+            var p2 = mat_apply(self._transform, cx + r, cy + r)
+            var p3 = mat_apply(self._transform, cx - r, cy + r)
             var sx_min = max(Int(min(min(p0[0], p1[0]), min(p2[0], p3[0]))), 0)
             var sx_max = min(
                 Int(max(max(p0[0], p1[0]), max(p2[0], p3[0]))) + 1, W
