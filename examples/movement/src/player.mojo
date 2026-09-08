@@ -60,6 +60,9 @@ struct Player:
             self.on_ground = False
 
     def draw(self, mut canvas: Canvas) raises:
-        canvas.fill(Color(220, 80, 80))
-        canvas.no_stroke()
-        canvas.rect(self.x, self.y, self.width, self.height)
+        # Scoped, because this is a callee: without the guard the caller's
+        # next draw would silently inherit this fill and no_stroke.
+        with canvas.style():
+            canvas.fill(Color(220, 80, 80))
+            canvas.no_stroke()
+            canvas.rect(self.x, self.y, self.width, self.height)
