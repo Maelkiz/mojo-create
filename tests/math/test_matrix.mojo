@@ -194,6 +194,28 @@ def test_inverse_of_identity() raises -> None:
             assert_almost_equal(inv[i, j], expected, atol=1e-9)
 
 
+def test_apply_4x4_with_w_divide() raises -> None:
+    # Row 3 isn't the trivial (0,0,0,1): ow=2 regardless of input, so the
+    # divide actually does something rather than passing values through.
+    var m = Matrix[4, 4]()
+    m[0, 0] = 1.0; m[0, 3] = 5.0
+    m[1, 1] = 1.0
+    m[2, 2] = 1.0
+    m[3, 3] = 2.0
+    var r = apply(m, 1.0, 2.0, 3.0)
+    assert_almost_equal(r[0], 3.0, atol=1e-9)
+    assert_almost_equal(r[1], 1.0, atol=1e-9)
+    assert_almost_equal(r[2], 1.5, atol=1e-9)
+
+
+def test_perspective_projects_point() raises -> None:
+    var m = perspective(pi / 2.0, 1.0, 0.1, 100.0)
+    var r = apply(m, 1.0, 2.0, -5.0)
+    assert_almost_equal(r[0], 0.2, atol=1e-9)
+    assert_almost_equal(r[1], 0.4, atol=1e-9)
+    assert_almost_equal(r[2], 0.9619619619619619, atol=1e-9)
+
+
 def test_composition_translate_then_scale() raises -> None:
     # scale @ translate applied to (1,1):
     # translate(2,3): (1,1) → (3,4)
