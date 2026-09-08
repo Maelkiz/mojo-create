@@ -1,4 +1,4 @@
-from std.testing import TestSuite, assert_equal, assert_true
+from std.testing import TestSuite, assert_equal, assert_true, assert_raises
 from create.graphics.sprite import Sprite
 
 
@@ -172,6 +172,36 @@ def test_load_with_dimensions() raises -> None:
     var s = Sprite.load("tests/fixtures/test_2x2.bmp", 4, 4)
     assert_equal(s.width, 4)
     assert_equal(s.height, 4)
+
+
+def test_load_nonexistent_path_raises() raises -> None:
+    with assert_raises():
+        _ = Sprite.load("tests/fixtures/does_not_exist.bmp")
+
+
+def test_load_bmp_too_small_raises() raises -> None:
+    with assert_raises(contains="too small"):
+        _ = Sprite.load("tests/fixtures/bmp_too_small.bmp")
+
+
+def test_load_bmp_bad_magic_raises() raises -> None:
+    with assert_raises(contains="Not a BMP"):
+        _ = Sprite.load("tests/fixtures/bmp_bad_magic.bmp")
+
+
+def test_load_bmp_bad_dib_header_raises() raises -> None:
+    with assert_raises(contains="DIB header"):
+        _ = Sprite.load("tests/fixtures/bmp_bad_dib.bmp")
+
+
+def test_load_bmp_bad_bpp_raises() raises -> None:
+    with assert_raises(contains="24-bit or 32-bit"):
+        _ = Sprite.load("tests/fixtures/bmp_bad_bpp.bmp")
+
+
+def test_load_bmp_rle_compression_raises() raises -> None:
+    with assert_raises(contains="Compressed BMP"):
+        _ = Sprite.load("tests/fixtures/bmp_rle_compressed.bmp")
 
 
 def test_resize_dimensions() raises -> None:
