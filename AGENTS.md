@@ -1,8 +1,21 @@
-# AGENTS.md — mojo-create
+# AGENTS.md — Mojo Create
 
 ## Purpose
 
-Creative coding / interactive graphics library for Mojo, inspired by Processing but with a deliberately modular design. Rather than a monolithic object holding all responsibilities (drawing, input, timing, state), concerns are split: `Canvas` draws, `Context` holds frame state, `Input` holds user input. Goal is Processing's ergonomics with clean separation of concerns and Mojo's performance.
+Mojo Create is a creative coding library for rapid prototyping and interactive graphics, inspired by Processing but built to scale — from sketch to game, prototype to full application. It provides a clean, modular API while taking full advantage of Mojo's performance and language features.
+
+## Design Ethos
+
+Mojo Create follows these principles:
+
+- **Prioritize API intuitiveness.** Avoid non-obvious abbreviations and jargon. Prefer clarity over brevity when naming.
+- **Prioritize consumer ergonomics.** Do not sacrifice usability merely to minimize the API surface.
+- **Keep the common path simple.** Simple sketches should require minimal ceremony.
+- **Keep the architecture modular.** Separate concerns appropriately and minimise coupling between components.
+- **Prefer consistency over cleverness.** Similar concepts should behave and be named consistently throughout the API.
+- **Make good performance the default.** Users should not need to understand the library's internals or use specialised APIs to get good performance.
+
+The goal is **Processing's ergonomics + clean separation of concerns + Mojo's performance**.
 
 ## Module Layout
 
