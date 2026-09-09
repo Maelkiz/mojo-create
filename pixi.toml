@@ -1,6 +1,6 @@
 [workspace]
 authors = ["Karl Theodor Ruby <karl.ruby@tuta.com>"]
-channels = ["https://conda.modular.com/max", "conda-forge", "file:///home/karl/Git/mojo-window/output"]
+channels = ["conda-forge", "https://conda.modular.com/max", "https://repo.prefix.dev/modular-community"]
 name = "mojo-create"
 platforms = ["linux-64"]
 version = "0.1.0"
@@ -13,7 +13,7 @@ setup = "git config core.hooksPath .githooks"
 
 [dependencies]
 mojo = ">=1.0.0,<2"
-mojo-window = ">=0.1.1,<1"
+mojo-window = ">=0.1.2,<0.2"
 sdl3 = ">=3.4,<4"
 freetype = ">=2.13,<3"
 libpng = ">=1.6,<2"
