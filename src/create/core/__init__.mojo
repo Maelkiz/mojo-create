@@ -1,7 +1,5 @@
 from .path import script_dir
 from create.math.geometry import (
-    Convex,
-    overlaps,
     Rectangle,
     Circle,
     Line,

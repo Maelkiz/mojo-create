@@ -137,7 +137,13 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
-`Vector3`, `Random` and the util functions are **not** in `create.core`; reach for `create.math` for those.
+**What `core` re-exports is a closure rule, not a convenience list.** `core` re-exports a `math` or
+`graphics` symbol exactly when a `core` signature names that type or the symbol constructs one for it
+— `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and `identity`/`translate`/
+`rotate`/`scale` are how a caller builds that `Matrix` — so `from create.core import *` is callable
+without a second import. Hence `Vector3`, `Random`, the util functions and `inverse`/`apply`/
+`perspective` are absent: no `core` signature names them. Reach for `create.math` for those. Adding a
+name to `core/__init__.mojo` is not a judgement call — check whether a `core` signature names it.
 
 **A `Program` can own `Program`s.** Multiple screens are not a distinct feature: a root `Program`
 holds each screen as a plain field, in the same `update`/`render` shape but *not* implementing the
