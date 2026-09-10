@@ -23,7 +23,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 |---|---|---|
 | `core` | `src/create/core/` | Program trait, run loops, Canvas, Surface, Viewport, Context, Time, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
-| `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer |
+| `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
 
 ## Key Files
@@ -54,6 +54,8 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
 | `src/create/math/util.mojo` | `lerp`, `map`, `norm`, `smoothstep`, `sign`, `fract`, `fmod`, `degrees`, `radians` |
 | `src/create/graphics/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
+| `src/create/graphics/animation.mojo` | `SpriteAnimation` — frame sequence + fps; `from_sheet`, `from_folder` |
+| `src/create/graphics/animator.mojo` | `SpriteAnimator` — the playhead over one animation |
 | `src/create/audio/sound.mojo` | `Sound` — decoded PCM + format/channels/freq, `load`/`from_pcm` |
 | `src/create/audio/audio.mojo` | `Audio` — playback device, voice lifecycle, `play`/`stop`/`update` |
 
@@ -133,15 +135,16 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **Imports:**
 
-- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `CanvasState`, `Color`, `HAlign`/`VAlign`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
+- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `CanvasState`, `Color`, `HAlign`/`VAlign`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
 **What `core` re-exports is a closure rule, not a convenience list.** `core` re-exports a `math` or
 `graphics` symbol exactly when a `core` signature names that type or the symbol constructs one for it
 — `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and `identity`/`translate`/
-`rotate`/`scale` are how a caller builds that `Matrix` — so `from create.core import *` is callable
-without a second import. Hence `Vector3`, `Random`, the util functions and `inverse`/`apply`/
+`rotate`/`scale` are how a caller builds that `Matrix`; likewise `canvas.sprite` takes a
+`SpriteAnimator`, and `SpriteAnimation` is how a caller builds one — so `from create.core import *`
+is callable without a second import. Hence `Vector3`, `Random`, the util functions and `inverse`/`apply`/
 `perspective` are absent: no `core` signature names them. Reach for `create.math` for those. Adding a
 name to `core/__init__.mojo` is not a judgement call — check whether a `core` signature names it.
 
@@ -271,7 +274,7 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 
 `Program` has no input callbacks — `update`'s `input` parameter is the only input surface, and it is complete: every window event either updates a field on `Input` or is otherwise already reflected in `Context` (`ctx.width`/`height` refresh every frame, so a resize needs no separate notification). This is also what makes input scriptable in a test: `Input` is a plain struct, so `run_headless` or a direct `step(...)` call can fill it in and drive click- or key-driven behaviour without a window — see [tests/core/test_frame.mojo](tests/core/test_frame.mojo).
 
-**Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
+**Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`, `SpriteAnimator`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
 
 **What earns its own parameter** is decided by *who writes it*, not by who feeds it — feeding alone doesn't distinguish anything, since `Time` is fed every frame and is a field on `Context`.
 
@@ -284,6 +287,47 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 `Input` is the only one the program never writes, and that is exactly why it stays out of `Context`: `ctx` must be `mut` for `quit()` and `autoscale`, so anything living on it inherits that mutability. As a separate argument, `input` is borrowed read-only and the one-way flow is enforced by the compiler. (`ctx.time` is the case that shows the cost — the program never writes it either, but `ctx.time.frame_count = 99` compiles.)
 
 **Audio:** construct `Audio()` once in `create`, hold it as a field, and call `audio.update()` once per frame from `update` — SDL never tells `Audio` a stream finished on its own, so skipping `update()` stalls a loop after its first buffer drains and leaks one-shot voice slots forever. Hold `Sound`s as `ArcPointer[Sound]` fields (`from std.memory import ArcPointer`): `audio.play` takes an `ArcPointer[Sound]` for *every* voice, looping or one-shot, so a voice shares the PCM buffer (refcount bump) instead of copying it. `play` returns a voice id for `stop`/`pause`/`resume`/`is_playing`; ids are generation-counted so a stale id from a finished/recycled slot can't affect a later voice. See [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
+
+**Sprite animation:** a `SpriteAnimation` is the artwork — an ordered `List[Sprite]` plus an `fps` —
+and a `SpriteAnimator` is one entity's playhead over it. Build animations in `create` and hold them
+as `ArcPointer[SpriteAnimation]` fields, like `Sound`s; hold one `SpriteAnimator` per animated
+entity, so several entities can share an animation by refcount bump instead of copying its frames.
+Call `animator.update(ctx.time.delta)` once per frame from `update`, and draw with
+`canvas.sprite(animator, pos)` — the same overload set as `Sprite`, sized variants included.
+
+```mojo
+var sheet = Sprite.load(script_dir() + "/../assets/character.png")
+var idle = ArcPointer(SpriteAnimation.from_sheet(sheet, 32, 32, start=0, count=4, fps=6.0))
+var run = ArcPointer(SpriteAnimation.from_sheet(sheet, 32, 32, start=4, count=4, fps=12.0))
+var spin = ArcPointer(SpriteAnimation.from_folder(script_dir() + "/../assets/spin", fps=16.0))
+```
+
+`from_sheet` numbers cells row-major, so one sheet yields several animations without a `SpriteSheet`
+type; `count = 0` means "to the end". `from_folder` sorts **naturally**, by the trailing integer of
+each stem — `frame_2` before `frame_10`, which lexicographic ordering gets backwards. `fps` belongs
+to the animation, not the animator: a run cycle and an idle cycle run at different rates, and the
+rate is a property of the asset.
+
+An animator always holds an animation — there is no empty state and no `Optional` to guard when
+drawing — and starts stopped on frame 0. **`use` is idempotent by design**: switching to the
+animation already held does nothing, so calling it every frame from the branch that decided which
+animation applies is the intended usage, not a mistake. `loop(anim)` carries the same guard.
+
+```mojo
+if self.velocity.x != 0.0:
+    self.animator.loop(self.run.copy())
+else:
+    self.animator.loop(self.idle.copy())
+```
+
+Without that guard the animation rewinds to frame 0 sixty times a second and never visibly moves —
+the single biggest trap in this API. `play()` restarts from frame 0 and holds the last frame,
+reporting `is_finished()`; `loop()` wraps forever; `pause()` freezes and `resume()` continues from
+where it stopped, while `stop()` halts and rewinds. `update` advances in a `while` loop rather than
+by one step, so a long frame skips ahead instead of drifting behind the animation's own clock.
+`SpriteAnimation.__init__` raises (an empty frame list is rejected), so constructing one needs a
+`raises` context — `create` already is one. See
+[examples/animation/src/main.mojo](examples/animation/src/main.mojo).
 
 ## Critical Gotchas
 
@@ -332,6 +376,21 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
    version. Constructing a fresh `Canvas` takes `out self`, so there is no existing borrow to alias
    against. Don't retry the `_sync` shape.
 
+6. **A `List` element's origin is not spellable, so nothing can return a reference to one.**
+   `List.__getitem__` returns `ref [self_is_mut["element"]] T`, and that origin cannot be written in
+   user code: `ref [o["element"]]` fails with `'ImmOrigin' is not subscriptable`, and neither
+   `ImmutableOrigin` nor `MutableAnyOrigin` is a known declaration in this Mojo version (same reason
+   as Gotcha 5). This is why `SpriteAnimation` has **no `frame()` accessor** — a
+   `-> ref Sprite` signature does not compile. Index inline at the use site instead, as
+   `canvas.sprite` does:
+
+   ```mojo
+   self.sprite(a.animation[].frames[a.frame_index], cx, cy)
+   ```
+
+   The reference never crosses a function boundary there, so it needs no nameable origin. Don't try
+   to add the accessor back.
+
 ## Terminology
 
 | Term | Meaning |
@@ -354,6 +413,8 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 | `Matrix` | Generic `Matrix[rows, cols]` plus free functions `identity`, `inverse`, `apply`, `translate`, `rotate`, `scale`, `perspective` |
 | `Random` | Seeded generator: `Random()` or `Random(seed)`, then `.float()`, `.float(lo, hi)`, `.int(lo, hi)`, `.bool()` |
 | `Sprite` | Pixel buffer: `Sprite.load(path)` or `Sprite.load(path, w, h)` (BMP/PNG/JPEG, detected by extension), `Sprite.solid(w, h, r, g, b, a)`, `Sprite.from_rgba(w, h, data)`, `.resize(w, h)` |
+| `SpriteAnimation` | Frame sequence + rate: `SpriteAnimation(frames, fps)` (raises on an empty list), `SpriteAnimation.from_sheet(sheet, frame_width, frame_height, start, count, fps)`, `SpriteAnimation.from_folder(path, fps)`; `.frames`, `.fps`, `.count()`, `.frame_duration()`. Held as an `ArcPointer[SpriteAnimation]` |
+| `SpriteAnimator` | One entity's playhead over a `SpriteAnimation`: `use`/`play`/`loop` (each also taking an animation), `pause`/`resume`/`stop`, `update(dt)`, `is_playing()`/`is_finished()`, `.frame_index`. `use` is a no-op on the animation already held |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
 | `Audio` | Program-owned playback device: `play`/`stop`/`stop_all`/`pause`/`resume`/`is_playing`/`set_volume`, plus `update()` (call once per frame) |
 
