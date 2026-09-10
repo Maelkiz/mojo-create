@@ -1,3 +1,5 @@
+from std.os import listdir
+
 from create.graphics.sprite import Sprite
 
 
@@ -120,6 +122,34 @@ struct SpriteAnimation(Movable):
         return SpriteAnimation(frames^, fps)
 
     @staticmethod
+    def from_folder(path: String, fps: Float64 = 12.0) raises -> SpriteAnimation:
+        """Load every image in a directory as a frame, in natural number order.
+
+        ```mojo
+        var run = SpriteAnimation.from_folder(script_dir() + "/../assets/run")
+        ```
+
+        Names are ordered by the number they end in, not by string comparison,
+        so `frame_2` comes before `frame_10` -- the ordering an author means
+        and the one zero-padding is usually a workaround for. Files that are
+        not BMP, PNG or JPEG are skipped; a directory with no images at all
+        raises rather than yielding an empty animation.
+        """
+        var names = List[String]()
+        for entry in listdir(path):
+            var ext = Sprite._extension(entry)
+            if ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "bmp":
+                names.append(entry)
+        if len(names) == 0:
+            raise Error("no BMP, PNG or JPEG files in " + path)
+        _sort_frame_names(names)
+
+        var frames = List[Sprite]()
+        for name in names:
+            frames.append(Sprite.load(path + "/" + name))
+        return SpriteAnimation(frames^, fps)
+
+    @staticmethod
     def _cut(sheet: Sprite, x: Int, y: Int, w: Int, h: Int) -> Sprite:
         """Copy one w x h cell at (x, y) out of the sheet, RGBA row by row."""
         var frame = Sprite(w, h)
@@ -131,3 +161,41 @@ struct SpriteAnimation(Movable):
             for i in range(w * 4):
                 dst[unsafe_offset=d + i] = src[unsafe_offset=s + i]
         return frame^
+
+
+def _frame_number(name: String) -> Int:
+    """The integer a file's stem ends in, or -1 when it ends in no digits."""
+    var bytes = name.as_bytes()
+    var end = len(bytes)
+    for i in range(len(bytes)):
+        if bytes[i] == 46:  # '.' -- the stem ends at the last one
+            end = i
+    var start = end
+    while start > 0 and bytes[start - 1] >= 48 and bytes[start - 1] <= 57:
+        start -= 1
+    if start == end:
+        return -1
+    var value = 0
+    for i in range(start, end):
+        value = value * 10 + Int(bytes[i]) - 48
+    return value
+
+
+def _precedes(a: String, b: String) -> Bool:
+    """Natural order: by trailing number first, then by name to break ties."""
+    var na = _frame_number(a)
+    var nb = _frame_number(b)
+    if na != nb:
+        return na < nb
+    return a < b
+
+
+def _sort_frame_names(mut names: List[String]):
+    """Insertion sort -- the lists are frame counts, not data sets."""
+    for i in range(1, len(names)):
+        var j = i
+        while j > 0 and _precedes(names[j], names[j - 1]):
+            var earlier = names[j - 1]
+            names[j - 1] = names[j]
+            names[j] = earlier
+            j -= 1

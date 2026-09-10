@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_raises
 from create.graphics import Sprite, SpriteAnimation
+from create.graphics.animation import _frame_number, _sort_frame_names
 
 
 def _sheet(cols: Int, rows: Int, cell: Int) -> Sprite:
@@ -23,6 +24,14 @@ def _sheet(cols: Int, rows: Int, cell: Int) -> Sprite:
 
 def _red(s: Sprite, x: Int, y: Int) -> Int:
     return Int(s.pixels.unsafe_ptr()[unsafe_offset=(y * s.width + x) * 4])
+
+
+def _green(s: Sprite, x: Int, y: Int) -> Int:
+    return Int(s.pixels.unsafe_ptr()[unsafe_offset=(y * s.width + x) * 4 + 1])
+
+
+def _blue(s: Sprite, x: Int, y: Int) -> Int:
+    return Int(s.pixels.unsafe_ptr()[unsafe_offset=(y * s.width + x) * 4 + 2])
 
 
 def test_from_sheet_cuts_every_cell() raises -> None:
@@ -94,6 +103,54 @@ def test_start_past_the_end_raises() raises -> None:
 def test_count_past_the_end_raises() raises -> None:
     with assert_raises(contains="run past the sheet"):
         _ = SpriteAnimation.from_sheet(_sheet(2, 2, 3), 3, 3, start=2, count=3)
+
+
+def test_from_folder_frame_count() raises -> None:
+    var anim = SpriteAnimation.from_folder("tests/fixtures/anim")
+    # notes.txt in the same directory is skipped.
+    assert_equal(anim.count(), 3)
+
+
+def test_from_folder_orders_naturally() raises -> None:
+    # frame_1 is red, frame_2 green, frame_10 blue -- so the order is readable
+    # from the pixels. Lexicographic order would put frame_10 second.
+    var anim = SpriteAnimation.from_folder("tests/fixtures/anim")
+    assert_equal(_red(anim.frames[0], 0, 0), 255)
+    assert_equal(_green(anim.frames[1], 0, 0), 255)
+    assert_equal(_blue(anim.frames[2], 0, 0), 255)
+
+
+def test_from_folder_fps() raises -> None:
+    var anim = SpriteAnimation.from_folder("tests/fixtures/anim", fps=24.0)
+    assert_equal(anim.fps, 24.0)
+
+
+def test_from_folder_without_images_raises() raises -> None:
+    with assert_raises(contains="no BMP, PNG or JPEG files"):
+        _ = SpriteAnimation.from_folder("tests/fixtures/anim_no_images")
+
+
+def test_from_folder_missing_directory_raises() raises -> None:
+    with assert_raises():
+        _ = SpriteAnimation.from_folder("tests/fixtures/does_not_exist")
+
+
+def test_frame_number_reads_the_trailing_digits() raises -> None:
+    assert_equal(_frame_number("frame_10.png"), 10)
+    assert_equal(_frame_number("run3.bmp"), 3)
+    assert_equal(_frame_number("007.png"), 7)
+    assert_equal(_frame_number("idle.png"), -1)
+
+
+def test_sort_frame_names_is_natural() raises -> None:
+    var names = List[String]()
+    names.append("f_10.png")
+    names.append("f_2.png")
+    names.append("f_1.png")
+    _sort_frame_names(names)
+    assert_equal(names[0], "f_1.png")
+    assert_equal(names[1], "f_2.png")
+    assert_equal(names[2], "f_10.png")
 
 
 def main() raises:
