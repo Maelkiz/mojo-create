@@ -10,6 +10,7 @@ from create.core import *
 from create.core.headless import run_headless
 from create.core.surface import MemorySurface
 from create.graphics.sprite import Sprite
+from std.memory import ArcPointer
 from create.math.geometry import Circle, Line, Rectangle, Triangle
 from create.math.matrix import rotate, scale, translate
 from create.math.vector2 import Vector2
@@ -831,6 +832,72 @@ def _takes_a_bare_canvas(mut canvas: Canvas) raises:
     relies on; see AGENTS.md's "Canvas must keep exactly one parameter."
     """
     canvas.background(Color.BLACK)
+
+
+struct AnimatorBlit(Program):
+    """Eight 2x2 frames, frame i tinted R = i * 20, advanced by the run loop.
+
+    `SpriteAnimation`, `SpriteAnimator` and the `canvas.sprite` overload all
+    arrive through `from create.core import *` alone -- the closure rule in
+    AGENTS.md, since `canvas.sprite` now names the animator.
+    """
+
+    var animator: SpriteAnimator
+
+    def __init__(out self, var animator: SpriteAnimator):
+        self.animator = animator^
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> AnimatorBlit:
+        var frames = List[Sprite]()
+        for i in range(8):
+            frames.append(Sprite.solid(2, 2, UInt8(i * 20), 0, 0))
+        var a = SpriteAnimator(ArcPointer(SpriteAnimation(frames^, 100.0)))
+        a.play()
+        return AnimatorBlit(a^)
+
+    def update(mut self, mut ctx: Context, input: Input) raises:
+        self.animator.update(ctx.time.delta)
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.sprite(self.animator, 0.0, 0.0)
+
+
+def test_animator_blits_the_current_frame() raises -> None:
+    # Headless frames are a synthetic 16ms; at 100 fps a frame is held 10ms, so
+    # the playhead runs ahead of the loop: after one frame it is on index 1,
+    # and after three (48ms, 4.8 frame durations) on index 4. Same draw call
+    # each time, so the overload reads the live index rather than a frame
+    # captured at construction.
+    assert_equal(run_headless[AnimatorBlit](100, 100, frames=1).pixel(50, 50), Color(20, 0, 0))
+    assert_equal(run_headless[AnimatorBlit](100, 100, frames=3).pixel(50, 50), Color(80, 0, 0))
+
+
+struct AnimatorSized(Program):
+    var animator: SpriteAnimator
+
+    def __init__(out self, var animator: SpriteAnimator):
+        self.animator = animator^
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> AnimatorSized:
+        var frames = List[Sprite]()
+        frames.append(Sprite.solid(2, 2, 255, 0, 0))
+        return AnimatorSized(SpriteAnimator(ArcPointer(SpriteAnimation(frames^))))
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        canvas.sprite(self.animator, Vector2(0.0, 0.0), 40, 40)
+
+
+def test_animator_sized_overload_scales() raises -> None:
+    # A 2x2 frame drawn at 40x40 covers the centre out to +/-20 world units.
+    var m = run_headless[AnimatorSized](100, 100)
+    assert_equal(m.pixel(50, 50), Color.RED)
+    assert_equal(m.pixel(31, 31), Color.RED)
+    assert_equal(m.pixel(69, 69), Color.RED)
+    assert_equal(m.pixel(29, 29), Color.BLACK)
 
 
 def main() raises:

@@ -13,6 +13,7 @@ from create.math.matrix import (
     apply as mat_apply,
 )
 from create.graphics.sprite import Sprite
+from create.graphics.animator import SpriteAnimator
 from .style import Style
 from .text import TextRenderer
 from .surface import Surface
@@ -580,6 +581,32 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int):
         self.sprite(s, pos.x, pos.y, w, h)
+
+    def sprite(mut self, a: SpriteAnimator, cx: Float64, cy: Float64):
+        """Draw the animator's current frame, centred at (cx, cy).
+
+        The frame is indexed here rather than handed back by an accessor on
+        `SpriteAnimator`: a `List` element's origin is not spellable from user
+        code, so a reference to it cannot cross a function boundary.
+        """
+        self.sprite(a.animation[].frames[a.frame_index], cx, cy)
+
+    def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int):
+        self.sprite(a.animation[].frames[a.frame_index], Float64(cx), Float64(cy))
+
+    def sprite(mut self, a: SpriteAnimator, pos: Vector2):
+        self.sprite(a.animation[].frames[a.frame_index], pos.x, pos.y)
+
+    def sprite(mut self, a: SpriteAnimator, cx: Float64, cy: Float64, w: Int, h: Int):
+        self.sprite(a.animation[].frames[a.frame_index], cx, cy, w, h)
+
+    def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int, w: Int, h: Int):
+        self.sprite(
+            a.animation[].frames[a.frame_index], Float64(cx), Float64(cy), w, h
+        )
+
+    def sprite(mut self, a: SpriteAnimator, pos: Vector2, w: Int, h: Int):
+        self.sprite(a.animation[].frames[a.frame_index], pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
         self._style.font_size = size
