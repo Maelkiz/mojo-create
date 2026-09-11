@@ -1,5 +1,7 @@
 from .geometry import overlaps, Rectangle, Circle, Line, Triangle
 from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
+from .easing import Easing, ease
+from .tween import Tween
 from .vector2 import Vector2
 from .vector3 import Vector3
 from .matrix import Matrix, identity, inverse, apply, translate, rotate, scale, perspective
