@@ -1,4 +1,4 @@
-from std.testing import TestSuite, assert_equal, assert_true, assert_raises
+from std.testing import TestSuite, assert_equal, assert_true, assert_false, assert_raises
 from create.sprite.sprite import Sprite, _jpeg_dimensions
 
 
@@ -442,6 +442,38 @@ def test_load_bmp_alpha_channel() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=7]),  255)  # (1,0) A
     assert_equal(Int(ptr[unsafe_offset=11]), 255)  # (0,1) A
     assert_equal(Int(ptr[unsafe_offset=15]), 255)  # (1,1) A
+
+
+def test_supports_extension_accepts_every_decoded_format() raises -> None:
+    assert_true(Sprite.supports_extension("png"))
+    assert_true(Sprite.supports_extension("jpg"))
+    assert_true(Sprite.supports_extension("jpeg"))
+    assert_true(Sprite.supports_extension("bmp"))
+
+
+def test_supports_extension_rejects_other_formats() raises -> None:
+    assert_false(Sprite.supports_extension("gif"))
+    assert_false(Sprite.supports_extension("txt"))
+    assert_false(Sprite.supports_extension(""))
+
+
+def test_supports_extension_pairs_with_extension() raises -> None:
+    # The two are used together -- `_extension` lowercases, so the list needs
+    # no uppercase spellings of its own.
+    assert_true(Sprite.supports_extension(Sprite._extension("frame_01.PNG")))
+    assert_false(Sprite.supports_extension(Sprite._extension("notes.md")))
+
+
+def test_stem_end_finds_the_last_dot() raises -> None:
+    assert_equal(Sprite._stem_end("sprite.png"), 6)
+    assert_equal(Sprite._stem_end("archive.tar.gz"), 11)
+
+
+def test_stem_end_without_a_dot_is_the_length() raises -> None:
+    # No dot means the stem is the whole name -- what the frame-number scan
+    # needs so it can walk back from the end.
+    assert_equal(Sprite._stem_end("sprite"), 6)
+    assert_equal(Sprite._stem_end(""), 0)
 
 
 def main() raises:

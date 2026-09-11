@@ -138,7 +138,7 @@ struct SpriteAnimation(Movable):
         var names = List[String]()
         for entry in listdir(path):
             var ext = Sprite._extension(entry)
-            if ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "bmp":
+            if Sprite.supports_extension(ext):
                 names.append(entry)
         if len(names) == 0:
             raise Error("no BMP, PNG or JPEG files in " + path)
@@ -166,10 +166,7 @@ struct SpriteAnimation(Movable):
 def _frame_number(name: String) -> Int:
     """The integer a file's stem ends in, or -1 when it ends in no digits."""
     var bytes = name.as_bytes()
-    var end = len(bytes)
-    for i in range(len(bytes)):
-        if bytes[i] == 46:  # '.' -- the stem ends at the last one
-            end = i
+    var end = Sprite._stem_end(name)
     var start = end
     while start > 0 and bytes[start - 1] >= 48 and bytes[start - 1] <= 57:
         start -= 1
