@@ -123,7 +123,7 @@ def test_fill_triangle_covers_its_interior_not_its_outside() raises -> None:
 def test_blit_sprite_one_to_one() raises -> None:
     var sp = Sprite.solid(2, 2, 255, 0, 0)
     var mem = MemorySurface(4, 4)
-    blit_sprite(mem.surface(), sp, 1, 1, 2, 2)
+    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 1, 1, 2, 2)
     assert_equal(mem.pixel(1, 1), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(2, 2), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(0, 0).a, 0)
@@ -142,7 +142,7 @@ def test_blit_sprite_downscales_by_nearest_neighbour() raises -> None:
             ptr[unsafe_offset=off + 2] = 0 if col < 2 else 255
             ptr[unsafe_offset=off + 3] = 255
     var mem = MemorySurface(4, 4)
-    blit_sprite(mem.surface(), sp, 0, 0, 2, 2)
+    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 2)
     assert_equal(mem.pixel(0, 0), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(1, 0), Color(0, 0, 255, 255))
     assert_equal(mem.pixel(0, 2).a, 0)
@@ -155,7 +155,7 @@ def test_blit_sprite_skips_transparent_source_pixels() raises -> None:
     ptr[unsafe_offset=3] = 255  # opaque red
     ptr[unsafe_offset=7] = 0  # fully transparent
     var mem = _filled(2, 1, Color(9, 9, 9, 255))
-    blit_sprite(mem.surface(), sp, 0, 0, 2, 1)
+    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 1)
     assert_equal(mem.pixel(0, 0), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(1, 0), Color(9, 9, 9, 255))
 
@@ -164,13 +164,13 @@ def test_blit_sprite_clips_against_every_edge() raises -> None:
     var sp = Sprite.solid(4, 4, 255, 255, 255)
     var mem = MemorySurface(4, 4)
     # Anchored off the top-left: only the bottom-right quarter lands.
-    blit_sprite(mem.surface(), sp, -2, -2, 4, 4)
+    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, -2, -2, 4, 4)
     assert_equal(mem.pixel(0, 0), Color.WHITE)
     assert_equal(mem.pixel(1, 1), Color.WHITE)
     assert_equal(mem.pixel(2, 2).a, 0)
 
     var far = MemorySurface(4, 4)
-    blit_sprite(far.surface(), sp, 3, 3, 4, 4)
+    blit_sprite(far.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 3, 3, 4, 4)
     assert_equal(far.pixel(3, 3), Color.WHITE)
     # A wrapped row would light up column 0.
     assert_equal(far.pixel(0, 3).a, 0)
