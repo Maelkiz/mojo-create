@@ -11,7 +11,7 @@ from create.core.raster import (
 )
 from create.core.font import GlyphInfo
 from create.core.surface import MemorySurface
-from create.graphics.sprite import Sprite
+from create.sprite.sprite import Sprite
 
 
 def _filled(width: Int, height: Int, c: Color) raises -> MemorySurface:

@@ -1,6 +1,6 @@
 from std.memory import ArcPointer
 
-from create.graphics.animation import SpriteAnimation
+from create.sprite.animation import SpriteAnimation
 
 
 struct SpriteAnimator(Movable):

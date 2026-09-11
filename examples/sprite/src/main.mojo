@@ -1,5 +1,5 @@
 from create.core import *
-from create.graphics import Sprite
+from create.sprite import Sprite
 from create.math import clamp
 
 

@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_raises
-from create.graphics import Sprite, SpriteAnimation
-from create.graphics.animation import _frame_number, _sort_frame_names
+from create.sprite import Sprite, SpriteAnimation
+from create.sprite.animation import _frame_number, _sort_frame_names
 
 
 def _sheet(cols: Int, rows: Int, cell: Int) -> Sprite:
