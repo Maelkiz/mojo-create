@@ -551,7 +551,9 @@ struct Canvas[origin: Origin[mut=True]]:
         var p = mat_apply(self._transform, cx, cy)
         blit_sprite(
             self._surf,
-            s,
+            s.pixels.unsafe_ptr(),
+            s.width,
+            s.height,
             Int(p[0]) - s.width // 2,
             Int(p[1]) - s.height // 2,
             s.width,
@@ -569,7 +571,9 @@ struct Canvas[origin: Origin[mut=True]]:
         var dh = max(Int(Float64(h) * sf + 0.5), 1)
         blit_sprite(
             self._surf,
-            s,
+            s.pixels.unsafe_ptr(),
+            s.width,
+            s.height,
             Int(p[0]) - dw // 2,
             Int(p[1]) - dh // 2,
             dw,

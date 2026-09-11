@@ -2,7 +2,6 @@ from std.math import max, min, abs
 from .color import Color
 from .font import GlyphInfo
 from .surface import Surface
-from create.sprite.sprite import Sprite
 
 
 def blend[o: Origin[mut=True]](s: Surface[o], off: Int, c: Color):
@@ -136,9 +135,23 @@ def fill_triangle[
 
 
 def blit_sprite[
-    o: Origin[mut=True]
-](s: Surface[o], sprite: Sprite, x0: Int, y0: Int, dw: Int, dh: Int):
-    """Blit `sprite` into the device rect at `(x0, y0)` sized `dw` x `dh`.
+    o: Origin[mut=True], so: Origin
+](
+    s: Surface[o],
+    src: Pointer[UInt8, so],
+    sw: Int,
+    sh: Int,
+    x0: Int,
+    y0: Int,
+    dw: Int,
+    dh: Int,
+):
+    """Blit the `sw` x `sh` RGBA buffer at `src` into the device rect at
+    `(x0, y0)` sized `dw` x `dh`.
+
+    Takes a bare pixel view rather than an image type, for the same reason
+    `Surface` is a plain value: nothing here needs to know where the pixels
+    came from.
 
     Nearest-neighbour: rotation and shear are not resampled, so the caller
     maps the anchor and hands over an axis-aligned destination. A 1:1 blit
@@ -146,19 +159,19 @@ def blit_sprite[
     """
     var W = s.width
     var H = s.height
-    var sp = sprite.pixels.unsafe_ptr()
-    var one_to_one = dw == sprite.width and dh == sprite.height
+    var sp = src
+    var one_to_one = dw == sw and dh == sh
     for row in range(dh):
         var dy = y0 + row
         if dy < 0 or dy >= H:
             continue
-        var src_row = row if one_to_one else row * sprite.height // dh
+        var src_row = row if one_to_one else row * sh // dh
         for col in range(dw):
             var dx = x0 + col
             if dx < 0 or dx >= W:
                 continue
-            var src_col = col if one_to_one else col * sprite.width // dw
-            var src_off = (src_row * sprite.width + src_col) * 4
+            var src_col = col if one_to_one else col * sw // dw
+            var src_off = (src_row * sw + src_col) * 4
             var sa = sp[unsafe_offset=src_off + 3]
             if sa == 0:
                 continue
