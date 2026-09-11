@@ -52,7 +52,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/render/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
 | `src/create/render/align.mojo` | `HorizontalAlignment` (`LEFT`/`CENTER`/`RIGHT`), `VerticalAlignment` (`TOP`/`MIDDLE`/`BOTTOM`) |
 | `src/create/render/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
-| `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
+| `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps(a, b)`, one exact overload per shape pair |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
 | `src/create/math/util.mojo` | `lerp`, `map`, `norm`, `smoothstep`, `sign`, `fract`, `fmod`, `degrees`, `radians` |
@@ -189,6 +189,15 @@ both can reach it. It is internal plumbing, not public surface — adding it to 
 would be wrong, since no user-facing signature names `le_uint` or `sign_extend_32`. `render`
 importing it is not a violation of the `render`-never-imports-`core` rule: `_bytes` is not `core`,
 and depending on a leaf cannot make a cycle.
+
+**`overlaps` is outside the rule too, the opposite way.** `core` re-exports `Rectangle`, `Circle`
+and `Triangle` under the closure rule — `Context`/`Program` name them — but the rule only reaches
+symbols a re-exported signature *names or constructs*, and no signature in `core` takes a `Bool` or
+builds one, so `overlaps` itself is never pulled in by it. Leaving it out anyway would mean a
+program written against `from create.core import *` gets three shapes and no way to test them
+against each other, which defeats the point of re-exporting the shapes at all. So `overlaps` is
+re-exported from `core` as a deliberate exception, on consumer-ergonomics grounds, not because any
+signature forces it.
 
 **That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
 `SpriteAnimator` only in `canvas.sprite`'s overloads — no `render` code depends on what those types
@@ -369,7 +378,6 @@ docstring; this table is not an API reference and must not grow into one.
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
 | `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
-| `ConvexShape` | Trait for `overlaps` and point queries: implement `center()`, `closest_point()`, `contains()`. Implementers must be convex — the test is a centre-to-nearest-point walk, not SAT |
 | Asset vs. playhead | `SpriteAnimation` and `Sound` are immutable artwork, shared by `ArcPointer`; `SpriteAnimator` and an `Audio` voice are one entity's position in it. The rate (`fps`) belongs to the asset, not the playhead |
 
 ## Do
