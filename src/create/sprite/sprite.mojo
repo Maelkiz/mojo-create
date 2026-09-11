@@ -35,6 +35,19 @@ def _jpeg_dimensions(data: List[UInt8]) raises -> Tuple[Int, Int]:
 
 
 struct Sprite(Movable):
+    """An owned RGBA pixel buffer, row-major, 8 bits per channel.
+
+    Decoded once at load — `Sprite.load` picks a BMP, PNG or JPEG decoder by
+    file extension — and blitted many times afterwards. `Sprite.solid` and
+    `Sprite.from_rgba` build one without a file, and `resize` resamples in
+    place.
+
+    Deliberately not a render type: `raster.blit_sprite` takes a pixel pointer
+    with a width and a height rather than this struct, so the image decoders
+    stay out of the render path and the rasteriser is written against no layout
+    but its own.
+    """
+
     var pixels: List[UInt8]
     var width: Int
     var height: Int

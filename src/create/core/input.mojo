@@ -5,6 +5,26 @@ from .key import Key, KeyBits
 
 
 struct Input(Movable):
+    """Keyboard and mouse state for one frame, as `Program.update` sees it.
+
+    The whole input surface — there are no event callbacks, because every
+    window event either lands on a field here or is already reflected in
+    `Context` (`ctx.width`/`height` refresh every frame, so a resize needs no
+    notification of its own).
+
+    Passed to `update` read-only rather than living on `Context`, which is the
+    one thing a program never writes: `ctx` must be `mut` for `quit` and
+    `autoscale`, so anything on it would inherit that mutability and the
+    one-way flow would stop being checkable.
+
+    Being a plain struct, it is also how input becomes scriptable: a test fills
+    one in and calls `step` directly, driving click- or key-driven behaviour
+    with no window involved.
+
+    `mouse` is in world coordinates, so it is negative left of and below the
+    origin.
+    """
+
     var mouse_x: Int
     var mouse_y: Int
     var mouse: Vector2
@@ -68,6 +88,17 @@ struct Input(Movable):
         self.mouse_y = Int(floor(y))
 
     def _check(self, key: String, bits: KeyBits) -> Bool:
+        """Resolve a key name against `bits`.
+
+        Accepts a single character (`"a"`, `"7"`, `"/"`) or a named key
+        (`"up"`, `"space"`, `"f1"`). Case is folded, so `"A"` and `"a"` are the
+        same key — a key is a physical thing and shift is queried separately.
+
+        A bare modifier name matches either side (`"ctrl"` is left or right),
+        with `"left_ctrl"`/`"right_ctrl"` and friends to tell them apart. An
+        unknown name is `False` rather than an error, so a typo is a key that
+        never fires.
+        """
         var k = key.lower()
 
         # Single printable char — SDL keycode == ASCII for a-z, 0-9, punctuation
@@ -106,30 +137,46 @@ struct Input(Movable):
         return bits.test(code)
 
     def is_key_down(self, keycode: Int) -> Bool:
+        """Whether this key is held right now — true every frame it stays
+        down, which is what continuous movement wants."""
         return self._held_keys.test(keycode)
 
     def is_key_down(self, key: String) -> Bool:
+        """Whether this key is held right now. See `_check` for the names."""
         return self._check(key, self._held_keys)
 
     def just_pressed(self, keycode: Int) -> Bool:
+        """Whether this key went down this frame — true once per press."""
         return self._just_pressed.test(keycode)
 
     def just_pressed(self, key: String) -> Bool:
+        """Whether this key went down this frame. See `_check` for the names."""
         return self._check(key, self._just_pressed)
 
     def just_released(self, keycode: Int) -> Bool:
+        """Whether this key came up this frame — true once per release."""
         return self._just_released.test(keycode)
 
     def just_released(self, key: String) -> Bool:
+        """Whether this key came up this frame. See `_check` for the names."""
         return self._check(key, self._just_released)
 
     def is_mouse_down(self, button: Int = MouseButton.LEFT) -> Bool:
+        """Whether this mouse button is held right now.
+
+        Defaults to `MouseButton.LEFT`, so the common case needs no argument.
+        Name the rest through `MouseButton` rather than passing a raw int — the
+        numbering is not what anyone guesses (`RIGHT` is 3, not 2).
+        """
         return (self._held_buttons & (1 << button)) != 0
 
     def mouse_just_pressed(self, button: Int = MouseButton.LEFT) -> Bool:
+        """Whether this mouse button went down this frame — true once per
+        click. `mouse_press_pos` is where it happened."""
         return (self._pressed_buttons & (1 << button)) != 0
 
     def mouse_just_released(self, button: Int = MouseButton.LEFT) -> Bool:
+        """Whether this mouse button came up this frame — true once."""
         return (self._released_buttons & (1 << button)) != 0
 
 

@@ -3,6 +3,14 @@ from ._sndfile import SndFile
 
 
 struct Sound(Movable):
+    """Decoded PCM plus the format it is in — the asset, not a playing voice.
+
+    Decoding happens once, at load; `Audio.play` reads the buffer without
+    touching the file again. Hold one as an `ArcPointer[Sound]` field, since
+    `play` takes it that way for every voice: a voice shares the samples by
+    refcount rather than copying them.
+    """
+
     var pcm: List[UInt8]
     var format: Int32
     var channels: Int32

@@ -119,13 +119,12 @@ def main() raises:
 A file reports PASS/FAIL per test and exits non-zero if any failed. `pixi run test` runs under
 `set -e`, so the first failing *file* stops the suite — but within a file every test still runs.
 
-Rendering is tested for real. `run_headless[T]` runs the same sequence as `run` — `create`, then
-`update` and `render` per frame, letterbox after — over an owned `MemorySurface`, with synthetic 16ms
-frames and empty input, and hands the buffer back. `MemorySurface.pixel(x, y)` reads one pixel out, so
-[tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) asserts on centring, y-up orientation,
-alpha compositing, stroke scaling, letterbox bars and sprite blits instead of eyeballing them. Pass
-`pixel_width`/`pixel_height` to give the framebuffer a different shape from the design size — a 1:1
-mapping has no scale factor and no bars, so autoscale is untestable without it.
+Rendering is tested for real. [`run_headless`](src/create/core/headless.mojo) drives a program over
+an owned `MemorySurface` and hands the buffer back; `MemorySurface.pixel(x, y)` reads one pixel out.
+So [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) asserts on centring, y-up
+orientation, alpha compositing, stroke scaling, letterbox bars and sprite blits instead of eyeballing
+them, and [tests/core/test_frame.mojo](tests/core/test_frame.mojo) scripts an `Input` and calls `step`
+directly to drive click- and key-driven behaviour with no window.
 
 `tests/core/test_smoke.mojo` is both: the pre-commit hook builds it, and `pixi run test` runs it
 through `run_headless`. Its `_windowed_entry_point` is never called — `run[T]` opens a window and
@@ -216,32 +215,21 @@ processing, and its width and height must come from the window, never from the v
 mapping is one crooked frame; a lying extent is memory corruption, because the extent is baked into
 the `Surface` and so defeats the clipping every raster loop otherwise does.
 
-**Transform scope:**
-```mojo
-# CORRECT ✓ — use the context manager; transform auto-pops on exit
-with canvas.transform(translate(50.0, 50.0)):
-    canvas.rect((0, 0), 100, 100)
-
-# WRONG ✗ — manually pushing without guaranteed pop
-canvas._push_transform(m)
-```
-
-**Style scope:** `fill`/`stroke`/`stroke_width`/`no_fill`/`no_stroke`/`font_size` and friends are bare
-mutators, and calling them straight from `render` is the normal path — the style resets next frame
-either way. `canvas.style()` is for the *callee*: a helper that sets style before drawing leaks it to
-whatever the caller draws next, which the guard scopes away.
+**Scope through the guards, never by hand.** `canvas.transform(m)` and `canvas.style()` both return
+a `with`-block guard that unwinds on exit; `canvas._push_transform` is the same push without the pop.
+Style is the subtler of the two: the bare mutators (`fill`, `no_stroke`, `font_size`, …) called
+straight from `render` are the normal path, since the style resets next frame either way — the guard
+is for a *helper* that sets style before drawing, whose `no_stroke()` would otherwise apply to
+whatever the caller draws next.
 
 ```mojo
-# In a draw helper — restores the caller's fill, stroke and font on exit
 with canvas.style():
     canvas.no_stroke()
     canvas.fill(Color(220, 80, 80))
     canvas.rect(self.pos, 40, 40)
 ```
 
-`Style` is a plain value, so each guard carries its own snapshot and nesting needs no stack.
-
-**Coordinate system is Unity-style, not Processing-style.** The origin is the **middle** of the design area and **y grows upward**. World `x` runs `[-width/2, +width/2]`, `y` runs `[-height/2, +height/2]`; `(0, 0)` is the centre of the screen and negative `y` is below it.
+**Coordinate system is not Processing's.** The origin is the **middle** of the design area and **y grows upward**. World `x` runs `[-width/2, +width/2]`, `y` runs `[-height/2, +height/2]`; `(0, 0)` is the centre of the screen and negative `y` is below it.
 
 `Context` and `Canvas` both expose `left()`, `right()`, `bottom()`, `top()` as the edges — use those rather than `width`/`height` arithmetic, and note `left()` and `bottom()` are negative. `Rectangle.top()` is `y + h/2`.
 
@@ -249,70 +237,24 @@ Consequences worth internalising:
 
 - `rotate(angle)` turns **counter-clockwise**, the mathematical convention.
 - Downward motion is negative: gravity is a negative `vel_y`, a jump is positive. See [examples/movement/src/player.mojo](examples/movement/src/player.mojo).
-- Glyphs and sprites are **not** flipped — only their anchor point is mapped, so `VerticalAlignment.TOP`/`VerticalAlignment.BOTTOM` still mean the top and bottom of the text box.
+- Glyphs and sprites are **not** flipped — only their anchor point is mapped.
 - `input.mouse` is delivered in world coordinates, so it can be negative.
 
-**All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner.
+**All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner. Position arguments are `Vector2`, whose tuple constructors are `@implicit`, so a bare tuple works everywhere one is taken.
 
-`Vector2` has `@implicit` constructors from `Tuple[Float64, Float64]`, `Tuple[Int, Int]` and both mixed pairs, so any `Vector2` position argument accepts a bare tuple: `canvas.rect((0, 0), 100, 100)`, `canvas.circle((-100, 0), 50)`.
+**Style defaults are not blank:** every frame starts from `Style()`, which has **stroke `BLACK` and
+enabled** — a `rect` drawn without `no_stroke()` gets an outline nobody asked for. The rest of the
+defaults are in [style.mojo](src/create/render/style.mojo).
 
-**Text and style defaults:** `canvas.font_size(n)`, `font_weight(FontWeight.BOLD)`,
-`text_align(HorizontalAlignment.CENTER, VerticalAlignment.MIDDLE)`, then
-`canvas.text("hi", pos)`. `text_align` is overloaded on the axis: pass a
-`HorizontalAlignment`, a `VerticalAlignment`, or both — there is no separate `text_baseline`, and
-`VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not typographic baselines.
-`canvas.font(f)` swaps the face. Every frame starts from `Style()`: fill `WHITE`, **stroke `BLACK`
-and enabled**, stroke width 1, font size 16, weight `REGULAR`, horizontal alignment `LEFT`,
-vertical alignment `TOP`. Stroke-on-by-default is the one that surprises — a `rect` drawn without `no_stroke()` gets a black
-outline.
+**Autoscale** keeps the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes — `FIT` (default), `EXTEND`, `OFF` — documented in [autoscale.mojo](src/create/render/autoscale.mojo), with the launch-mode matrix on `run`. `ctx.design(w, h, mode)` pins the space from inside `create`. See [examples/autoscale.mojo](examples/autoscale.mojo), which cycles all three modes on space.
 
-**Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
-
-**Autoscale** keeps the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. `run` turns it on as `FIT`; `create` can set `ctx.autoscale` to either other mode. Three modes:
-
-| `AutoScale` | Behaviour |
-|---|---|
-| `FIT` (default) | Uniform `min(w, h)` scale, design centred, leftover painted `canvas.letterbox` (default `#222222`) after render, which also clips anything drawn past the design bounds |
-| `EXTEND` | Same scale factor as `FIT`, but anchored at the origin with no bars — `ctx.width`/`height` grow so the leftover becomes extra world. A wider window shows more horizontal space, a taller one more vertical |
-| `OFF` | No scaling — `ctx.width`/`height` are the window in pixels, so layout must survive any window size on its own |
-
-**Design resolution comes from the `run` arguments, not from the window.** `FIT` is the default
-because `OFF` punishes the obvious way to write a program: coordinates laid out against the size the
-author had, silently rearranged on any other display. The design size is therefore a property of the
-program, not of the display — `run[T](title, w, h)` seeds both the window and the design space, but
-they are independent afterwards, and the design space keeps what the caller asked for even when SDL
-hands back something else. So `run[App]("T", 1000, 1000, fullscreen=True)` means *author at
-1000x1000, present fullscreen*. Defaulting to `FIT` also keeps both jobs of the `run` size live:
-under `OFF` the design resolution is unused, so `run("T", 1280, 720, fullscreen=True)` would ignore
-the numbers entirely.
-
-| call | `FIT` (default) / `EXTEND` | `AutoScale.OFF` |
-|---|---|---|
-| `run("T", 1000, 1000)` | design 1000x1000, scaled to the window | 1000x1000 window, world = window |
-| `run("T", 1000, 1000, fullscreen=True)` | design 1000x1000, scaled to the monitor | fullscreen, world = monitor pixels |
-| `run("T", fullscreen=True)` | design 1280x720 (the default), scaled to the monitor | fullscreen, world = monitor pixels |
-
-`ctx.design(w, h, mode=AutoScale.FIT)` overrides the `run` size from inside `create`, for a program
-that pins its own coordinate space no matter how it is launched. It recomputes the mapping on the
-spot, so `ctx.width`/`height` and the edge helpers are correct for the rest of `create` rather than
-one frame later.
-
-Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates. See [examples/autoscale.mojo](examples/autoscale.mojo), which cycles all three modes on space.
-
-**Key strings:** pass lowercase strings to `input.is_key_down()` / `input.just_pressed()` / `input.just_released()` — single char (`"a"`) or named key (`"up"`, `"ctrl"`, `"shift"`). Each also has an `Int` keycode overload, for which `Key` names the codes.
-
-**Mouse buttons:** `input.is_mouse_down()` / `input.mouse_just_pressed()` / `input.mouse_just_released()` take a button number, defaulting to `MouseButton.LEFT` so the common case needs no argument. `MouseButton` (`LEFT`/`MIDDLE`/`RIGHT`/`BACK`/`FORWARD`) names the rest — prefer it over the raw int, since the numbering isn't obvious (`RIGHT` is 3, not 2). Values match SDL's numbering, but `BACK`/`FORWARD` are named for the side thumb buttons' actual job (SDL calls them X1/X2), not SDL's internal label. `input.wheel` is this frame's scroll delta, zeroed every frame like the key edge bits. `input.mouse_press_pos` is the world position at the most recent press this frame — captured at the press event itself, so it doesn't drift if the mouse keeps moving before the frame ends.
+The design size is a property of the program, not of the display: it is whatever `run` was passed, unchanged by a resize or by fullscreen. Under `EXTEND` the *reported* size grows with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates.
 
 `Input._set_mouse(x, y)` is the single writer of `mouse`, `mouse_x` and `mouse_y`. The three event
 arms in `run.mojo` that carry a pointer position all go through it, which is the point: when they
 each wrote the fields themselves, the `MouseButtonUp` arm updated the `Int` pair and left `mouse`
 holding the previous frame's position. A new event that reports a position calls `_set_mouse` and
-adds only what is genuinely its own — `mouse_press_pos` on a press, say. The conversion to the `Int`
-fields **floors** rather than truncates, because world space is centred: `Int(-0.5)` is `0` but
-`floor(-0.5)` is `-1`, so truncating would round the left and bottom halves of the screen toward the
-origin. Being a method on a plain struct, it is testable without a window, which `run.mojo` is not.
-
-`Program` has no input callbacks — `update`'s `input` parameter is the only input surface, and it is complete: every window event either updates a field on `Input` or is otherwise already reflected in `Context` (`ctx.width`/`height` refresh every frame, so a resize needs no separate notification). This is also what makes input scriptable in a test: `Input` is a plain struct, so `run_headless` or a direct `step(...)` call can fill it in and drive click- or key-driven behaviour without a window — see [tests/core/test_frame.mojo](tests/core/test_frame.mojo).
+adds only what is genuinely its own — `mouse_press_pos` on a press, say.
 
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`, `SpriteAnimator`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
 
@@ -324,50 +266,21 @@ origin. Being a method on a plain struct, it is testable without a window, which
 | `Canvas` | yes | yes | `mut` parameter |
 | `Input` | yes | **no** | read-only parameter |
 
-`Input` is the only one the program never writes, and that is exactly why it stays out of `Context`: `ctx` must be `mut` for `quit()` and `autoscale`, so anything living on it inherits that mutability. As a separate argument, `input` is borrowed read-only and the one-way flow is enforced by the compiler. (`ctx.time` is the case that shows the cost — the program never writes it either, but `ctx.time.frame_count = 99` compiles.)
+`Input` is the only one the program never writes, which is why it is a separate read-only argument rather than a field on the `mut` `Context` — the [`Input` docstring](src/create/core/input.mojo) has the reasoning. `ctx.time` is the case that shows the cost: the program never writes it either, but `ctx.time.frame_count = 99` compiles.
 
-**Audio:** construct `Audio()` once in `create`, hold it as a field, and call `audio.update()` once per frame from `update` — SDL never tells `Audio` a stream finished on its own, so skipping `update()` stalls a loop after its first buffer drains and leaks one-shot voice slots forever. Hold `Sound`s as `ArcPointer[Sound]` fields (`from std.memory import ArcPointer`): `audio.play` takes an `ArcPointer[Sound]` for *every* voice, looping or one-shot, so a voice shares the PCM buffer (refcount bump) instead of copying it. `play` returns a voice id for `stop`/`pause`/`resume`/`is_playing`; ids are generation-counted so a stale id from a finished/recycled slot can't affect a later voice. See [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
+**Per-frame obligations.** Two fields the program owns need ticking from `update`, and nothing
+enforces it:
 
-**Sprite animation:** a `SpriteAnimation` is the artwork — an ordered `List[Sprite]` plus an `fps` —
-and a `SpriteAnimator` is one entity's playhead over it. Build animations in `create` and hold them
-as `ArcPointer[SpriteAnimation]` fields, like `Sound`s; hold one `SpriteAnimator` per animated
-entity, so several entities can share an animation by refcount bump instead of copying its frames.
-Call `animator.update(ctx.time.delta)` once per frame from `update`, and draw with
-`canvas.sprite(animator, pos)` — the same overload set as `Sprite`, sized variants included.
+- `audio.update()` — SDL never reports a finished stream, so skipping it stalls a loop after its
+  first buffer drains and leaks one-shot voice slots forever. See
+  [audio.mojo](src/create/audio/audio.mojo) and [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
+- `animator.update(ctx.time.delta)` — the playhead only advances here. See
+  [animator.mojo](src/create/sprite/animator.mojo) and [examples/animation/src/main.mojo](examples/animation/src/main.mojo).
 
-```mojo
-var sheet = Sprite.load(script_dir() + "/../assets/character.png")
-var idle = ArcPointer(SpriteAnimation.from_sheet(sheet, 32, 32, start=0, count=4, fps=6.0))
-var run = ArcPointer(SpriteAnimation.from_sheet(sheet, 32, 32, start=4, count=4, fps=12.0))
-var spin = ArcPointer(SpriteAnimation.from_folder(script_dir() + "/../assets/spin", fps=16.0))
-```
-
-`from_sheet` numbers cells row-major, so one sheet yields several animations without a `SpriteSheet`
-type; `count = 0` means "to the end". `from_folder` sorts **naturally**, by the trailing integer of
-each stem — `frame_2` before `frame_10`, which lexicographic ordering gets backwards. `fps` belongs
-to the animation, not the animator: a run cycle and an idle cycle run at different rates, and the
-rate is a property of the asset.
-
-An animator always holds an animation — there is no empty state and no `Optional` to guard when
-drawing — and starts stopped on frame 0. **`use` is idempotent by design**: switching to the
-animation already held does nothing, so calling it every frame from the branch that decided which
-animation applies is the intended usage, not a mistake. `loop(anim)` carries the same guard.
-
-```mojo
-if self.velocity.x != 0.0:
-    self.animator.loop(self.run.copy())
-else:
-    self.animator.loop(self.idle.copy())
-```
-
-Without that guard the animation rewinds to frame 0 sixty times a second and never visibly moves —
-the single biggest trap in this API. `play()` restarts from frame 0 and holds the last frame,
-reporting `is_finished()`; `loop()` wraps forever; `pause()` freezes and `resume()` continues from
-where it stopped, while `stop()` halts and rewinds. `update` advances in a `while` loop rather than
-by one step, so a long frame skips ahead instead of drifting behind the animation's own clock.
-`SpriteAnimation.__init__` raises (an empty frame list is rejected), so constructing one needs a
-`raises` context — `create` already is one. See
-[examples/animation/src/main.mojo](examples/animation/src/main.mojo).
+Both an animation and a sound are shared assets, held as `ArcPointer` fields (`from std.memory
+import ArcPointer`) so several entities or voices share one buffer by refcount instead of copying
+it. The biggest trap in the animation API is documented on
+[`SpriteAnimator.use`](src/create/sprite/animator.mojo) — read it before driving an animator.
 
 ## Critical Gotchas
 
@@ -399,78 +312,49 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
 
 4. **Hooks block on breakage.** Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. `--no-verify` skips both hooks — it is for WIP checkpoints on a scratch branch that get squashed or amended before landing, never on `main`.
 
-5. **`Canvas` must keep exactly one parameter.** `Program.render(self, mut canvas: Canvas)` relies on
-   `Canvas[origin]` having a single inferred parameter so user code can write a bare `Canvas`. Adding a
-   second breaks every program in the repo at once.
+5. **Two origin limits in this Mojo version shape the API.** Neither `MutableAnyOrigin` nor
+   `ImmutableOrigin` is a known declaration, and `ref [o["element"]]` fails with `'ImmOrigin' is not
+   subscriptable`. Consequences, each documented where it bites:
 
-   This is also why the framebuffer is refreshed by rebuilding the `Canvas` rather than by handing it
-   a new `Surface`. That was tried and does not work: `Canvas`'s type embeds the window's pixel origin,
-   so a call like `canvas._sync(Surface(win.pixels(), ...))` gives the call site a second mutable path
-   to the same window and the compiler rejects it —
+   - `Canvas` must keep exactly one parameter, and a framebuffer is swapped by rebuilding the
+     `Canvas`, never by handing the existing one a new `Surface` — see the
+     [`Canvas` docstring](src/create/render/canvas.mojo) for the aliasing error that shape produces.
+     Adding a second parameter breaks every program in the repo at once.
+   - Nothing can return a reference to a `List` element, so `SpriteAnimation` has **no `frame()`
+     accessor** — see its [docstring](src/create/sprite/animation.mojo) and
+     [`canvas.sprite`](src/create/render/canvas.mojo). Index inline at the use site.
 
-   ```
-   error: aliasing values passed mutably to 'self' argument and passed mutably to 's' argument in '_sync' call
-   ```
+   Don't retry either shape.
 
-   Origin erasure would sidestep it, but `MutableAnyOrigin` is not a known declaration in this Mojo
-   version. Constructing a fresh `Canvas` takes `out self`, so there is no existing borrow to alias
-   against. Don't retry the `_sync` shape.
-
-6. **A `List` element's origin is not spellable, so nothing can return a reference to one.**
-   `List.__getitem__` returns `ref [self_is_mut["element"]] T`, and that origin cannot be written in
-   user code: `ref [o["element"]]` fails with `'ImmOrigin' is not subscriptable`, and neither
-   `ImmutableOrigin` nor `MutableAnyOrigin` is a known declaration in this Mojo version (same reason
-   as Gotcha 5). This is why `SpriteAnimation` has **no `frame()` accessor** — a
-   `-> ref Sprite` signature does not compile. Index inline at the use site instead, as
-   `canvas.sprite` does:
-
-   ```mojo
-   self.sprite(a.animation[].frames[a.frame_index], cx, cy)
-   ```
-
-   The reference never crosses a function boundary there, so it needs no nameable origin. Don't try
-   to add the accessor back.
-
-   Only two of `canvas.sprite`'s six animator overloads index the frame this way — the two taking
-   `Float64` coordinates. The other four delegate to them, so the workaround is confined rather than
-   copied six times. Note that a library build only type-checks the `def` bodies it reaches, so those
-   four were compiled by nothing until
-   [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) gained a program that draws through
-   all six; keep that test when adding an overload.
+6. **An uncalled overload is compiled by nothing.** A library build only type-checks the `def`
+   bodies it reaches, so four of `canvas.sprite`'s six animator overloads were checked by no build
+   until [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) gained a program that draws
+   through all six. Keep that test when adding an overload — this is the general reason the repo
+   gates on building consumer programs as well as on `mojo precompile`.
 
 ## Terminology
+
+Concepts that span files. Every type's own surface — methods, constants, factories — is in its
+docstring; this table is not an API reference and must not grow into one.
 
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: `create` + `update` + `render`. No event callbacks — input arrives as `update`'s `Input` parameter |
-| `Context` | Per-frame state bag: `ctx.width`, `ctx.height`, `ctx.left()`/`right()`/`bottom()`/`top()`, `ctx.time`, `ctx.exit_on_escape`, `ctx.autoscale` (`AutoScale.FIT` default/`EXTEND`/`OFF`), `ctx.design(w, h, mode)`, `ctx.scale`, `ctx.quit()` |
-| `Time` | Frame timing, owned by `Context` and ticked by the run loop: `ctx.time.delta` (Float64, seconds since last frame), `ctx.time.delta_millis` (Int), `ctx.time.elapsed` (Float64, seconds since the first frame), `ctx.time.elapsed_millis` (Int), `ctx.time.frame_count` (Int, 1 during the first `update`) |
 | World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
 | `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
-| `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
-| `StyleGuard` | RAII wrapper from `canvas.style()` — restores fill, stroke and font settings on scope exit |
-| `Color` | `Color(r, g, b, a=255)` or `Color(gray)`; factories `Color.hex(0x336699)`, `Color.hsv(h, s, v)`, `Color.lerp(a, b, t)`; constants `BLACK`/`WHITE`/`DARK_GRAY`/`GRAY`/`LIGHT_GRAY`/`RED`/`GREEN`/`BLUE`/`CYAN`/`MAGENTA`/`YELLOW`/`ORANGE`; queries `.luminance()`, `.to_hsv()`, `.over(dst)` |
-| `HorizontalAlignment` / `VerticalAlignment` | Text anchoring, set through the overloaded `canvas.text_align`: `HorizontalAlignment.LEFT`/`CENTER`/`RIGHT`, `VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM`. Stored on `Style` as `text_horizontal_alignment`/`text_vertical_alignment` |
-| `Font` / `FontWeight` | Packaged Noto faces, lazily loaded on first text draw, with a symbols fallback for missing glyphs; weights `THIN`/`LIGHT`/`REGULAR`/`MEDIUM`/`BOLD`/`BLACK` |
-| `Key` / `MouseButton` | Named codes for the `Int` overloads of the `Input` queries |
+| `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
 | `ConvexShape` | Trait for `overlaps` and point queries: implement `center()`, `closest_point()`, `contains()`. Implementers must be convex — the test is a centre-to-nearest-point walk, not SAT |
-| `Matrix` | Generic `Matrix[rows, cols]` plus free functions `identity`, `inverse`, `apply`, `translate`, `rotate`, `scale`, `perspective` |
-| `Random` | Seeded generator: `Random()` or `Random(seed)`, then `.float()`, `.float(lo, hi)`, `.int(lo, hi)`, `.bool()` |
-| `Sprite` | Pixel buffer: `Sprite.load(path)` or `Sprite.load(path, w, h)` (BMP/PNG/JPEG, detected by extension), `Sprite.solid(w, h, r, g, b, a)`, `Sprite.from_rgba(w, h, data)`, `.resize(w, h)`; `Sprite.supports_extension(ext)` is the one list of readable formats, which `SpriteAnimation.from_folder` filters by |
-| `SpriteAnimation` | Frame sequence + rate: `SpriteAnimation(frames, fps)` (raises on an empty list), `SpriteAnimation.from_sheet(sheet, frame_width, frame_height, start, count, fps)`, `SpriteAnimation.from_folder(path, fps)`; `.frames`, `.fps`, `.count()`, `.frame_duration()`. Held as an `ArcPointer[SpriteAnimation]` |
-| `SpriteAnimator` | One entity's playhead over a `SpriteAnimation`: `use`/`play`/`loop` (each also taking an animation), `pause`/`resume`/`stop`, `update(dt)`, `is_playing()`/`is_finished()`, `.frame_index`. `use` is a no-op on the animation already held |
-| `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
-| `Audio` | Program-owned playback device: `play`/`stop`/`stop_all`/`pause`/`resume`/`is_playing`/`set_volume`, plus `update()` (call once per frame) |
+| Asset vs. playhead | `SpriteAnimation` and `Sound` are immutable artwork, shared by `ArcPointer`; `SpriteAnimator` and an `Audio` voice are one entity's position in it. The rate (`fps`) belongs to the asset, not the playhead |
 
 ## Do
 
 - Use `@fieldwise_init` on program structs to auto-generate `__init__` from fields.
 - Use `pixi run test` before committing.
 - Use `canvas.background(Color.X)` as the first call in `render` to clear the frame.
-- Use `canvas.to_local(x, y)` to map a world position into the frame of the current transform, and `canvas.to_world(x, y)` for the reverse. Both take two `Float64` and return a `Tuple[Float64, Float64]` — there is no `Vector2` overload, so pass `input.mouse.x, input.mouse.y`. Neither deals in pixels.
+- Use `canvas.to_local`/`to_world` to move a position between world space and the current transform's frame — neither deals in pixels, and both take two `Float64`, so pass `input.mouse.x, input.mouse.y`.
 - Use `script_dir()` for every asset path; a bare relative path resolves against the CWD.
 
 ## Don't

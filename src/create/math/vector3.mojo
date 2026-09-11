@@ -2,6 +2,14 @@ from std.math import sqrt
 
 
 struct Vector3(Copyable, ImplicitlyCopyable, Movable, Writable):
+    """A 3D point or direction: arithmetic operators, `mag`, `normalize`,
+    `dot`, `cross`, `dist`, `lerp`.
+
+    Drawing is 2D, so nothing in the library takes one — it is here for a
+    program doing its own 3D work, and lives in `create.math` rather than the
+    `create.core` re-exports for exactly that reason.
+    """
+
     var x: Float64
     var y: Float64
     var z: Float64

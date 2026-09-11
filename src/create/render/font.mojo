@@ -4,11 +4,25 @@ from std.math import abs
 from create.bytes import le_uint, sign_extend_32
 from .color import Color
 
+# The two packaged faces, loaded lazily on the first text draw: Noto Sans for
+# text, Noto Sans Symbols for codepoints the first face has no glyph for.
+#
+# Both are *relative* paths, resolved against the process CWD rather than the
+# source file, so `canvas.text` only works when a program is run from the repo
+# root. Anywhere else, every text draw raises "FT_New_Face failed — font not
+# found".
 comptime FONT_DEFAULT_PATH   = "defaults/fonts/NotoSans.ttf"
 comptime FONT_FALLBACK_PATH  = "defaults/fonts/NotoSansSymbols.ttf"
 
 
 struct FontWeight:
+    """Named stroke weights for `canvas.font_weight`.
+
+    Design-space values on the packaged variable faces, so they interpolate
+    rather than selecting a file — any number in 100..900 is valid, these are
+    just the ones with names.
+    """
+
     comptime THIN      = 100
     comptime LIGHT     = 300
     comptime REGULAR   = 400
@@ -76,6 +90,12 @@ def _read_ptr(addr: Int) raises -> Int:
 
 
 struct GlyphInfo(Movable):
+    """One rendered glyph: its coverage mask and where to put it.
+
+    The mask is alpha only — the colour comes from the style at blit time, so
+    one cached glyph serves every colour it is ever drawn in.
+    """
+
     var pixels: List[UInt8]   # 8-bit grayscale alpha, row-major
     var width: Int
     var height: Int
@@ -94,6 +114,18 @@ struct GlyphInfo(Movable):
 
 
 struct Font(Movable):
+    """One loaded face, rendered through freetype over the C ABI.
+
+    A face is a heavy handle, not a per-frame value — `TextRenderer` loads the
+    packaged faces once and caches glyphs; `canvas.font` swaps in another and
+    it survives the frame in `PersistentCanvasState`.
+
+    Size and weight are sticky state on the face rather than arguments to
+    `render`, which is why both setters return early when nothing changed:
+    re-scaling a face or re-solving its variation axes per glyph would be paid
+    on every character of every string.
+    """
+
     var _lib: Int       # FT_Library opaque pointer
     var _face: Int      # FT_Face opaque pointer
     var _size: Int      # last set pixel height
@@ -162,10 +194,18 @@ struct Font(Movable):
         _ = ft.call["FT_Done_MM_Var", Int32](self._lib, master)
 
     def has_glyph(self, codepoint: Int) raises -> Bool:
+        """Whether this face can draw this codepoint — how `TextRenderer`
+        decides to fall back to the symbols face."""
         var ft = _DLHandle("libfreetype.so.6")
         return ft.call["FT_Get_Char_Index", UInt32](self._face, Int(codepoint)) != 0
 
     def render(mut self, codepoint: Int, size: Int) raises -> GlyphInfo:
+        """Rasterise one glyph at `size` pixels.
+
+        A codepoint this face cannot load or render yields an empty glyph that
+        still advances the pen, so a missing character leaves a gap rather than
+        collapsing the line or raising mid-string.
+        """
         var ft = _DLHandle("libfreetype.so.6")
         self._set_size(ft, size)
 

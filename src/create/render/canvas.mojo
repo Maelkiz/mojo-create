@@ -49,6 +49,8 @@ struct PersistentCanvasState(Movable):
 struct TransformGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
     Movable
 ):
+    """Pops the matrix `canvas.transform` pushed, on scope exit."""
+
     var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
 
     def __init__(out self, ref[Self.origin] canvas: Canvas[Self.surf_origin]):
@@ -91,6 +93,21 @@ struct Canvas[origin: Origin[mut=True]]:
     exactly one parameter: `Program.render(self, mut canvas: Canvas)` infers
     it, so user code never spells the backend. State that must survive the
     frame goes in and out through `PersistentCanvasState`.
+
+    Rebuilding is also the only way to point at a new framebuffer. Handing an
+    existing `Canvas` a fresh `Surface` does not compile -- the type embeds the
+    window's pixel origin, so a `canvas._sync(Surface(win.pixels(), ...))` call
+    is a second mutable path to the same window:
+
+        error: aliasing values passed mutably to 'self' argument and passed
+        mutably to 's' argument in '_sync' call
+
+    Origin erasure would sidestep it, but `MutableAnyOrigin` is not a known
+    declaration in this Mojo version. `__init__` takes `out self`, so there is
+    no existing borrow to alias against. Don't reach for the `_sync` shape.
+
+    Every pixel write blends source-over, so a fill, stroke, sprite, glyph or
+    `background` with `a < 255` composites with what is already there.
     """
 
     var width: Int
@@ -260,6 +277,17 @@ struct Canvas[origin: Origin[mut=True]]:
     def transform(
         mut self, m: Matrix[3, 3]
     ) -> TransformGuard[Self.origin, origin_of(self)]:
+        """Apply `m` to everything drawn inside a `with` block.
+
+        ```mojo
+        with canvas.transform(translate(50.0, 50.0)):
+            canvas.rect((0, 0), 100, 100)
+        ```
+
+        The matrix pops on exit, including on an early return or a raise.
+        `_push_transform` is the same push without that guarantee -- a missed
+        pop shifts every later draw in the frame, so go through here.
+        """
         self._push_transform(m)
         return TransformGuard[Self.origin, origin_of(self)](self)
 
@@ -320,23 +348,40 @@ struct Canvas[origin: Origin[mut=True]]:
         )
 
     def fill(mut self, color: Color):
+        """Paint the inside of shapes in `color`, and re-enable filling.
+
+        Holds until changed or until the frame ends — every frame starts from
+        the `Style` defaults, so nothing set here leaks into the next one.
+        """
         self._style.fill = color
         self._style.fill_enabled = True
 
     def no_fill(mut self):
+        """Draw only the outline of shapes from here on."""
         self._style.fill_enabled = False
 
     def stroke(mut self, color: Color):
+        """Outline shapes in `color`, and re-enable stroking."""
         self._style.stroke = color
         self._style.stroke_enabled = True
 
     def no_stroke(mut self):
+        """Drop the outline. Worth knowing that stroke is *on* by default, in
+        black — a `rect` drawn without this gets an outline nobody asked for."""
         self._style.stroke_enabled = False
 
     def stroke_width(mut self, w: Int):
+        """Outline thickness in world units, scaled by autoscale like every
+        other coordinate, and never rendered thinner than one pixel."""
         self._style.stroke_width = w
 
     def background(mut self, color: Color):
+        """Paint the whole framebuffer — the usual first call in `render`.
+
+        A translucent color blends instead of clearing, which is how motion
+        trails are drawn: `canvas.background(Color(0x11, 0x11, 0x11, 24))`
+        fades the previous frame a little further each time.
+        """
         fill_all(self._surf, color)
 
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
@@ -621,9 +666,12 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(a, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
+        """Text height in world units, scaled by autoscale like a coordinate."""
         self._style.font_size = size
 
     def font_weight(mut self, weight: Int):
+        """Stroke weight of the face, named by `FontWeight`. The packaged Noto
+        faces are variable, so this interpolates rather than swapping files."""
         self._style.font_weight = weight
 
     def text_align(mut self, horizontal: HorizontalAlignment):
@@ -653,6 +701,8 @@ struct Canvas[origin: Origin[mut=True]]:
         self.text(s, pos.x, pos.y)
 
     def font(mut self, var f: Font):
+        """Swap the face. Lives in `PersistentCanvasState`, so unlike the style
+        settings a font outlives the frame that set it."""
         self._state.text.set_font(f^)
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:

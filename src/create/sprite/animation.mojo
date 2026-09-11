@@ -17,6 +17,11 @@ struct SpriteAnimation(Movable):
     Hold one as an `ArcPointer[SpriteAnimation]` field, like a `Sound`, so
     several animators can share the frame buffers by refcount instead of
     copying them.
+
+    There is no `frame()` accessor and cannot be one: a `List` element's origin
+    is not spellable from user code, so a `-> ref Sprite` signature does not
+    compile. Index `frames` inline at the use site instead, as `canvas.sprite`
+    does.
     """
 
     var frames: List[Sprite]

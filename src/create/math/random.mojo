@@ -2,6 +2,17 @@ from std.time import perf_counter_ns
 
 
 struct Random(Movable):
+    """A seeded pseudo-random generator: `.float()`, `.int()`, `.bool()`.
+
+    `Random()` seeds itself from the clock and `Random(seed)` takes one, which
+    is the difference that matters: a seeded generator replays the same
+    sequence every run, so a procedurally generated level or a particle burst
+    can be reproduced exactly while it is being tuned.
+
+    xoroshiro128++ — fast and well-distributed, not cryptographic. Don't draw
+    keys or tokens from it.
+    """
+
     var _s0: UInt64
     var _s1: UInt64
 
@@ -35,14 +46,19 @@ struct Random(Movable):
         return result
 
     def float(mut self) -> Float64:
+        """A number in `[0.0, 1.0)` — 1.0 itself is never returned."""
         return Float64(self._next()) / (Float64(UInt64.MAX) + 1.0)
 
     def float(mut self, low: Float64, high: Float64) -> Float64:
+        """A number in `[low, high)`."""
         return low + self.float() * (high - low)
 
     def int(mut self, low: Int, high: Int) -> Int:
+        """A whole number in `[low, high)` — `high` is excluded, so
+        `r.int(0, len(items))` indexes a list without going off the end."""
         debug_assert(high > low, "Random.int: high must be greater than low")
         return low + Int(self._next() % UInt64(high - low))
 
     def bool(mut self) -> Bool:
+        """A coin flip — `True` half the time."""
         return self._next() & 1 == 1
