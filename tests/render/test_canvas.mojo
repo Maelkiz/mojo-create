@@ -6,7 +6,7 @@
 from std.math import pi
 from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 
-from create.core import *
+from create import *
 from create.core.headless import run_headless
 from create.render.surface import MemorySurface
 from create.sprite.sprite import Sprite
@@ -838,8 +838,9 @@ struct AnimatorBlit(Program):
     """Eight 2x2 frames, frame i tinted R = i * 20, advanced by the run loop.
 
     `SpriteAnimation`, `SpriteAnimator` and the `canvas.sprite` overload all
-    arrive through `from create.core import *` alone -- the closure rule in
-    AGENTS.md, since `canvas.sprite` now names the animator.
+    arrive through `from create import *` alone -- and through
+    `from create.core import *` too, by the closure rule in AGENTS.md, since
+    `canvas.sprite` now names the animator.
     """
 
     var animator: SpriteAnimator

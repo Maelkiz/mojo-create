@@ -9,7 +9,7 @@
 # dispatch in Mojo, and a router would have nowhere to plug shared state in
 # anyway.
 
-from create.core import *
+from create import *
 from menu import Menu
 from draw import Draw
 
