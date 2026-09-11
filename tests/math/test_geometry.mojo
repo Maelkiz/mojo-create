@@ -1,4 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_almost_equal
+from std.math import pi
 from create.math.geometry import Rectangle, Circle, Line, Triangle, overlaps
 from create.math.vector2 import Vector2
 
@@ -816,6 +817,38 @@ def test_triangle_contains_line_no() raises -> None:
     var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
     var l = Line(-1.0, -8.0, 100.0, -8.0)
     assert_equal(t.contains(l), False)
+
+
+def test_rect_area() raises -> None:
+    var r = Rectangle(0.0, 0.0, 4.0, 5.0)
+    assert_equal(r.area(), 20.0)
+
+
+def test_rect_size() raises -> None:
+    var r = Rectangle(0.0, 0.0, 4.0, 5.0)
+    var s = r.size()
+    assert_equal(s.x, 4.0)
+    assert_equal(s.y, 5.0)
+
+
+def test_circle_area() raises -> None:
+    var c = Circle(0.0, 0.0, 2.0)
+    assert_almost_equal(c.area(), pi * 4.0)
+
+
+def test_circle_diameter() raises -> None:
+    var c = Circle(0.0, 0.0, 2.5)
+    assert_equal(c.diameter(), 5.0)
+
+
+def test_triangle_area() raises -> None:
+    var t = Triangle(0.0, 0.0, 4.0, 0.0, 0.0, 3.0)
+    assert_equal(t.area(), 6.0)
+
+
+def test_triangle_area_degenerate_is_zero() raises -> None:
+    var t = Triangle(0.0, 0.0, 2.0, 0.0, 4.0, 0.0)
+    assert_equal(t.area(), 0.0)
 
 
 def main() raises:

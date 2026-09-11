@@ -1,4 +1,4 @@
-from std.math import min, max, sqrt
+from std.math import min, max, sqrt, pi
 from .vector2 import Vector2
 
 
@@ -103,6 +103,12 @@ struct Rectangle:
     def center(self) -> Vector2:
         return Vector2(self.x, self.y)
 
+    def area(self) -> Float64:
+        return self.w * self.h
+
+    def size(self) -> Vector2:
+        return Vector2(self.w, self.h)
+
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         return Vector2(max(self.left(), min(px, self.right())),
                      max(self.bottom(), min(py, self.top())))
@@ -189,6 +195,12 @@ struct Circle:
 
     def center(self) -> Vector2:
         return Vector2(self.x, self.y)
+
+    def area(self) -> Float64:
+        return pi * self.r * self.r
+
+    def diameter(self) -> Float64:
+        return self.r * 2.0
 
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         var dx = px - self.x
@@ -379,6 +391,10 @@ struct Triangle:
     def center(self) -> Vector2:
         return Vector2((self.x1 + self.x2 + self.x3) / 3.0,
                      (self.y1 + self.y2 + self.y3) / 3.0)
+
+    def area(self) -> Float64:
+        return abs((self.x2 - self.x1) * (self.y3 - self.y1)
+            - (self.y2 - self.y1) * (self.x3 - self.x1)) / 2.0
 
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         if self.contains(px, py):
