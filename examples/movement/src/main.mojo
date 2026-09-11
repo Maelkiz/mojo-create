@@ -1,4 +1,4 @@
-from create.core import *
+from create import *
 from player import Player
 
 

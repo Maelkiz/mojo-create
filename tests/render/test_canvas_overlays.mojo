@@ -4,7 +4,7 @@
 
 from std.testing import TestSuite, assert_equal
 
-from create.core import *
+from create import *
 from create.core.headless import run_headless
 from create.render.surface import MemorySurface
 from create.sprite.sprite import Sprite

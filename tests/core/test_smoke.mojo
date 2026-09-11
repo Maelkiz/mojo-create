@@ -9,7 +9,7 @@
 from std.memory import ArcPointer
 from std.testing import TestSuite, assert_equal
 
-from create.core import *
+from create import *
 from create.audio import Audio, Sound
 
 

@@ -1,4 +1,4 @@
-from create.core import *
+from create import *
 
 
 def _mode_name(mode: Int) -> String:

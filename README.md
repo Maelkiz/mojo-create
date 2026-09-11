@@ -8,7 +8,7 @@ taking full advantage of Mojo's performance and language features.
 ## The shape of a program
 
 ```mojo
-from create.core import *
+from create import *
 
 
 @fieldwise_init

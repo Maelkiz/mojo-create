@@ -21,6 +21,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 
 | Module | Path | Responsibility |
 |---|---|---|
+| root | `src/create/__init__.mojo` | The preamble — `from create import *`, the union of every subpackage below |
 | `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
 | `render` | `src/create/render/` | Canvas, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
@@ -135,11 +136,22 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **Defining a program:** implement `Program` (`create` + `render`, optional `update`) and pass it to `run[T]`. See [examples/movement/src/main.mojo](examples/movement/src/main.mojo) for the full shape, or [tests/core/test_smoke.mojo](tests/core/test_smoke.mojo) for the minimum. Both are compile-gated, so neither can go stale.
 
-**Imports:**
+**Imports: `from create import *` is what a program writes.** It is the whole public surface —
+everything the subpackages below re-export, in one line. Every example and every test uses it.
+
+The subpackages remain importable on their own, for code that wants a narrower surface than a
+program does:
 
 - `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `PersistentCanvasState`, `Color`, `HorizontalAlignment`/`VerticalAlignment`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
+- `from create.render import *` — the drawing stack with no run loop, which is what `run_headless` is built on. Adds `Viewport`.
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
+
+**The root is a union, the subpackages are closures — two different rules.**
+[`create/__init__.mojo`](src/create/__init__.mojo) has no signatures of its own, so it cannot use
+the closure rule below; it star-imports all five subpackages instead, which is what makes it exactly
+their union and keeps it from drifting as they change. Adding a name there is never right — add it
+to the subpackage that owns it and the root picks it up.
 
 **What a module re-exports is a closure rule, not a convenience list.** A module re-exports a
 symbol from a lower one exactly when one of its own signatures names that type or the symbol
@@ -151,9 +163,10 @@ names them. Reach for `create.math` for those.
 
 The rule now applies at two levels. `render/__init__.mojo` closes over `math` and `sprite`;
 `core/__init__.mojo` closes over `render` on top of that, because `Program.render` names `Canvas` and
-`Context` names `AutoScale`. The user-facing effect is unchanged — `from create.core import *` is
-still the single import a program needs, and no example was touched by the split. Adding a name to
-either `__init__.mojo` is not a judgement call — check whether a signature names it.
+`Context` names `AutoScale`. That is why `from create.core import *` reaches most of `render`,
+`math` and `sprite` on its own — and why it read as the default import before the root package
+existed. Adding a name to either `__init__.mojo` is not a judgement call — check whether a
+signature names it.
 
 **Public surface is exactly what an `__init__.mojo` re-exports, and the compiler enforces it.** A
 star import skips `_`-prefixed top-level declarations and reaches nothing a package's
@@ -299,7 +312,7 @@ it. The biggest trap in the animation API is documented on
 
 ## Critical Gotchas
 
-1. **`-I src` is required for every `mojo run`.** Without it, `from create.core import *` fails with a module-not-found error. All pixi tasks include it; bare `mojo run` calls must add it manually.
+1. **`-I src` is required for every `mojo run`.** Without it, `from create import *` fails with a module-not-found error. All pixi tasks include it; bare `mojo run` calls must add it manually.
 
 2. **Paths resolve against the CWD, not the source file.** The packaged font is loaded as the literal
    relative path `defaults/fonts/NotoSans.ttf` ([font.mojo](src/create/render/font.mojo), used by

@@ -8,7 +8,7 @@
 
 from std.testing import TestSuite, assert_equal
 
-from create.core import *
+from create import *
 from create.core._frame import step
 
 

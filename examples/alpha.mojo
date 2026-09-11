@@ -1,5 +1,5 @@
 from create.math import sin, cos
-from create.core import *
+from create import *
 
 
 @fieldwise_init

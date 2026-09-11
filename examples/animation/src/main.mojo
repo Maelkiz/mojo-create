@@ -1,6 +1,6 @@
 from std.memory import ArcPointer
 
-from create.core import *
+from create import *
 from create.math import clamp
 
 comptime _SIZE = 128
