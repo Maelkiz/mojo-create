@@ -8,9 +8,9 @@ from std.testing import TestSuite, assert_equal, assert_true, assert_false
 from create.render.align import HorizontalAlignment, VerticalAlignment
 from create.render.color import Color
 from create.render.font import FontWeight
-from create.render.style import Style
+from create.render._style import Style
 from create.render.surface import MemorySurface
-from create.render.text import TextRenderer
+from create.render._text import TextRenderer
 
 
 def _ink_box(m: MemorySurface) -> Tuple[Int, Int, Int, Int]:

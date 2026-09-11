@@ -26,7 +26,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
-| `bytes` | `src/create/bytes.mojo` | Internal leaf — little-endian integer decoding. Imports nothing, re-exported by nothing |
+| `_bytes` | `src/create/_bytes.mojo` | Internal leaf — little-endian integer decoding. Imports nothing, re-exported by nothing |
 
 ## Key Files
 
@@ -34,7 +34,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
 | `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the windowed entry point |
-| `src/create/core/frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
+| `src/create/core/_frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/context.mojo` | `Context` — width/height/time/autoscale passed to every frame |
 | `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
@@ -43,11 +43,11 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/path.mojo` | `script_dir()` — the directory of the running program, for asset paths |
 | `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
-| `src/create/render/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
+| `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
 | `src/create/render/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
 | `src/create/render/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
-| `src/create/render/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
-| `src/create/render/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
+| `src/create/render/_style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
+| `src/create/render/_text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
 | `src/create/render/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
 | `src/create/render/align.mojo` | `HorizontalAlignment` (`LEFT`/`CENTER`/`RIGHT`), `VerticalAlignment` (`TOP`/`MIDDLE`/`BOTTOM`) |
 | `src/create/render/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
@@ -60,7 +60,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/sprite/animator.mojo` | `SpriteAnimator` — the playhead over one animation |
 | `src/create/audio/sound.mojo` | `Sound` — decoded PCM + format/channels/freq, `load`/`from_pcm` |
 | `src/create/audio/audio.mojo` | `Audio` — playback device, voice lifecycle, `play`/`stop`/`update` |
-| `src/create/bytes.mojo` | `le_uint`, `sign_extend_32` — the one byte-assembly loop, shared by the image decoders and the freetype struct readers |
+| `src/create/_bytes.mojo` | `le_uint`, `sign_extend_32` — the one byte-assembly loop, shared by the image decoders and the freetype struct readers |
 
 ## Build & Test
 
@@ -155,12 +155,27 @@ The rule now applies at two levels. `render/__init__.mojo` closes over `math` an
 still the single import a program needs, and no example was touched by the split. Adding a name to
 either `__init__.mojo` is not a judgement call — check whether a signature names it.
 
-**`bytes` is outside the rule, deliberately.** It is a leaf: it imports nothing, and no
+**Public surface is exactly what an `__init__.mojo` re-exports, and the compiler enforces it.** A
+star import skips `_`-prefixed top-level declarations and reaches nothing a package's
+`__init__.mojo` does not list — `le_uint` and `Style` are unreachable through `from create.render
+import *` no matter which module defines them. The underscore marks the rest, at two levels:
+`_name` for a declaration internal to an otherwise-public module (`_GlyphInfo` beside the exported
+`Font`, `_KeyBits` beside `Key`, `_Voice` beside `Audio`), and `_module.mojo` for a whole internal
+file — `_raster.mojo`, `_style.mojo`, `_text.mojo`, `_frame.mojo`, `_bytes.mojo`, `_sdl_audio.mojo`,
+`_sndfile.mojo` — whose contents then need no individual prefix. Both stay importable by an
+explicit path, which is how the tests reach `step`, `blend` and `le_uint` without any of them being
+public.
+
+So a new declaration is internal unless it is being added to an `__init__.mojo` in the same breath.
+Put it in a `_module.mojo` if the whole file is plumbing; give it a `_name` if it sits in a module
+users import from.
+
+**`_bytes` is outside the rule, deliberately.** It is a leaf: it imports nothing, and no
 `__init__.mojo` re-exports it. `sprite` and `render` both need to assemble little-endian bytes into
 an `Int` and neither may depend on the other, so the one copy of that loop lives at the root where
 both can reach it. It is internal plumbing, not public surface — adding it to an `__init__.mojo`
 would be wrong, since no user-facing signature names `le_uint` or `sign_extend_32`. `render`
-importing it is not a violation of the `render`-never-imports-`core` rule: `bytes` is not `core`,
+importing it is not a violation of the `render`-never-imports-`core` rule: `_bytes` is not `core`,
 and depending on a leaf cannot make a cycle.
 
 **That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
@@ -204,7 +219,7 @@ every frame starts unrotated, untranslated and at the default style, so a missin
 `no_stroke` cannot leak into the next one. Nothing may hold a `Canvas` across frames; hold the
 `PersistentCanvasState` instead.
 
-Both loops share [frame.mojo](src/create/core/frame.mojo)'s `step` for the frame body, so the windowed
+Both loops share [_frame.mojo](src/create/core/_frame.mojo)'s `step` for the frame body, so the windowed
 and headless paths cannot drift in what a frame *is*; they differ only in how one gets started (SDL
 events and a clock, versus a counter).
 
@@ -244,7 +259,7 @@ Consequences worth internalising:
 
 **Style defaults are not blank:** every frame starts from `Style()`, which has **stroke `BLACK` and
 enabled** — a `rectangle` drawn without `no_stroke()` gets an outline nobody asked for. The rest of the
-defaults are in [style.mojo](src/create/render/style.mojo).
+defaults are in [_style.mojo](src/create/render/_style.mojo).
 
 **Autoscale** keeps the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes — `FIT` (default), `EXTEND`, `OFF` — documented in [autoscale.mojo](src/create/render/autoscale.mojo), with the launch-mode matrix on `run`. `ctx.design(w, h, mode)` pins the space from inside `create`. See [examples/autoscale.mojo](examples/autoscale.mojo), which cycles all three modes on space.
 

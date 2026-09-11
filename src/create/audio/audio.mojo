@@ -7,7 +7,7 @@ comptime _GEN_SHIFT = 32
 comptime _INDEX_MASK: Int = 0xFFFFFFFF
 
 
-struct Voice(Movable):
+struct _Voice(Movable):
     """One playback slot. `stream == 0` means free.
 
     `loop_sound` holds an `ArcPointer` to the playing `Sound` -- a refcount
@@ -54,13 +54,13 @@ struct Audio(Movable):
     """
 
     var _sdl: SDLAudio
-    var _voices: List[Voice]
+    var _voices: List[_Voice]
     var volume: Float32
 
     def __init__(out self) raises:
         self._sdl = SDLAudio()
         self._sdl.init()
-        self._voices = List[Voice]()
+        self._voices = List[_Voice]()
         self.volume = 1.0
 
     @staticmethod
@@ -102,7 +102,7 @@ struct Audio(Movable):
                 break
 
         if index == -1:
-            var voice = Voice()
+            var voice = _Voice()
             voice.stream = stream
             voice.looping = loop
             voice.loop_sound = loop_sound

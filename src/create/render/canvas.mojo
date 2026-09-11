@@ -14,10 +14,10 @@ from create.math.matrix import (
 )
 from create.sprite.sprite import Sprite
 from create.sprite.animator import SpriteAnimator
-from .style import Style
-from .text import TextRenderer
+from ._style import Style
+from ._text import TextRenderer
 from .surface import Surface
-from .raster import (
+from ._raster import (
     blend,
     blit_glyph,
     blit_sprite,

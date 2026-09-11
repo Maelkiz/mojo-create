@@ -106,7 +106,7 @@ struct Key:
         return -1
 
 
-struct KeyBits(Copyable, Movable):
+struct _KeyBits(Copyable, Movable):
     """512-bit membership set over keycodes: printable ASCII (0-127) map
     directly, SDL scancode-based keys (arrows, F-keys, modifiers, nav —
     all >= 1 << 30, spanning a ~230-wide band) map via an offset into the

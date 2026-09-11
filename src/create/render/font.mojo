@@ -1,7 +1,7 @@
 from std.ffi import _DLHandle
 from std.math import abs
 
-from create.bytes import le_uint, sign_extend_32
+from create._bytes import le_uint, sign_extend_32
 from .color import Color
 
 # The two packaged faces, loaded lazily on the first text draw: Noto Sans for
@@ -89,7 +89,7 @@ def _read_ptr(addr: Int) raises -> Int:
     return le_uint(buf.unsafe_ptr(), 0, 8)
 
 
-struct GlyphInfo(Movable):
+struct _GlyphInfo(Movable):
     """One rendered glyph: its coverage mask and where to put it.
 
     The mask is alpha only — the colour comes from the style at blit time, so
@@ -199,7 +199,7 @@ struct Font(Movable):
         var ft = _DLHandle("libfreetype.so.6")
         return ft.call["FT_Get_Char_Index", UInt32](self._face, Int(codepoint)) != 0
 
-    def render(mut self, codepoint: Int, size: Int) raises -> GlyphInfo:
+    def render(mut self, codepoint: Int, size: Int) raises -> _GlyphInfo:
         """Rasterise one glyph at `size` pixels.
 
         A codepoint this face cannot load or render yields an empty glyph that
@@ -212,12 +212,12 @@ struct Font(Movable):
         if ft.call["FT_Load_Char", Int32](
             self._face, codepoint, Int32(_FT_LOAD_DEFAULT)
         ) != 0:
-            return GlyphInfo(0, 0, 0, 0, size)
+            return _GlyphInfo(0, 0, 0, 0, size)
 
         if ft.call["FT_Render_Glyph", Int32](
             _read_ptr(self._face + _FACE_GLYPH), Int32(_FT_RENDER_MODE_NORMAL)
         ) != 0:
-            return GlyphInfo(0, 0, 0, 0, size)
+            return _GlyphInfo(0, 0, 0, 0, size)
 
         var glyph   = _read_ptr(self._face + _FACE_GLYPH)
         var bmp     = glyph + _GLYPH_BITMAP
@@ -229,7 +229,7 @@ struct Font(Movable):
         var bmp_top   = _read_i32(glyph + _GLYPH_BMP_TOP)
         var advance_x = _read_ptr(glyph + _GLYPH_ADVANCE) >> 6  # 26.6 fixed-point
 
-        var g = GlyphInfo(width, rows, bmp_left, bmp_top, advance_x)
+        var g = _GlyphInfo(width, rows, bmp_left, bmp_top, advance_x)
         if buf_ptr != 0 and width > 0 and rows > 0:
             var stride = abs(pitch)
             var libc = _DLHandle("libc.so.6")

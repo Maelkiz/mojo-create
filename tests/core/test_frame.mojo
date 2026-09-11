@@ -9,7 +9,7 @@
 from std.testing import TestSuite, assert_equal
 
 from create.core import *
-from create.core.frame import step
+from create.core._frame import step
 
 
 @fieldwise_init

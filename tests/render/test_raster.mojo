@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true
 from create.render.color import Color
-from create.render.raster import (
+from create.render._raster import (
     blend,
     blit_glyph,
     blit_sprite,
@@ -9,7 +9,7 @@ from create.render.raster import (
     fill_triangle,
     line_pixels,
 )
-from create.render.font import GlyphInfo
+from create.render.font import _GlyphInfo
 from create.render.surface import MemorySurface
 from create.sprite.sprite import Sprite
 
@@ -176,8 +176,8 @@ def test_blit_sprite_clips_against_every_edge() raises -> None:
     assert_equal(far.pixel(0, 3).a, 0)
 
 
-def _glyph(width: Int, height: Int, coverage: UInt8) raises -> GlyphInfo:
-    var g = GlyphInfo(width, height, 0, 0, width)
+def _glyph(width: Int, height: Int, coverage: UInt8) raises -> _GlyphInfo:
+    var g = _GlyphInfo(width, height, 0, 0, width)
     var p = g.pixels.unsafe_ptr()
     for i in range(width * height):
         p[unsafe_offset=i] = coverage

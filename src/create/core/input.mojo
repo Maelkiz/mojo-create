@@ -1,7 +1,7 @@
 from std.math import floor
 
 from create.math.vector2 import Vector2
-from .key import Key, KeyBits
+from .key import Key, _KeyBits
 
 
 struct Input(Movable):
@@ -38,11 +38,11 @@ struct Input(Movable):
     # MouseMoved later in the same frame would otherwise overwrite it before
     # a program ever sees where the click actually started.
     var mouse_press_pos: Vector2
-    var _held_keys: KeyBits
-    var _just_pressed: KeyBits
-    var _just_released: KeyBits
+    var _held_keys: _KeyBits
+    var _just_pressed: _KeyBits
+    var _just_released: _KeyBits
     # Mouse buttons are a handful of small ints (1..5), not the ~500-wide
-    # keycode space `KeyBits` is sized for — a plain bitmask is enough.
+    # keycode space `_KeyBits` is sized for — a plain bitmask is enough.
     var _held_buttons: Int
     var _pressed_buttons: Int
     var _released_buttons: Int
@@ -55,9 +55,9 @@ struct Input(Movable):
         self.mouse_button = 0
         self.wheel = Vector2(0, 0)
         self.mouse_press_pos = Vector2(0, 0)
-        self._held_keys = KeyBits()
-        self._just_pressed = KeyBits()
-        self._just_released = KeyBits()
+        self._held_keys = _KeyBits()
+        self._just_pressed = _KeyBits()
+        self._just_released = _KeyBits()
         self._held_buttons = 0
         self._pressed_buttons = 0
         self._released_buttons = 0
@@ -87,7 +87,7 @@ struct Input(Movable):
         self.mouse_x = Int(floor(x))
         self.mouse_y = Int(floor(y))
 
-    def _check(self, key: String, bits: KeyBits) -> Bool:
+    def _check(self, key: String, bits: _KeyBits) -> Bool:
         """Resolve a key name against `bits`.
 
         Accepts a single character (`"a"`, `"7"`, `"/"`) or a named key

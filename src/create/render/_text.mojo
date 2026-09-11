@@ -1,9 +1,9 @@
 from std.math import max
 from .align import HorizontalAlignment, VerticalAlignment
 from .color import Color
-from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
-from .raster import blit_glyph
-from .style import Style
+from .font import Font, _GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
+from ._raster import blit_glyph
+from ._style import Style
 from .surface import Surface
 
 
@@ -45,7 +45,7 @@ struct TextRenderer(Movable):
             except:
                 pass
 
-    def _glyph(mut self, codepoint: Int, size: Int) raises -> GlyphInfo:
+    def _glyph(mut self, codepoint: Int, size: Int) raises -> _GlyphInfo:
         """Render one glyph, falling back for codepoints the main face lacks."""
         if len(self._fallback_font) > 0 and not self._font[0].has_glyph(
             codepoint
