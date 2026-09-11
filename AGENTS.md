@@ -74,8 +74,6 @@ pixi run create examples/sketch.mojo
 
 # Run all tests
 pixi run test
-# Equivalent:
-for f in $(find tests -name "test_*.mojo" | sort); do SDL_AUDIO_DRIVER=dummy mojo run -I src "$f"; done
 
 # Run a single test file
 mojo run -I src tests/math/test_vector2.mojo
@@ -94,13 +92,14 @@ Two git hooks gate the repo; there is no CI, so these are the only automated che
 | `.githooks/pre-commit` | Builds `tests/core/test_smoke.mojo` | Constant — does not grow with the repo |
 | `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | Grows with the example and test count |
 
-Neither runs until `pixi run setup` has been done in the clone.
+Neither runs until `pixi run setup` has been done in the clone. Both block on breakage — breaking
+the core API aborts commits; a library type error, a broken example, or a failing test aborts
+pushes. `--no-verify` skips them, and is for WIP checkpoints on a scratch branch that get squashed
+before landing, never on `main`.
 
-The two tiers catch different things and neither subsumes the other. Building a consumer program
-type-checks only the `def` bodies it reaches, so it catches API drift — a program using a trait or
-method that no longer exists — but not a broken library function nothing calls. `mojo precompile` is
-the reverse: it type-checks the whole library and is blind to drift. Hence a smoke build on commit
-and both, plus every example, on push.
+The two tiers catch different things and neither subsumes the other: building a consumer program
+type-checks only the `def` bodies it reaches, so it catches API drift but not a broken library
+function nothing calls; `mojo precompile` is the reverse.
 
 ## Testing
 
@@ -142,7 +141,7 @@ everything the subpackages below re-export, in one line. Every example and every
 The subpackages remain importable on their own, for code that wants a narrower surface than a
 program does:
 
-- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `PersistentCanvasState`, `Color`, `HorizontalAlignment`/`VerticalAlignment`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
+- `from create.core import *` — the run loop and everything a `Program`'s signatures name, which by the closure rule below pulls in most of `render`, `math` and `sprite` too. Read `core/__init__.mojo` for the exact set.
 - `from create.render import *` — the drawing stack with no run loop, which is what `run_headless` is built on. Adds `Viewport`.
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
@@ -196,8 +195,7 @@ and depending on a leaf cannot make a cycle.
 contain. `raster.blit_sprite` takes a pixel pointer plus its width and height rather than an image type, so
 the rasteriser is written against no layout but its own and the BMP/PNG/JPEG decoders stay out of the
 render path entirely. Keep it that way: a new `render` function that needs pixels takes the buffer,
-not the type that owns it. Removing the last of the edge would mean moving `Sprite` beside `Surface` and
-giving up `Sprite.load`, which costs every example an API break to change an arrow no user sees.
+not the type that owns it.
 
 **`render` never imports `core`.** Every edge between them runs one way — `program`, `context`,
 `frame`, `run` and `headless` reach into `render`, and nothing comes back. That is what lets
@@ -278,11 +276,10 @@ defaults are in [_style.mojo](src/create/render/_style.mojo).
 
 The design size is a property of the program, not of the display: it is whatever `run` was passed, unchanged by a resize or by fullscreen. Under `EXTEND` the *reported* size grows with the window, so layout must anchor to the origin or to `ctx.left()`/`right()`/`bottom()`/`top()` rather than hardcoded design coordinates.
 
-`Input._set_mouse(x, y)` is the single writer of `mouse`, `mouse_x` and `mouse_y`. The three event
-arms in `run.mojo` that carry a pointer position all go through it, which is the point: when they
-each wrote the fields themselves, the `MouseButtonUp` arm updated the `Int` pair and left `mouse`
-holding the previous frame's position. A new event that reports a position calls `_set_mouse` and
-adds only what is genuinely its own — `mouse_press_pos` on a press, say.
+`Input._set_mouse(x, y)` is the single writer of `mouse`, `mouse_x` and `mouse_y`, and every event
+arm in `run.mojo` that carries a pointer position goes through it — writing the fields directly
+desynchronises the `Vector2` from the `Int` pair. A new event that reports a position calls
+`_set_mouse` and adds only what is genuinely its own — `mouse_press_pos` on a press, say.
 
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`, `SpriteAnimator`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
 
@@ -294,7 +291,7 @@ adds only what is genuinely its own — `mouse_press_pos` on a press, say.
 | `Canvas` | yes | yes | `mut` parameter |
 | `Input` | yes | **no** | read-only parameter |
 
-`Input` is the only one the program never writes, which is why it is a separate read-only argument rather than a field on the `mut` `Context` — the [`Input` docstring](src/create/core/input.mojo) has the reasoning. `ctx.time` is the case that shows the cost: the program never writes it either, but `ctx.time.frame_count = 99` compiles.
+`Input` is the only one the program never writes, hence a read-only argument rather than a field on the `mut` `Context` — reasoning in the [`Input` docstring](src/create/core/input.mojo). `ctx.time` shows the cost of the alternative: the program never writes it either, but `ctx.time.frame_count = 99` compiles.
 
 **Per-frame obligations.** Two fields the program owns need ticking from `update`, and nothing
 enforces it:
@@ -338,9 +335,7 @@ it. The biggest trap in the animation API is documented on
 
 3. **A window does not report its real size immediately.** In fullscreen SDL fires a bogus `(1, 1)` `Resized` before reporting real dimensions, so `_wait_for_dimensions` pumps events until width > 1 and height > 1. On Wayland the fullscreen transition is asynchronous on top of that: `run[T]("t", 1000, 1000, fullscreen=True)` reports the requested 1000x1000 for frame 1 and the display size from frame 2 on. The run loop refreshes dimensions every frame, so this self-corrects — but don't cache pixel dimensions from `create` or the first frame.
 
-4. **Hooks block on breakage.** Breaking the core API aborts commits; a library type error, a broken example, or a failing test aborts pushes. `--no-verify` skips both hooks — it is for WIP checkpoints on a scratch branch that get squashed or amended before landing, never on `main`.
-
-5. **Two origin limits in this Mojo version shape the API.** Neither `MutableAnyOrigin` nor
+4. **Two origin limits in this Mojo version shape the API.** Neither `MutableAnyOrigin` nor
    `ImmutableOrigin` is a known declaration, and `ref [o["element"]]` fails with `'ImmOrigin' is not
    subscriptable`. Consequences, each documented where it bites:
 
@@ -354,11 +349,11 @@ it. The biggest trap in the animation API is documented on
 
    Don't retry either shape.
 
-6. **An uncalled overload is compiled by nothing.** A library build only type-checks the `def`
-   bodies it reaches, so four of `canvas.sprite`'s six animator overloads were checked by no build
-   until [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) gained a program that draws
-   through all six. Keep that test when adding an overload — this is the general reason the repo
-   gates on building consumer programs as well as on `mojo precompile`.
+5. **An uncalled overload is compiled by nothing.** A library build only type-checks the `def`
+   bodies it reaches, so an overload nothing calls is checked by no build. The program in
+   [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) draws through all six of
+   `canvas.sprite`'s animator overloads for this reason — extend it when adding another. This is
+   the general reason the repo gates on consumer programs as well as on `mojo precompile`.
 
 ## Terminology
 
@@ -368,8 +363,8 @@ docstring; this table is not an API reference and must not grow into one.
 | Term | Meaning |
 |---|---|
 | `Program` | Full interactive program: `create` + `update` + `render`. No event callbacks — input arrives as `update`'s `Input` parameter |
-| World space | The coordinate space programs draw in: origin centred, y up, extent `ctx.width` x `ctx.height`. `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
-| Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
+| World space | The coordinate space programs draw in — origin centred, y up (see Coordinate system above). `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
+| Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the space a program is authored in, and the factor `ctx.autoscale` scales by. See Autoscale above |
 | `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
 | `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
@@ -392,4 +387,4 @@ docstring; this table is not an API reference and must not grow into one.
 - Don't use `fn` it has been removed — `error: 'fn' has been removed; use 'def' instead`
 - Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard`/`StyleGuard` — use origin-tracked references.
 - Don't name new test files without the `test_` prefix — the test runner won't pick them up.
-- Don't add a second parameter to `Canvas`, and don't import `window` from `canvas.mojo` — see Gotcha 5.
+- Don't add a second parameter to `Canvas`, and don't import `window` from `canvas.mojo` — see Gotcha 4.
