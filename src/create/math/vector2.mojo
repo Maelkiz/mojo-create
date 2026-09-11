@@ -2,6 +2,15 @@ from std.math import sqrt
 
 
 struct Vector2(Copyable, ImplicitlyCopyable, Movable, Writable):
+    """A 2D point or direction: arithmetic operators, `mag`, `normalize`,
+    `dot`, `dist`, `lerp`.
+
+    The tuple constructors are `@implicit` on purpose: every position argument
+    in the library takes a `Vector2`, so `canvas.rect((0, 0), 100, 100)` works
+    without naming the type, and a program only spells `Vector2` when it is
+    storing one.
+    """
+
     var x: Float64
     var y: Float64
 

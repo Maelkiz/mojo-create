@@ -128,6 +128,18 @@ def run[
 
     The design is scaled to the window (`AutoScale.FIT`) unless `create` sets
     `ctx.autoscale` otherwise, so a program keeps its layout on any display.
+    The two jobs of the size stay independent once the window is open:
+
+    | call                              | FIT / EXTEND             | OFF            |
+    |-----------------------------------|--------------------------|----------------|
+    | `run("T", 1000, 1000)`            | design 1000x1000, scaled | world = window |
+    | `run("T", 1000, 1000, True)`      | design 1000x1000, scaled | world = monitor|
+    | `run("T", fullscreen=True)`       | design 1280x720, scaled  | world = monitor|
+
+    So `fullscreen=True` with a size means *author at that size, present
+    fullscreen*. Under `OFF` the design resolution goes unused entirely, which
+    is the other half of why `FIT` is the default: it keeps the numbers passed
+    here meaningful in every launch mode.
     """
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()

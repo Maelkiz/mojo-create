@@ -1,4 +1,11 @@
 struct HorizontalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
+    """Which edge of the text box `canvas.text`'s position names horizontally.
+
+    A separate type from `VerticalAlignment` so `canvas.text_align` can be
+    overloaded on the axis: pass either one alone to set just that axis, or
+    both together.
+    """
+
     var value: Int
 
     comptime LEFT   = HorizontalAlignment(0)
@@ -16,6 +23,14 @@ struct HorizontalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
 
 
 struct VerticalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
+    """Which edge of the text box `canvas.text`'s position names vertically.
+
+    Edges of the box, not typographic baselines — there is no separate
+    `text_baseline`. `TOP` and `BOTTOM` mean the visual top and bottom even
+    though y grows upward, because glyphs are not flipped by the coordinate
+    system; only their anchor point is mapped.
+    """
+
     var value: Int
 
     comptime TOP    = VerticalAlignment(0)

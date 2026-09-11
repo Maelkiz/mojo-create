@@ -5,6 +5,19 @@ from create.render.viewport import Viewport
 
 
 struct Context(Movable):
+    """Per-frame state the run loop hands the program, and the dials it can
+    turn back.
+
+    `width`/`height` are the world extent and `left`/`right`/`bottom`/`top` its
+    edges — use those rather than width arithmetic, since the origin is centred
+    and two of them are negative. `time` is the frame clock, `scale` the
+    autoscale factor, `view` the mapping they all come from.
+
+    Written from both sides, which is why it is a `mut` parameter: the loop
+    refreshes the geometry and the clock each frame, and the program sets
+    `autoscale`, `exit_on_escape`, or calls `design` and `quit`.
+    """
+
     var time: Time
     var width: Int
     var height: Int

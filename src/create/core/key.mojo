@@ -1,4 +1,12 @@
 struct Key:
+    """Named SDL keycodes for the `Int` overloads of the `Input` queries.
+
+    The string overloads cover the same keys by name and read better --
+    `input.is_key_down("up")` -- so these are for a program storing a keycode
+    in a field or a table, where a name would have to be re-parsed each frame.
+    `from_name` is the one mapping between the two forms.
+    """
+
     # Modifier keys
     comptime LEFT_CTRL   = 1073742048
     comptime RIGHT_CTRL  = 1073742052

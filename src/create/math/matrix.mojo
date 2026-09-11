@@ -2,6 +2,18 @@ from std.math import sin, cos, tan, abs, min, max
 
 
 struct Matrix[rows: Int, cols: Int](Writable, Copyable, ImplicitlyCopyable, Movable):
+    """A fixed-size matrix, row-major, sized at compile time.
+
+    Transforms are homogeneous, so 2D work uses `Matrix[3, 3]` and 3D
+    `Matrix[4, 4]` — the extra row and column is what lets a translation be a
+    multiplication like any other, and so compose into a single matrix.
+
+    Build them with the free functions below rather than by hand:
+    `identity`, `translate`, `rotate`, `scale`, `perspective`. Compose with
+    `@`, which applies right to left — `translate(x, y) @ rotate(a)` rotates
+    first, then moves the rotated result.
+    """
+
     var data: Array[Float64, Self.rows * Self.cols]
 
     def __init__(out self):
@@ -48,6 +60,7 @@ struct Matrix[rows: Int, cols: Int](Writable, Copyable, ImplicitlyCopyable, Mova
 
 
 def identity[N: Int]() -> Matrix[N, N]:
+    """The N x N transform that changes nothing — the start of a composition."""
     var m = Matrix[N, N]()
     comptime for i in range(N):
         m[i, i] = 1.0
@@ -55,6 +68,7 @@ def identity[N: Int]() -> Matrix[N, N]:
 
 
 def translate(dx: Float64, dy: Float64) -> Matrix[3, 3]:
+    """Move by `(dx, dy)` in world units. `dy` is up, since y grows upward."""
     var m = identity[3]()
     m[0, 2] = dx
     m[1, 2] = dy
@@ -62,6 +76,9 @@ def translate(dx: Float64, dy: Float64) -> Matrix[3, 3]:
 
 
 def rotate(angle: Float64) -> Matrix[3, 3]:
+    """Turn by `angle` radians about the origin, counter-clockwise — the
+    mathematical convention, which holds here because y grows upward. Use
+    `radians(d)` for an angle written in degrees."""
     var m = identity[3]()
     var c = cos(angle)
     var s = sin(angle)
@@ -73,6 +90,7 @@ def rotate(angle: Float64) -> Matrix[3, 3]:
 
 
 def scale(sx: Float64, sy: Float64) -> Matrix[3, 3]:
+    """Scale each axis about the origin. Negative values mirror."""
     var m = identity[3]()
     m[0, 0] = sx
     m[1, 1] = sy
@@ -80,10 +98,14 @@ def scale(sx: Float64, sy: Float64) -> Matrix[3, 3]:
 
 
 def scale(s: Float64) -> Matrix[3, 3]:
+    """Scale both axes by the same factor."""
     return scale(s, s)
 
 
 def perspective(fov: Float64, aspect: Float64, near: Float64, far: Float64) -> Matrix[4, 4]:
+    """A 3D projection: vertical field of view in radians, width/height aspect,
+    and the near and far clip distances. `Canvas` draws in 2D, so this is for a
+    program doing its own 3D projection before it hands over coordinates."""
     var m = Matrix[4, 4]()
     var f = 1.0 / tan(fov / 2.0)
     m[0, 0] = f / aspect
@@ -95,6 +117,7 @@ def perspective(fov: Float64, aspect: Float64, near: Float64, far: Float64) -> M
 
 
 def apply(m: Matrix[3, 3], x: Float64, y: Float64) -> Tuple[Float64, Float64]:
+    """Transform a 2D point by `m`, dividing through by the homogeneous w."""
     var ox = m[0, 0] * x + m[0, 1] * y + m[0, 2]
     var oy = m[1, 0] * x + m[1, 1] * y + m[1, 2]
     var ow = m[2, 0] * x + m[2, 1] * y + m[2, 2]
@@ -102,6 +125,8 @@ def apply(m: Matrix[3, 3], x: Float64, y: Float64) -> Tuple[Float64, Float64]:
 
 
 def apply(m: Matrix[4, 4], x: Float64, y: Float64, z: Float64) -> Tuple[Float64, Float64, Float64]:
+    """Transform a 3D point by `m`, dividing through by the homogeneous w — so
+    a `perspective` matrix divides by depth here, not at construction."""
     var ox = m[0, 0] * x + m[0, 1] * y + m[0, 2] * z + m[0, 3]
     var oy = m[1, 0] * x + m[1, 1] * y + m[1, 2] * z + m[1, 3]
     var oz = m[2, 0] * x + m[2, 1] * y + m[2, 2] * z + m[2, 3]
@@ -110,6 +135,13 @@ def apply(m: Matrix[4, 4], x: Float64, y: Float64, z: Float64) -> Tuple[Float64,
 
 
 def inverse[N: Int](m: Matrix[N, N]) -> Matrix[N, N]:
+    """The transform that undoes `m` — Gauss-Jordan with partial pivoting.
+
+    Mapping a point back out of a transformed frame is what this is for, which
+    is how `canvas.to_local` maps a mouse position into the current transform.
+    A singular matrix (a zero scale, say) has no inverse and the result is
+    meaningless rather than an error.
+    """
     var aug = Matrix[N, N * 2]()
     for r in range(N):
         for c in range(N):
