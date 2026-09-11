@@ -65,4 +65,4 @@ struct Player:
         with canvas.style():
             canvas.fill(Color(220, 80, 80))
             canvas.no_stroke()
-            canvas.rect(self.x, self.y, self.width, self.height)
+            canvas.rectangle(self.x, self.y, self.width, self.height)

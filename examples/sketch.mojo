@@ -12,7 +12,7 @@ struct Sketch(Program):
         canvas.stroke(Color.GREEN)
 
         canvas.fill(Color.RED)
-        canvas.rect((-250, 150), 100, 100)
+        canvas.rectangle((-250, 150), 100, 100)
 
         canvas.fill(Color.BLUE)
         canvas.circle((-100, 0), 50)

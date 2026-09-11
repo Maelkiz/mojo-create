@@ -47,7 +47,7 @@ struct App(Program):
         canvas.circle((self.x, 150), 40)
 
         canvas.fill(Color.BLUE)
-        canvas.rect((0, 0), 200, 120)
+        canvas.rectangle((0, 0), 200, 120)
 
         canvas.fill(Color.BLACK)
         canvas.font_size(28)

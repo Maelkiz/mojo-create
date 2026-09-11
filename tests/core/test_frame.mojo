@@ -24,7 +24,7 @@ struct Painter(Program):
         canvas.background(Color.BLUE)
         canvas.no_stroke()
         canvas.fill(Color.RED)
-        canvas.rect(0.0, 0.0, 10.0, 10.0)
+        canvas.rectangle(0.0, 0.0, 10.0, 10.0)
 
 
 def _mismatched() raises -> MemorySurface:
