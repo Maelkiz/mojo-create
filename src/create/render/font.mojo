@@ -1,5 +1,7 @@
 from std.ffi import _DLHandle
 from std.math import abs
+
+from create.bytes import le_uint, sign_extend_32
 from .color import Color
 
 comptime FONT_DEFAULT_PATH   = "defaults/fonts/NotoSans.ttf"
@@ -51,24 +53,26 @@ comptime _FT_LOAD_DEFAULT       = 0
 comptime _FT_RENDER_MODE_NORMAL = 0
 
 
+# These wrap `le_uint` rather than being replaced by it: reading a C struct
+# field means copying it out of foreign memory first, and a leaf module has no
+# business linking libc for one caller's sake. The copy is what differs from
+# the image decoders; the assembly is not, so only that is shared.
+
+
 def _read_u32(addr: Int) raises -> Int:
     var buf = InlineArray[UInt8, 4](fill=0)
     _ = _DLHandle("libc.so.6").call["memcpy", Int](buf.unsafe_ptr(), addr, 4)
-    return Int(buf[0]) | (Int(buf[1]) << 8) | (Int(buf[2]) << 16) | (Int(buf[3]) << 24)
+    return le_uint(buf.unsafe_ptr(), 0, 4)
 
 
 def _read_i32(addr: Int) raises -> Int:
-    var v = _read_u32(addr)
-    return v - 0x100000000 if v >= 0x80000000 else v
+    return sign_extend_32(_read_u32(addr))
 
 
 def _read_ptr(addr: Int) raises -> Int:
     var buf = InlineArray[UInt8, 8](fill=0)
     _ = _DLHandle("libc.so.6").call["memcpy", Int](buf.unsafe_ptr(), addr, 8)
-    var v: Int = 0
-    for i in range(8):
-        v |= Int(buf[i]) << (i * 8)
-    return v
+    return le_uint(buf.unsafe_ptr(), 0, 8)
 
 
 struct GlyphInfo(Movable):
