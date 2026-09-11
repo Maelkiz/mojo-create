@@ -218,8 +218,8 @@ stack is usable without a run loop, which is what `run_headless` already relies 
 
 **A `Program` can own `Program`s.** Multiple screens are not a distinct feature: a root `Program`
 holds each screen as a plain field, in the same `update`/`render` shape but *not* implementing the
-trait (Mojo has no dynamic trait dispatch, so nothing could hold them polymorphically anyway), and
-switches with an int field and an `if`/`elif`:
+trait — a trait would force one `update`/`enter` signature across every screen, which is the one
+thing that must vary — and switches with an int field and an `if`/`elif`:
 
 ```mojo
 def update(mut self, mut ctx: Context, input: Input) raises:
@@ -233,6 +233,16 @@ A scene needing a one-shot reset on entry gets a plain method (`enter()`) the pa
 before flipping the field; it is not part of `Program` and costs nothing to scenes that don't need
 it. See [examples/scenes/src/main.mojo](examples/scenes/src/main.mojo) for a full menu/drawing-surface
 pair, including that hook and a deliberately-never-cleared canvas so ink accumulates across frames.
+
+That `enter()` is where a transition carries state — it takes whatever arguments the entering scene
+needs (`enter(from_door: Int)`), and state shared by *all* scenes is a field on the parent passed
+down as a `mut` parameter, alongside `Context`. Both are lost the moment a trait imposes a uniform
+signature, which is the real argument against one; it is not that a trait is impossible. Mojo 1.0
+has no dynamic trait dispatch — a trait in type position forms an inert `AnyTrait[T]` that nothing
+converts into and no method can be called on — but `Variant` over a closed set of scene types does
+give heterogeneous storage, so a scene *stack* (pause over game, modal dialogs) is buildable if one
+is ever needed. It buys storage only: dispatch is still a branch at each use site, `s.isa[Menu]()`
+in place of `self.scene == MENU`. One active scene needs no stack, so the fields stay plain.
 
 **`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
 over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
