@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal
-from create.core.color import Color
-from create.core.surface import MemorySurface, Surface
+from create.render.color import Color
+from create.render.surface import MemorySurface, Surface
 
 
 def _write(mut s: Surface, x: Int, y: Int, c: Color):

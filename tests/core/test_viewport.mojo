@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_almost_equal
-from create.core.autoscale import AutoScale
-from create.core.viewport import Viewport
+from create.render.autoscale import AutoScale
+from create.render.viewport import Viewport
 from create.math.matrix import apply
 
 

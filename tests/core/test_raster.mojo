@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true
-from create.core.color import Color
-from create.core.raster import (
+from create.render.color import Color
+from create.render.raster import (
     blend,
     blit_glyph,
     blit_sprite,
@@ -9,8 +9,8 @@ from create.core.raster import (
     fill_triangle,
     line_pixels,
 )
-from create.core.font import GlyphInfo
-from create.core.surface import MemorySurface
+from create.render.font import GlyphInfo
+from create.render.surface import MemorySurface
 from create.sprite.sprite import Sprite
 
 

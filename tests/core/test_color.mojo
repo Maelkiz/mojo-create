@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_almost_equal
-from create.core.color import Color
+from create.render.color import Color
 
 
 def test_rgba_constructor() raises -> None:

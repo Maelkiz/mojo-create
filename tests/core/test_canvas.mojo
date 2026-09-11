@@ -8,7 +8,7 @@ from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_tru
 
 from create.core import *
 from create.core.headless import run_headless
-from create.core.surface import MemorySurface
+from create.render.surface import MemorySurface
 from create.sprite.sprite import Sprite
 from std.memory import ArcPointer
 from create.math.geometry import Circle, Line, Rectangle, Triangle

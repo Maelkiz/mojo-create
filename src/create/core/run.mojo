@@ -10,12 +10,12 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from .canvas import CanvasState
+from create.render.canvas import CanvasState
 from .frame import step
-from .surface import Surface
+from create.render.surface import Surface
 from .input import Input
 from .context import Context
-from .autoscale import AutoScale
+from create.render.autoscale import AutoScale
 from .program import Program
 from std.math import floor
 from create.math.vector2 import Vector2

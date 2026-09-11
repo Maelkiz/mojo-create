@@ -1,10 +1,10 @@
-from .autoscale import AutoScale
-from .canvas import CanvasState
+from create.render.autoscale import AutoScale
+from create.render.canvas import CanvasState
 from .frame import step
 from .context import Context
 from .input import Input
 from .program import Program
-from .surface import MemorySurface
+from create.render.surface import MemorySurface
 
 comptime _FRAME_MILLIS = 16
 """Synthetic frame duration, so a program that integrates delta is
