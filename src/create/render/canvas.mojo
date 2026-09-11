@@ -232,6 +232,31 @@ struct Canvas[origin: Origin[mut=True]]:
             return abs(self._transform[0, 0])
         return self.scale
 
+    def _device_bounds(
+        self, lx0: Float64, ly0: Float64, lx1: Float64, ly1: Float64
+    ) -> Tuple[Int, Int, Int, Int]:
+        """Device-space scan bounds for the local box `[lx0, lx1] x [ly0, ly1]`.
+
+        Returns `(x_min, y_min, x_max, y_max)`, half-open on the maxima and
+        clipped to the surface. The bounds come from the four *corners*, not
+        the edge midpoints: under a rotation the midpoints are no longer the
+        extremes, and scanning between them clips the shape.
+        """
+        var p0 = mat_apply(self._transform, lx0, ly0)
+        var p1 = mat_apply(self._transform, lx1, ly0)
+        var p2 = mat_apply(self._transform, lx1, ly1)
+        var p3 = mat_apply(self._transform, lx0, ly1)
+        var x_min = max(Int(min(min(p0[0], p1[0]), min(p2[0], p3[0]))), 0)
+        var x_max = min(
+            Int(max(max(p0[0], p1[0]), max(p2[0], p3[0]))) + 1, self._surf.width
+        )
+        var y_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
+        var y_max = min(
+            Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1,
+            self._surf.height,
+        )
+        return (x_min, y_min, x_max, y_max)
+
     def transform(
         mut self, m: Matrix[3, 3]
     ) -> TransformGuard[Self.origin, origin_of(self)]:
@@ -317,7 +342,6 @@ struct Canvas[origin: Origin[mut=True]]:
     def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
         var surf = self._surf
         var W = surf.width
-        var H = surf.height
         var lx0 = x - w / 2.0
         var ly0 = y - h / 2.0
         var lx1 = x + w / 2.0
@@ -345,18 +369,11 @@ struct Canvas[origin: Origin[mut=True]]:
                     surf, x0 + iw - sw, y0 + sw, x0 + iw, y0 + ih - sw, c
                 )
         else:
-            var c0 = mat_apply(self._transform, lx0, ly0)
-            var c1 = mat_apply(self._transform, lx1, ly0)
-            var c2 = mat_apply(self._transform, lx1, ly1)
-            var c3 = mat_apply(self._transform, lx0, ly1)
-            var sx_min = max(Int(min(min(c0[0], c1[0]), min(c2[0], c3[0]))), 0)
-            var sx_max = min(
-                Int(max(max(c0[0], c1[0]), max(c2[0], c3[0]))) + 1, W
-            )
-            var sy_min = max(Int(min(min(c0[1], c1[1]), min(c2[1], c3[1]))), 0)
-            var sy_max = min(
-                Int(max(max(c0[1], c1[1]), max(c2[1], c3[1]))) + 1, H
-            )
+            var b = self._device_bounds(lx0, ly0, lx1, ly1)
+            var sx_min = b[0]
+            var sy_min = b[1]
+            var sx_max = b[2]
+            var sy_max = b[3]
             var sw_f = Float64(self._style.stroke_width)
             for row in range(sy_min, sy_max):
                 for col in range(sx_min, sx_max):
@@ -419,21 +436,11 @@ struct Canvas[origin: Origin[mut=True]]:
                         elif self._style.stroke_enabled and d2 > pr_inner2:
                             blend(surf, off, self._style.stroke)
         else:
-            # The scan bounds must come from the bounding square's corners,
-            # not its edge midpoints: under a rotation the midpoints are no
-            # longer the extremes, and using them clips the circle.
-            var p0 = mat_apply(self._transform, cx - r, cy - r)
-            var p1 = mat_apply(self._transform, cx + r, cy - r)
-            var p2 = mat_apply(self._transform, cx + r, cy + r)
-            var p3 = mat_apply(self._transform, cx - r, cy + r)
-            var sx_min = max(Int(min(min(p0[0], p1[0]), min(p2[0], p3[0]))), 0)
-            var sx_max = min(
-                Int(max(max(p0[0], p1[0]), max(p2[0], p3[0]))) + 1, W
-            )
-            var sy_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
-            var sy_max = min(
-                Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1, H
-            )
+            var b = self._device_bounds(cx - r, cy - r, cx + r, cy + r)
+            var sx_min = b[0]
+            var sy_min = b[1]
+            var sx_max = b[2]
+            var sy_max = b[3]
             for row in range(sy_min, sy_max):
                 for col in range(sx_min, sx_max):
                     var local = mat_apply(
