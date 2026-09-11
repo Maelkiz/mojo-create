@@ -28,7 +28,7 @@ from .raster import (
 )
 
 
-struct CanvasState(Movable):
+struct PersistentCanvasState(Movable):
     """The part of a `Canvas` that outlives the frame it was drawn in.
 
     A `Canvas` is built fresh over each frame's framebuffer, so anything it
@@ -90,7 +90,7 @@ struct Canvas[origin: Origin[mut=True]]:
     Built fresh each frame over that frame's `Surface`, which is why it has
     exactly one parameter: `Program.render(self, mut canvas: Canvas)` infers
     it, so user code never spells the backend. State that must survive the
-    frame goes in and out through `CanvasState`.
+    frame goes in and out through `PersistentCanvasState`.
     """
 
     var width: Int
@@ -100,7 +100,7 @@ struct Canvas[origin: Origin[mut=True]]:
     var letterbox: Color
     var view: Viewport
     var _surf: Surface[Self.origin]
-    var _state: CanvasState
+    var _state: PersistentCanvasState
     # Style is per-frame, not carried in `_state`: `Canvas` is only reachable
     # from `render`, so nothing can seed a style outside a frame and carrying
     # one across would only preserve a forgotten setting.
@@ -121,7 +121,7 @@ struct Canvas[origin: Origin[mut=True]]:
         out self,
         surf: Surface[Self.origin],
         view: Viewport,
-        var state: CanvasState,
+        var state: PersistentCanvasState,
     ):
         """Adopt this frame's framebuffer, mapping and carried-over state."""
         self._surf = surf
@@ -143,7 +143,7 @@ struct Canvas[origin: Origin[mut=True]]:
         self._transform_inv = self._base_inv
         self._transform_stack = List[Matrix[3, 3]]()
 
-    def _release(deinit self) -> CanvasState:
+    def _release(deinit self) -> PersistentCanvasState:
         """Hand back the state the next frame's `Canvas` should start from.
 
         Consumes the canvas, so the borrow on the framebuffer ends here — the

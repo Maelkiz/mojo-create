@@ -18,7 +18,7 @@ from create.render.font import Font, FontWeight
 from .key import Key
 from create.render.canvas import (
     Canvas,
-    CanvasState,
+    PersistentCanvasState,
     StyleGuard as StyleGuard,
     TransformGuard as TransformGuard,
 )

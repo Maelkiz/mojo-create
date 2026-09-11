@@ -40,7 +40,7 @@ def _mismatched() raises -> MemorySurface:
     var program = Painter(0)
     var input = Input()
     var mem = MemorySurface(200, 200)
-    var state = step(program, ctx, input, mem.surface(), CanvasState())
+    var state = step(program, ctx, input, mem.surface(), PersistentCanvasState())
     _ = state^
     return mem^
 
@@ -97,7 +97,9 @@ def test_scripted_click_drives_render() raises -> None:
     var mem = MemorySurface(32, 32)
 
     var idle_program = ClickPainter(False)
-    var idle_state = step(idle_program, ctx, Input(), mem.surface(), CanvasState())
+    var idle_state = step(
+        idle_program, ctx, Input(), mem.surface(), PersistentCanvasState()
+    )
     assert_equal(mem.pixel(16, 16), Color.BLUE)
     _ = idle_state^
 
@@ -105,7 +107,7 @@ def test_scripted_click_drives_render() raises -> None:
     var clicked_input = Input()
     clicked_input._pressed_buttons |= 1 << 1
     var clicked_state = step(
-        clicked_program, ctx, clicked_input, mem.surface(), CanvasState()
+        clicked_program, ctx, clicked_input, mem.surface(), PersistentCanvasState()
     )
     assert_equal(mem.pixel(16, 16), Color.RED)
     _ = clicked_state^
