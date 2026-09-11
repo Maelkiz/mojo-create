@@ -128,6 +128,56 @@ def test_line_length_sq() raises -> None:
     assert_equal(l.length_sq(), 25.0)
 
 
+def test_line_closest_point_perpendicular() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    var p = l.closest_point(2.0, 5.0)
+    assert_equal(p.x, 2.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_line_closest_point_clamps_past_endpoint() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    var p = l.closest_point(10.0, 3.0)
+    assert_equal(p.x, 4.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_line_closest_point_vector2() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    var p = l.closest_point(Vector2(2.0, 5.0))
+    assert_equal(p.x, 2.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_line_midpoint() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    var m = l.midpoint()
+    assert_equal(m.x, 2.0)
+    assert_equal(m.y, 0.0)
+
+
+def test_line_move_to_places_midpoint() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    l.move_to(10.0, 10.0)
+    assert_almost_equal(l.length(), 4.0, atol=1e-9)
+    var m = l.midpoint()
+    assert_equal(m.x, 10.0)
+    assert_equal(m.y, 10.0)
+    assert_equal(l.x0, 8.0)
+    assert_equal(l.y0, 10.0)
+    assert_equal(l.x1, 12.0)
+    assert_equal(l.y1, 10.0)
+
+
+def test_line_translate() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    l.translate(1.0, 2.0)
+    assert_equal(l.x0, 1.0)
+    assert_equal(l.y0, 2.0)
+    assert_equal(l.x1, 5.0)
+    assert_equal(l.y1, 2.0)
+
+
 def test_line_intersects_crossing() raises -> None:
     var a = Line(0.0, 0.0, 2.0, 2.0)
     var b = Line(0.0, 2.0, 2.0, 0.0)
