@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal
-from create.bytes import le_uint, sign_extend_32
+from create._bytes import le_uint, sign_extend_32
 
 
 def test_le_uint_two_bytes() raises -> None:

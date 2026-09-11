@@ -1,6 +1,6 @@
 from create.render.autoscale import AutoScale
 from create.render.canvas import PersistentCanvasState
-from .frame import step
+from ._frame import step
 from .context import Context
 from .input import Input
 from .program import Program

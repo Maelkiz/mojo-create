@@ -1,6 +1,6 @@
 from std.math import max, min, abs
 from .color import Color
-from .font import GlyphInfo
+from .font import _GlyphInfo
 from .surface import Surface
 
 
@@ -189,7 +189,7 @@ def blit_sprite[
 
 def blit_glyph[
     o: Origin[mut=True]
-](s: Surface[o], g: GlyphInfo, x0: Int, y0: Int, c: Color):
+](s: Surface[o], g: _GlyphInfo, x0: Int, y0: Int, c: Color):
     """Composite a glyph's coverage mask at `(x0, y0)` in `c`.
 
     Coverage scales the fill's alpha, so antialiasing and a translucent fill

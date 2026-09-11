@@ -11,7 +11,7 @@ from window.event import (
     MouseWheel,
 )
 from create.render.canvas import PersistentCanvasState
-from .frame import step
+from ._frame import step
 from create.render.surface import Surface
 from .input import Input
 from .context import Context
