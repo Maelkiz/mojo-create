@@ -41,16 +41,38 @@ def _ranges_separate[N: Int, M: Int](nx: Float64, ny: Float64, a: InlineArray[Ve
 
 def _polygons_overlap[N: Int, M: Int](a: InlineArray[Vector2, N], b: InlineArray[Vector2, M]) -> Bool:
     # SAT over both polygons' edge normals -- exact for convex polygons.
+    # A zero-length edge contributes no normal, so its axis is skipped; its
+    # direction is tested instead (needed to separate collinear degenerate
+    # polygons), and the world axes are always tested (needed when both
+    # polygons collapse to points and contribute no edge axes at all).
+    # Testing extra axes is always sound: separation on any axis proves
+    # disjointness, and genuinely overlapping shapes separate on none.
     for i in range(N):
         var p0 = a[i]
         var p1 = a[(i + 1) % N]
-        if _ranges_separate(-(p1.y - p0.y), p1.x - p0.x, a, b):
+        var dx = p1.x - p0.x
+        var dy = p1.y - p0.y
+        if dx == 0.0 and dy == 0.0:
+            continue
+        if _ranges_separate(-dy, dx, a, b):
+            return False
+        if _ranges_separate(dx, dy, a, b):
             return False
     for i in range(M):
         var p0 = b[i]
         var p1 = b[(i + 1) % M]
-        if _ranges_separate(-(p1.y - p0.y), p1.x - p0.x, a, b):
+        var dx = p1.x - p0.x
+        var dy = p1.y - p0.y
+        if dx == 0.0 and dy == 0.0:
+            continue
+        if _ranges_separate(-dy, dx, a, b):
             return False
+        if _ranges_separate(dx, dy, a, b):
+            return False
+    if _ranges_separate(1.0, 0.0, a, b):
+        return False
+    if _ranges_separate(0.0, 1.0, a, b):
+        return False
     return True
 
 

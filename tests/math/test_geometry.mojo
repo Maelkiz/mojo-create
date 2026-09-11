@@ -463,5 +463,29 @@ def test_overlaps_circle_distinct_collinear_triangle_far_away() raises -> None:
     assert_equal(overlaps(c, t), False)
 
 
+def test_overlaps_zero_width_rect_and_far_triangle() raises -> None:
+    var r = Rectangle(0.0, 0.0, 0.0, 4.0)
+    var t = Triangle(10.0, 0.0, 12.0, 2.0, 12.0, -2.0)
+    assert_equal(overlaps(r, t), False)
+
+
+def test_overlaps_disjoint_collinear_degenerate_rects() raises -> None:
+    var a = Rectangle(0.0, 0.0, 0.0, 4.0)
+    var b = Rectangle(0.0, 10.0, 0.0, 4.0)
+    assert_equal(overlaps(a, b), False)
+
+
+def test_overlaps_collapsed_points_at_different_positions() raises -> None:
+    var a = Rectangle(0.0, 0.0, 0.0, 0.0)
+    var b = Rectangle(5.0, 5.0, 0.0, 0.0)
+    assert_equal(overlaps(a, b), False)
+
+
+def test_overlaps_collapsed_point_inside_triangle() raises -> None:
+    var point = Rectangle(1.0, 1.0, 0.0, 0.0)
+    var t = Triangle(0.0, 0.0, 4.0, 0.0, 0.0, 4.0)
+    assert_true(overlaps(point, t))
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
