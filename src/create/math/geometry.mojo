@@ -243,6 +243,44 @@ struct Line:
             return True
         return False
 
+    # `l.intersects(x)` is the line-as-subject relation -- asymmetric, unlike
+    # `overlaps`, because a `Line` has no interior and cannot be an operand of
+    # a symmetric region test. Point and Line are exact by construction; a
+    # region is tested by the cheapest exact method for that shape --
+    # `Circle` via `closest_point`-then-`contains` (exact only because a
+    # circle's containment is radial from its centre), `Rectangle` and
+    # `Triangle` via endpoint containment (covers a segment wholly inside,
+    # which no edge test would catch) plus their edges as `Line`s.
+    def intersects(self, px: Float64, py: Float64) -> Bool:
+        return _point_on_segment(px, py, self.x0, self.y0, self.x1, self.y1)
+
+    def intersects(self, v: Vector2) -> Bool:
+        return self.intersects(v.x, v.y)
+
+    def intersects(self, c: Circle) -> Bool:
+        var closest = self.closest_point(c.x, c.y)
+        return c.contains(closest)
+
+    def intersects(self, r: Rectangle) -> Bool:
+        if r.contains(self.x0, self.y0) or r.contains(self.x1, self.y1):
+            return True
+        var pts = r._points()
+        for i in range(4):
+            var edge = Line(pts[i], pts[(i + 1) % 4])
+            if self.intersects(edge):
+                return True
+        return False
+
+    def intersects(self, t: Triangle) -> Bool:
+        if t.contains(self.x0, self.y0) or t.contains(self.x1, self.y1):
+            return True
+        var pts = t._points()
+        for i in range(3):
+            var edge = Line(pts[i], pts[(i + 1) % 3])
+            if self.intersects(edge):
+                return True
+        return False
+
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         return _closest_on_segment(px, py, self.x0, self.y0, self.x1, self.y1)
 

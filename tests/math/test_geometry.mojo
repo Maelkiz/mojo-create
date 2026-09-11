@@ -215,6 +215,74 @@ def test_line_intersects_t_intersection() raises -> None:
     assert_true(a.intersects(b))
 
 
+def test_line_intersects_point_on_segment() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    assert_true(l.intersects(2.0, 0.0))
+    assert_true(l.intersects(Vector2(2.0, 0.0)))
+
+
+def test_line_intersects_point_off_segment() raises -> None:
+    var l = Line(0.0, 0.0, 4.0, 0.0)
+    assert_equal(l.intersects(2.0, 1.0), False)
+
+
+def test_line_intersects_circle_passing_through() raises -> None:
+    # Crosses the circle without either endpoint inside it.
+    var l = Line(-5.0, 0.0, 5.0, 0.0)
+    var c = Circle(0.0, 0.0, 2.0)
+    assert_true(l.intersects(c))
+
+
+def test_line_intersects_circle_clamped_short() raises -> None:
+    # The infinite extension would hit the circle; the finite segment stops short.
+    var l = Line(-5.0, 5.0, -3.0, 5.0)
+    var c = Circle(0.0, 0.0, 2.0)
+    assert_equal(l.intersects(c), False)
+
+
+def test_line_intersects_rectangle_fully_inside() raises -> None:
+    var l = Line(-1.0, 0.0, 1.0, 0.0)
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    assert_true(l.intersects(r))
+
+
+def test_line_intersects_rectangle_crossing_one_edge() raises -> None:
+    var l = Line(0.0, 0.0, 10.0, 0.0)
+    var r = Rectangle(8.0, 0.0, 4.0, 4.0)
+    assert_true(l.intersects(r))
+
+
+def test_line_intersects_rectangle_no() raises -> None:
+    var l = Line(-10.0, -10.0, -8.0, -10.0)
+    var r = Rectangle(0.0, 0.0, 4.0, 4.0)
+    assert_equal(l.intersects(r), False)
+
+
+def test_line_intersects_rectangle_touching_boundary() raises -> None:
+    var l = Line(2.0, 0.0, 6.0, 0.0)
+    var r = Rectangle(0.0, 0.0, 4.0, 4.0)
+    assert_true(l.intersects(r))
+
+
+def test_line_intersects_triangle_fully_inside() raises -> None:
+    var l = Line(1.0, 0.5, 2.0, 0.5)
+    var t = Triangle(0.0, 0.0, 6.0, 0.0, 0.0, 6.0)
+    assert_true(l.intersects(t))
+
+
+def test_line_intersects_triangle_crossing() raises -> None:
+    # Both endpoints outside the triangle; the segment cuts through the hull.
+    var l = Line(-2.0, 1.0, 8.0, 1.0)
+    var t = Triangle(0.0, 0.0, 6.0, 0.0, 0.0, 6.0)
+    assert_true(l.intersects(t))
+
+
+def test_line_intersects_triangle_no() raises -> None:
+    var l = Line(-10.0, -10.0, -8.0, -10.0)
+    var t = Triangle(0.0, 0.0, 6.0, 0.0, 0.0, 6.0)
+    assert_equal(l.intersects(t), False)
+
+
 # Triangle
 def test_triangle_center() raises -> None:
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
