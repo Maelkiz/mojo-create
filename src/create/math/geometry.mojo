@@ -107,11 +107,10 @@ struct Rectangle(ConvexShape):
                 self.bottom() <= other.top() and self.top() >= other.bottom())
 
     def overlaps(self, c: Circle) -> Bool:
-        var nearest_x = max(self.left(), min(c.x, self.right()))
-        var nearest_y = max(self.bottom(), min(c.y, self.top()))
-        var dx = c.x - nearest_x
-        var dy = c.y - nearest_y
-        return dx * dx + dy * dy <= c.r * c.r
+        # The nearest point on the rectangle is inside the circle exactly when
+        # the two overlap -- which is `closest_point` followed by `contains`,
+        # so neither test is spelled out a second time here.
+        return c.contains(self.closest_point(c.x, c.y))
 
 
 @fieldwise_init
@@ -257,9 +256,8 @@ struct Triangle(ConvexShape):
         return max1 < min2 or max2 < min1
 
     def move_to(mut self, x: Float64, y: Float64):
-        var cx = (self.x1 + self.x2 + self.x3) / 3.0
-        var cy = (self.y1 + self.y2 + self.y3) / 3.0
-        var dx = x - cx; var dy = y - cy
+        var c = self.center()
+        var dx = x - c.x; var dy = y - c.y
         self.x1 += dx; self.y1 += dy
         self.x2 += dx; self.y2 += dy
         self.x3 += dx; self.y3 += dy
