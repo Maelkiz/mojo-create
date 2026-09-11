@@ -1,9 +1,11 @@
+from .vector2 import Vector2
 from std.math import sqrt
 
 
-struct Vector3(Copyable, ImplicitlyCopyable, Movable, Writable):
+struct Vector3(Equatable, Copyable, ImplicitlyCopyable, Movable, Writable):
     """A 3D point or direction: arithmetic operators, `mag`, `normalize`,
-    `dot`, `cross`, `dist`, `lerp`.
+    `dot`, `cross`, `dist`, `lerp`, and `xy` to drop `z` and narrow into a
+    `Vector2`.
 
     Drawing is 2D, so nothing in the library takes one — it is here for a
     program doing its own 3D work, and lives in `create.math` rather than the
@@ -138,3 +140,6 @@ struct Vector3(Copyable, ImplicitlyCopyable, Movable, Writable):
             self.y + (other.y - self.y) * t,
             self.z + (other.z - self.z) * t,
         )
+
+    def xy(self) -> Vector2:
+        return Vector2(self.x, self.y)
