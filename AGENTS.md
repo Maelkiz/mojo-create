@@ -24,7 +24,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | root | `src/create/__init__.mojo` | The preamble — `from create import *`, the union of every subpackage below |
 | `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
 | `render` | `src/create/render/` | Canvas, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
-| `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
+| `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util, easing curves and tweens |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
 | `_bytes` | `src/create/_bytes.mojo` | Internal leaf — little-endian integer decoding. Imports nothing, re-exported by nothing |
@@ -55,6 +55,8 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; the `overlaps`/`intersects`/`contains` relation taxonomy (see Terminology) |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
+| `src/create/math/easing.mojo` | `Easing` — the named curve constants; `ease(curve, t)` — reshape a 0-to-1 fraction |
+| `src/create/math/tween.mojo` | `Tween` — the playhead over one value, `start` to `end` over a duration |
 | `src/create/math/util.mojo` | `lerp`, `map`, `norm`, `smoothstep`, `sign`, `fract`, `fmod`, `degrees`, `radians` |
 | `src/create/sprite/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
 | `src/create/sprite/animation.mojo` | `SpriteAnimation` — frame sequence + fps; `from_sheet`, `from_folder` |
@@ -143,7 +145,7 @@ program does:
 
 - `from create.core import *` — the run loop and everything a `Program`'s signatures name, which by the closure rule below pulls in most of `render`, `math` and `sprite` too. Read `core/__init__.mojo` for the exact set.
 - `from create.render import *` — the drawing stack with no run loop, which is what `run_headless` is built on. Adds `Viewport`.
-- `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
+- `from create.math import *` — adds `Vector3`, `Random`, `Easing`/`ease`/`Tween`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
 **The root is a union, the subpackages are closures — two different rules.**
@@ -157,8 +159,8 @@ symbol from a lower one exactly when one of its own signatures names that type o
 constructs one for it — `canvas.rectangle` takes a `Rectangle`, `canvas.transform` a `Matrix`, and
 `identity`/`translate`/`rotate`/`scale` are how a caller builds that `Matrix`; likewise
 `canvas.sprite` takes a `SpriteAnimator`, and `SpriteAnimation` is how a caller builds one. Hence
-`Vector3`, `Random`, the util functions and `inverse`/`apply`/`perspective` are absent: no signature
-names them. Reach for `create.math` for those.
+`Vector3`, `Random`, `Tween`, the util functions and `inverse`/`apply`/`perspective` are absent: no
+signature names them. Reach for `create.math` for those.
 
 The rule now applies at two levels. `render/__init__.mojo` closes over `math` and `sprite`;
 `core/__init__.mojo` closes over `render` on top of that, because `Program.render` names `Canvas` and
@@ -304,7 +306,7 @@ desynchronises the `Vector2` from the `Int` pair. A new event that reports a pos
 
 `Input` is the only one the program never writes, hence a read-only argument rather than a field on the `mut` `Context` — reasoning in the [`Input` docstring](src/create/core/input.mojo). `ctx.time` shows the cost of the alternative: the program never writes it either, but `ctx.time.frame_count = 99` compiles.
 
-**Per-frame obligations.** Two fields the program owns need ticking from `update`, and nothing
+**Per-frame obligations.** Three fields the program owns need ticking from `update`, and nothing
 enforces it:
 
 - `audio.update()` — SDL never reports a finished stream, so skipping it stalls a loop after its
@@ -312,6 +314,8 @@ enforces it:
   [audio.mojo](src/create/audio/audio.mojo) and [examples/audio/src/main.mojo](examples/audio/src/main.mojo).
 - `animator.update(ctx.time.delta)` — the playhead only advances here. See
   [animator.mojo](src/create/sprite/animator.mojo) and [examples/animation/src/main.mojo](examples/animation/src/main.mojo).
+- `tween.update(ctx.time.delta)` — same shape and same failure: a tween never ticked sits at its
+  `start` forever. See [tween.mojo](src/create/math/tween.mojo).
 
 Both an animation and a sound are shared assets, held as `ArcPointer` fields (`from std.memory
 import ArcPointer`) so several entities or voices share one buffer by refcount instead of copying
@@ -381,6 +385,7 @@ docstring; this table is not an API reference and must not grow into one.
 | `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
 | Asset vs. playhead | `SpriteAnimation` and `Sound` are immutable artwork, shared by `ArcPointer`; `SpriteAnimator` and an `Audio` voice are one entity's position in it. The rate (`fps`) belongs to the asset, not the playhead |
+| `Easing` / `Tween` | An `Easing` is the *shape* of a motion — a pure function of a 0-to-1 fraction, so `ease(curve, t)` needs no state. A `Tween` is a playhead that walks that fraction over a duration and reads out a value. A tween has no shared asset to split off the way an animation does: its whole definition is four numbers, so each entity owns its own |
 | `overlaps` / `intersects` / `contains` | The three geometry relations in [geometry.mojo](src/create/math/geometry.mojo), and they don't overlap in role. `overlaps(a, b)` is a free function, symmetric between two regions (`Rectangle`/`Circle`/`Triangle`). `l.intersects(x)` is a method on `Line` only, asymmetric — `Line` has no interior, so it can only ever be the subject, never an operand of a symmetric test. `s.contains(x)` is a method on the containing region, also asymmetric. A `Line` is never a region: it has no `overlaps` overload and no `center()`/`area()` |
 
 ## Do
