@@ -281,7 +281,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
         ```mojo
         with canvas.transform(translate(50.0, 50.0)):
-            canvas.rect((0, 0), 100, 100)
+            canvas.rectangle((0, 0), 100, 100)
         ```
 
         The matrix pops on exit, including on an early return or a raise.
@@ -367,7 +367,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def no_stroke(mut self):
         """Drop the outline. Worth knowing that stroke is *on* by default, in
-        black — a `rect` drawn without this gets an outline nobody asked for."""
+        black — a `rectangle` drawn without this gets an outline nobody asked for."""
         self._style.stroke_enabled = False
 
     def stroke_width(mut self, w: Int):
@@ -384,7 +384,7 @@ struct Canvas[origin: Origin[mut=True]]:
         """
         fill_all(self._surf, color)
 
-    def rect(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
+    def rectangle(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
         var surf = self._surf
         var W = surf.width
         var lx0 = x - w / 2.0
@@ -539,8 +539,8 @@ struct Canvas[origin: Origin[mut=True]]:
             self._line_pixels(sx2, sy2, sx3, sy3)
             self._line_pixels(sx3, sy3, sx1, sy1)
 
-    def rect(mut self, x: Int, y: Int, w: Int, h: Int):
-        self.rect(Float64(x), Float64(y), Float64(w), Float64(h))
+    def rectangle(mut self, x: Int, y: Int, w: Int, h: Int):
+        self.rectangle(Float64(x), Float64(y), Float64(w), Float64(h))
 
     def circle(mut self, cx: Int, cy: Int, r: Int):
         self.circle(Float64(cx), Float64(cy), Float64(r))
@@ -560,14 +560,14 @@ struct Canvas[origin: Origin[mut=True]]:
             Float64(y3),
         )
 
-    def rect(mut self, r: Rectangle):
-        self.rect(r.x, r.y, r.w, r.h)
+    def rectangle(mut self, r: Rectangle):
+        self.rectangle(r.x, r.y, r.w, r.h)
 
-    def rect(mut self, pos: Vector2, w: Float64, h: Float64):
-        self.rect(pos.x, pos.y, w, h)
+    def rectangle(mut self, pos: Vector2, w: Float64, h: Float64):
+        self.rectangle(pos.x, pos.y, w, h)
 
-    def rect(mut self, pos: Vector2, size: Vector2):
-        self.rect(pos.x, pos.y, size.x, size.y)
+    def rectangle(mut self, pos: Vector2, size: Vector2):
+        self.rectangle(pos.x, pos.y, size.x, size.y)
 
     def circle(mut self, c: Circle):
         self.circle(c.x, c.y, c.r)

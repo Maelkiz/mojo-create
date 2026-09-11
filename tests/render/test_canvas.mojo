@@ -48,7 +48,7 @@ struct CentredRect(Program):
         canvas.background(Color.BLACK)
         canvas.no_stroke()
         canvas.fill(Color.RED)
-        canvas.rect(0.0, 0.0, 20.0, 20.0)
+        canvas.rectangle(0.0, 0.0, 20.0, 20.0)
 
 
 def test_rect_is_centre_positioned() raises -> None:
@@ -76,7 +76,7 @@ struct HighRect(Program):
         canvas.background(Color.BLACK)
         canvas.no_stroke()
         canvas.fill(Color.GREEN)
-        canvas.rect(0.0, 30.0, 10.0, 10.0)
+        canvas.rectangle(0.0, 30.0, 10.0, 10.0)
 
 
 def test_positive_y_draws_above_centre() raises -> None:
@@ -157,7 +157,7 @@ struct AlphaOverRed(Program):
         canvas.background(Color.RED)
         canvas.no_stroke()
         canvas.fill(Color(0, 0, 255, 128))
-        canvas.rect(0.0, 0.0, 40.0, 40.0)
+        canvas.rectangle(0.0, 0.0, 40.0, 40.0)
 
 
 def test_alpha_composites_source_over() raises -> None:
@@ -245,7 +245,7 @@ struct RotatedRect(Program):
         canvas.no_stroke()
         canvas.fill(Color.YELLOW)
         with canvas.transform(rotate(pi / 4.0)):
-            canvas.rect(0.0, 0.0, 20.0, 20.0)
+            canvas.rectangle(0.0, 0.0, 20.0, 20.0)
 
 
 def test_rotation_takes_the_inverse_mapped_path() raises -> None:
@@ -330,7 +330,7 @@ struct StyleAcrossFrames(Program):
             canvas.fill(Color.RED)
             canvas.no_stroke()
         else:
-            canvas.rect((0, 0), 20, 20)
+            canvas.rectangle((0, 0), 20, 20)
 
 
 def test_style_does_not_survive_the_frame_boundary() raises -> None:
@@ -354,8 +354,8 @@ struct GuardedStyle(Program):
         canvas.fill(Color.RED)
         with canvas.style():
             canvas.fill(Color.BLUE)
-            canvas.rect((-25, 0), 20, 20)
-        canvas.rect((25, 0), 20, 20)
+            canvas.rectangle((-25, 0), 20, 20)
+        canvas.rectangle((25, 0), 20, 20)
 
 
 def test_style_guard_restores_on_scope_exit() raises -> None:
@@ -377,7 +377,7 @@ struct StrokedRect(Program):
         canvas.fill(Color.RED)
         canvas.stroke(Color.BLUE)
         canvas.stroke_width(4)
-        canvas.rect(0.0, 0.0, 40.0, 40.0)
+        canvas.rectangle(0.0, 0.0, 40.0, 40.0)
 
 
 def test_rect_stroke_draws_all_four_bands() raises -> None:
@@ -451,7 +451,7 @@ struct NoFillRect(Program):
         canvas.no_fill()
         canvas.stroke(Color.WHITE)
         canvas.stroke_width(4)
-        canvas.rect(0.0, 0.0, 40.0, 40.0)
+        canvas.rectangle(0.0, 0.0, 40.0, 40.0)
 
 
 def test_no_fill_leaves_the_rect_interior_untouched() raises -> None:
@@ -526,7 +526,7 @@ struct QuarterTurnRect(Program):
         canvas.no_stroke()
         canvas.fill(Color.YELLOW)
         with canvas.transform(rotate(pi / 2.0)):
-            canvas.rect(0.0, 0.0, 20.0, 40.0)
+            canvas.rectangle(0.0, 0.0, 20.0, 40.0)
 
 
 @fieldwise_init
@@ -541,7 +541,7 @@ struct SwappedRect(Program):
         canvas.background(Color.BLACK)
         canvas.no_stroke()
         canvas.fill(Color.YELLOW)
-        canvas.rect(0.0, 0.0, 40.0, 20.0)
+        canvas.rectangle(0.0, 0.0, 40.0, 20.0)
 
 
 def _assert_quarter_turn_pixels(m: MemorySurface) raises:
@@ -572,7 +572,7 @@ struct GeometryOverloads(Program):
 
         canvas.no_stroke()
         canvas.fill(Color.RED)
-        canvas.rect(Rectangle(-90.0, 40.0, 20.0, 20.0))
+        canvas.rectangle(Rectangle(-90.0, 40.0, 20.0, 20.0))
 
         canvas.fill(Color.GREEN)
         canvas.circle(Circle(-30.0, 40.0, 10.0))
@@ -586,7 +586,7 @@ struct GeometryOverloads(Program):
         canvas.triangle(Triangle(90.0, 50.0, 80.0, 30.0, 100.0, 30.0))
 
         canvas.fill(Color.MAGENTA)
-        canvas.rect(Vector2(-90.0, -40.0), 20.0, 20.0)
+        canvas.rectangle(Vector2(-90.0, -40.0), 20.0, 20.0)
 
         canvas.fill(Color.YELLOW)
         canvas.circle(Vector2(-30.0, -40.0), 10.0)
@@ -814,7 +814,7 @@ struct QuitOnFrameTwo(Program):
             canvas.fill(Color.GREEN)
         else:
             canvas.fill(Color.BLUE)
-        canvas.rect(0.0, 0.0, 100.0, 100.0)
+        canvas.rectangle(0.0, 0.0, 100.0, 100.0)
 
 
 def test_ctx_quit_stops_the_loop() raises -> None:

@@ -11,7 +11,7 @@ struct MyApp(Program):
         pass  # Executes once per frame, handle input, update state, etc.
 
     def render(self, mut canvas: Canvas) raises:
-        # Also executes once per frame, canvas.rect(), canvas.circle(), etc.
+        # Also executes once per frame, canvas.rectangle(), canvas.circle(), etc.
         canvas.background(Color.BLACK)
         canvas.text_align(HorizontalAlignment.CENTER, VerticalAlignment.MIDDLE)
         canvas.text("Hello World!", 0, 0)

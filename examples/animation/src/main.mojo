@@ -99,7 +99,7 @@ struct Game(Program):
         # it never floats over the background however tall the window is.
         var height = _GROUND - canvas.bottom()
         canvas.fill(Color(38, 42, 54))
-        canvas.rect(
+        canvas.rectangle(
             (0.0, canvas.bottom() + height / 2.0), canvas.right() * 2.0, height
         )
 

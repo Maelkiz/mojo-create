@@ -72,7 +72,7 @@ struct Transforms(Program):
                     var r = UInt8(60 + Int(t * 180.0))
                     var b = UInt8(180 - Int(t * 100.0))
                     canvas.fill(Color(r, 80, b))
-                    canvas.rect(0.0, 0.0, 36.0, 18.0)
+                    canvas.rectangle(0.0, 0.0, 36.0, 18.0)
 
         # Rotating triangle fan
         with canvas.transform(translate(232.0, -165.0)):

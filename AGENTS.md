@@ -143,7 +143,7 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **What a module re-exports is a closure rule, not a convenience list.** A module re-exports a
 symbol from a lower one exactly when one of its own signatures names that type or the symbol
-constructs one for it — `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and
+constructs one for it — `canvas.rectangle` takes a `Rectangle`, `canvas.transform` a `Matrix`, and
 `identity`/`translate`/`rotate`/`scale` are how a caller builds that `Matrix`; likewise
 `canvas.sprite` takes a `SpriteAnimator`, and `SpriteAnimation` is how a caller builds one. Hence
 `Vector3`, `Random`, the util functions and `inverse`/`apply`/`perspective` are absent: no signature
@@ -226,7 +226,7 @@ whatever the caller draws next.
 with canvas.style():
     canvas.no_stroke()
     canvas.fill(Color(220, 80, 80))
-    canvas.rect(self.pos, 40, 40)
+    canvas.rectangle(self.pos, 40, 40)
 ```
 
 **Coordinate system is not Processing's.** The origin is the **middle** of the design area and **y grows upward**. World `x` runs `[-width/2, +width/2]`, `y` runs `[-height/2, +height/2]`; `(0, 0)` is the centre of the screen and negative `y` is below it.
@@ -240,10 +240,10 @@ Consequences worth internalising:
 - Glyphs and sprites are **not** flipped — only their anchor point is mapped.
 - `input.mouse` is delivered in world coordinates, so it can be negative.
 
-**All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner. Position arguments are `Vector2`, whose tuple constructors are `@implicit`, so a bare tuple works everywhere one is taken.
+**All shapes are center-positioned** (unlike Processing). `canvas.rectangle((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner. Position arguments are `Vector2`, whose tuple constructors are `@implicit`, so a bare tuple works everywhere one is taken.
 
 **Style defaults are not blank:** every frame starts from `Style()`, which has **stroke `BLACK` and
-enabled** — a `rect` drawn without `no_stroke()` gets an outline nobody asked for. The rest of the
+enabled** — a `rectangle` drawn without `no_stroke()` gets an outline nobody asked for. The rest of the
 defaults are in [style.mojo](src/create/render/style.mojo).
 
 **Autoscale** keeps the program in its design resolution while the window resizes. `ctx.width`/`height`, `input.mouse`, and all canvas coordinates stay in that design space; `canvas.scale` reports the factor, and font size, stroke width, and sprite size scale with it. Three modes — `FIT` (default), `EXTEND`, `OFF` — documented in [autoscale.mojo](src/create/render/autoscale.mojo), with the launch-mode matrix on `run`. `ctx.design(w, h, mode)` pins the space from inside `create`. See [examples/autoscale.mojo](examples/autoscale.mojo), which cycles all three modes on space.

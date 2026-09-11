@@ -25,7 +25,7 @@ struct OverflowingRect(Program):
         # Far larger than the 100x50 design — if the raster loop didn't
         # already clip to the framebuffer, this alone would prove nothing, so
         # the value is entirely in what happens after render.
-        canvas.rect(0.0, 0.0, 1000.0, 1000.0)
+        canvas.rectangle(0.0, 0.0, 1000.0, 1000.0)
 
 
 def test_letterbox_clips_a_shape_drawn_past_the_design_edge() raises -> None:
