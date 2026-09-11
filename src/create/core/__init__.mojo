@@ -4,6 +4,7 @@ from create.math.geometry import (
     Circle,
     Line,
     Triangle,
+    overlaps,
 )
 from create.math.vector2 import Vector2
 from create.math.matrix import Matrix, identity, translate, rotate, scale

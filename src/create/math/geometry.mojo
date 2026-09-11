@@ -2,25 +2,6 @@ from std.math import min, max, sqrt
 from .vector2 import Vector2
 
 
-trait ConvexShape:
-    """A shape that supports point queries and `overlaps` tests.
-
-    Implementers must be convex: the overlap test walks from one shape's
-    centre to the other's nearest surface point, which only decides
-    containment correctly for shapes with no re-entrant edges.
-    """
-
-    def center(self) -> Vector2: ...
-    def closest_point(self, px: Float64, py: Float64) -> Vector2: ...
-    def contains(self, px: Float64, py: Float64) -> Bool: ...
-
-
-def overlaps[A: ConvexShape, B: ConvexShape](a: A, b: B) -> Bool:
-    var c = a.center()
-    var p = b.closest_point(c.x, c.y)
-    return a.contains(p.x, p.y)
-
-
 def _closest_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Vector2:
     var dx = bx - ax
     var dy = by - ay
@@ -35,16 +16,39 @@ def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Fl
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
 
 
-def _project_min(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Float64:
-    return min(nx * ax + ny * ay, min(nx * bx + ny * by, nx * cx + ny * cy))
+def _project_range[N: Int](nx: Float64, ny: Float64, pts: InlineArray[Vector2, N]) -> Tuple[Float64, Float64]:
+    var lo = nx * pts[0].x + ny * pts[0].y
+    var hi = lo
+    for i in range(1, N):
+        var proj = nx * pts[i].x + ny * pts[i].y
+        lo = min(lo, proj)
+        hi = max(hi, proj)
+    return (lo, hi)
 
 
-def _project_max(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Float64:
-    return max(nx * ax + ny * ay, max(nx * bx + ny * by, nx * cx + ny * cy))
+def _ranges_separate[N: Int, M: Int](nx: Float64, ny: Float64, a: InlineArray[Vector2, N], b: InlineArray[Vector2, M]) -> Bool:
+    var ra = _project_range(nx, ny, a)
+    var rb = _project_range(nx, ny, b)
+    return ra[1] < rb[0] or rb[1] < ra[0]
+
+
+def _polygons_overlap[N: Int, M: Int](a: InlineArray[Vector2, N], b: InlineArray[Vector2, M]) -> Bool:
+    # SAT over both polygons' edge normals -- exact for convex polygons.
+    for i in range(N):
+        var p0 = a[i]
+        var p1 = a[(i + 1) % N]
+        if _ranges_separate(-(p1.y - p0.y), p1.x - p0.x, a, b):
+            return False
+    for i in range(M):
+        var p0 = b[i]
+        var p1 = b[(i + 1) % M]
+        if _ranges_separate(-(p1.y - p0.y), p1.x - p0.x, a, b):
+            return False
+    return True
 
 
 @fieldwise_init
-struct Rectangle(ConvexShape):
+struct Rectangle:
     var x: Float64
     var y: Float64
     var w: Float64
@@ -102,19 +106,17 @@ struct Rectangle(ConvexShape):
     def translate(mut self, delta: Vector2):
         self.translate(delta.x, delta.y)
 
-    def overlaps(self, other: Rectangle) -> Bool:
-        return (self.left() <= other.right() and self.right() >= other.left() and
-                self.bottom() <= other.top() and self.top() >= other.bottom())
-
-    def overlaps(self, c: Circle) -> Bool:
-        # The nearest point on the rectangle is inside the circle exactly when
-        # the two overlap -- which is `closest_point` followed by `contains`,
-        # so neither test is spelled out a second time here.
-        return c.contains(self.closest_point(c.x, c.y))
+    def _points(self) -> InlineArray[Vector2, 4]:
+        return [
+            Vector2(self.left(), self.bottom()),
+            Vector2(self.right(), self.bottom()),
+            Vector2(self.right(), self.top()),
+            Vector2(self.left(), self.top()),
+        ]
 
 
 @fieldwise_init
-struct Circle(ConvexShape):
+struct Circle:
     var x: Float64
     var y: Float64
     var r: Float64
@@ -147,15 +149,6 @@ struct Circle(ConvexShape):
 
     def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
-
-    def overlaps(self, other: Circle) -> Bool:
-        var dx = self.x - other.x
-        var dy = self.y - other.y
-        var rsum = self.r + other.r
-        return dx * dx + dy * dy <= rsum * rsum
-
-    def overlaps(self, r: Rectangle) -> Bool:
-        return r.overlaps(self)
 
     def move_to(mut self, x: Float64, y: Float64):
         self.x = x; self.y = y
@@ -205,7 +198,7 @@ struct Line:
 
 
 @fieldwise_init
-struct Triangle(ConvexShape):
+struct Triangle:
     var x1: Float64
     var y1: Float64
     var x2: Float64
@@ -248,13 +241,6 @@ struct Triangle(ConvexShape):
         var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
         return not (has_neg and has_pos)
 
-    def _separates(self, nx: Float64, ny: Float64, other: Triangle) -> Bool:
-        var min1 = _project_min(nx, ny, self.x1, self.y1, self.x2, self.y2, self.x3, self.y3)
-        var max1 = _project_max(nx, ny, self.x1, self.y1, self.x2, self.y2, self.x3, self.y3)
-        var min2 = _project_min(nx, ny, other.x1, other.y1, other.x2, other.y2, other.x3, other.y3)
-        var max2 = _project_max(nx, ny, other.x1, other.y1, other.x2, other.y2, other.x3, other.y3)
-        return max1 < min2 or max2 < min1
-
     def move_to(mut self, x: Float64, y: Float64):
         var c = self.center()
         var dx = x - c.x; var dy = y - c.y
@@ -279,12 +265,56 @@ struct Triangle(ConvexShape):
     def translate(mut self, delta: Vector2):
         self.translate(delta.x, delta.y)
 
-    def overlaps(self, other: Triangle) -> Bool:
-        # SAT — 6 edge normals (3 per triangle)
-        if self._separates(-(self.y2 - self.y1), self.x2 - self.x1, other): return False
-        if self._separates(-(self.y3 - self.y2), self.x3 - self.x2, other): return False
-        if self._separates(-(self.y1 - self.y3), self.x1 - self.x3, other): return False
-        if self._separates(-(other.y2 - other.y1), other.x2 - other.x1, other): return False
-        if self._separates(-(other.y3 - other.y2), other.x3 - other.x2, other): return False
-        if self._separates(-(other.y1 - other.y3), other.x1 - other.x3, other): return False
-        return True
+    def _points(self) -> InlineArray[Vector2, 3]:
+        return [
+            Vector2(self.x1, self.y1),
+            Vector2(self.x2, self.y2),
+            Vector2(self.x3, self.y3),
+        ]
+
+
+# `overlaps(a, b)` is the whole overlap-testing surface: one specialized,
+# exact overload per unordered shape pair, so a symmetric relation reads as
+# a symmetric call. Each pair picks the cheapest exact test for that
+# combination rather than routing through a single generic algorithm --
+# `Circle` vs. anything else is a `closest_point`-then-`contains` check
+# (exact only because a circle's containment is radial from its centre),
+# and any pair of straight-edged shapes is SAT over `_polygons_overlap`.
+def overlaps(a: Rectangle, b: Rectangle) -> Bool:
+    return (a.left() <= b.right() and a.right() >= b.left() and
+            a.bottom() <= b.top() and a.top() >= b.bottom())
+
+
+def overlaps(a: Circle, b: Circle) -> Bool:
+    var dx = a.x - b.x
+    var dy = a.y - b.y
+    var rsum = a.r + b.r
+    return dx * dx + dy * dy <= rsum * rsum
+
+
+def overlaps(a: Circle, b: Rectangle) -> Bool:
+    return a.contains(b.closest_point(a.x, a.y))
+
+
+def overlaps(a: Rectangle, b: Circle) -> Bool:
+    return overlaps(b, a)
+
+
+def overlaps(a: Circle, b: Triangle) -> Bool:
+    return a.contains(b.closest_point(a.x, a.y))
+
+
+def overlaps(a: Triangle, b: Circle) -> Bool:
+    return overlaps(b, a)
+
+
+def overlaps(a: Rectangle, b: Triangle) -> Bool:
+    return _polygons_overlap(a._points(), b._points())
+
+
+def overlaps(a: Triangle, b: Rectangle) -> Bool:
+    return overlaps(b, a)
+
+
+def overlaps(a: Triangle, b: Triangle) -> Bool:
+    return _polygons_overlap(a._points(), b._points())
