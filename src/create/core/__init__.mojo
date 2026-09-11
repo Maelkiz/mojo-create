@@ -11,7 +11,7 @@ from create.sprite.sprite import Sprite
 from create.sprite.animation import SpriteAnimation
 from create.sprite.animator import SpriteAnimator
 from create.render.color import Color
-from create.render.align import HAlign, VAlign
+from create.render.align import HorizontalAlignment, VerticalAlignment
 from create.render.autoscale import AutoScale
 from .input import Input, MouseButton
 from create.render.font import Font, FontWeight

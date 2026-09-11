@@ -51,7 +51,7 @@ struct App(Program):
 
         canvas.fill(Color.BLACK)
         canvas.font_size(28)
-        canvas.text_align(HAlign.CENTER)
+        canvas.text_align(HorizontalAlignment.CENTER)
         canvas.text("Autoscale Mode: " + _mode_name(canvas.autoscale), 0, -140)
         canvas.font_size(20)
         canvas.text("(space to cycle)", 0, -180)

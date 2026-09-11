@@ -1,6 +1,6 @@
 from std.math import max, min, abs
 from .color import Color
-from .align import HAlign, VAlign
+from .align import HorizontalAlignment, VerticalAlignment
 from .autoscale import AutoScale
 from .font import Font
 from .viewport import Viewport
@@ -618,22 +618,25 @@ struct Canvas[origin: Origin[mut=True]]:
     def font_weight(mut self, weight: Int):
         self._style.font_weight = weight
 
-    def text_align(mut self, halign: HAlign):
+    def text_align(mut self, horizontal: HorizontalAlignment):
         """Anchor the next text horizontally.
 
         The argument's type picks the axis, so both are set through one verb:
-        `text_align(HAlign.CENTER)`, `text_align(VAlign.MIDDLE)`, or both at
-        once. `VAlign.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not
-        typographic baselines.
+        `text_align(HorizontalAlignment.CENTER)`,
+        `text_align(VerticalAlignment.MIDDLE)`, or both at once.
+        `VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box,
+        not typographic baselines.
         """
-        self._style.text_halign = halign
+        self._style.text_horizontal_alignment = horizontal
 
-    def text_align(mut self, valign: VAlign):
-        self._style.text_valign = valign
+    def text_align(mut self, vertical: VerticalAlignment):
+        self._style.text_vertical_alignment = vertical
 
-    def text_align(mut self, halign: HAlign, valign: VAlign):
-        self._style.text_halign = halign
-        self._style.text_valign = valign
+    def text_align(
+        mut self, horizontal: HorizontalAlignment, vertical: VerticalAlignment
+    ):
+        self._style.text_horizontal_alignment = horizontal
+        self._style.text_vertical_alignment = vertical
 
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))
