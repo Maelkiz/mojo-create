@@ -5,12 +5,12 @@
 
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
 
-from create.core.align import HAlign, VAlign
-from create.core.color import Color
-from create.core.font import FontWeight
-from create.core.style import Style
-from create.core.surface import MemorySurface
-from create.core.text import TextRenderer
+from create.render.align import HAlign, VAlign
+from create.render.color import Color
+from create.render.font import FontWeight
+from create.render.style import Style
+from create.render.surface import MemorySurface
+from create.render.text import TextRenderer
 
 
 def _ink_box(m: MemorySurface) -> Tuple[Int, Int, Int, Int]:

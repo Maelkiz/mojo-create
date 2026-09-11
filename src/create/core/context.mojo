@@ -1,7 +1,7 @@
 from create.math.matrix import Matrix
-from .autoscale import AutoScale
+from create.render.autoscale import AutoScale
 from .time import Time
-from .viewport import Viewport
+from create.render.viewport import Viewport
 
 
 struct Context(Movable):

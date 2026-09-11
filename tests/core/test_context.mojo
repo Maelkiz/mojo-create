@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal
-from create.core.autoscale import AutoScale
+from create.render.autoscale import AutoScale
 from create.math.matrix import apply
 from create.core.context import Context
 

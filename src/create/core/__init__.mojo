@@ -10,13 +10,13 @@ from create.math.matrix import Matrix, identity, translate, rotate, scale
 from create.sprite.sprite import Sprite
 from create.sprite.animation import SpriteAnimation
 from create.sprite.animator import SpriteAnimator
-from .color import Color
-from .align import HAlign, VAlign
-from .autoscale import AutoScale
+from create.render.color import Color
+from create.render.align import HAlign, VAlign
+from create.render.autoscale import AutoScale
 from .input import Input, MouseButton
-from .font import Font, FontWeight
+from create.render.font import Font, FontWeight
 from .key import Key
-from .canvas import (
+from create.render.canvas import (
     Canvas,
     CanvasState,
     StyleGuard as StyleGuard,
@@ -27,4 +27,4 @@ from .time import Time
 from .program import Program
 from .run import run
 from .headless import run_headless
-from .surface import MemorySurface, Surface
+from create.render.surface import MemorySurface, Surface

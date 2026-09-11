@@ -1,8 +1,8 @@
-from .canvas import Canvas, CanvasState
+from create.render.canvas import Canvas, CanvasState
 from .context import Context
 from .input import Input
 from .program import Program
-from .surface import Surface
+from create.render.surface import Surface
 
 
 def step[

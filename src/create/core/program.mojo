@@ -1,4 +1,4 @@
-from .canvas import Canvas
+from create.render.canvas import Canvas
 from .context import Context
 from .input import Input
 
