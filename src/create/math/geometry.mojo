@@ -83,6 +83,20 @@ def _polygons_overlap[N: Int, M: Int](a: InlineArray[Vector2, N], b: InlineArray
 
 @fieldwise_init
 struct Rectangle:
+    """An axis-aligned rectangle, positioned by its centre.
+
+    `x`/`y` is the centre, not a corner -- consistent with every shape in
+    this module and with `canvas.rectangle`. `w`/`h` are full width and
+    height, so `left()`/`right()`/`bottom()`/`top()` are `+-w/2`/`+-h/2`
+    from the centre. Coordinates follow world space: y grows upward, so
+    `top()` is `y + h/2` and `bottom()` is `y - h/2`.
+
+    `contains` and `closest_point` treat the boundary as inside -- a point
+    exactly on an edge is contained, and `closest_point` returns it
+    unchanged. A zero `w`/`h` collapses the rectangle to a segment or a
+    point; `contains`/`overlaps` remain exact for it rather than reporting
+    a false containment or overlap. `w`/`h` are assumed non-negative.
+    """
     var x: Float64
     var y: Float64
     var w: Float64
@@ -180,6 +194,19 @@ struct Rectangle:
 
 @fieldwise_init
 struct Circle:
+    """A circle, positioned by its centre.
+
+    `x`/`y` is the centre and `r` the radius -- there is no orientation, so
+    unlike `Rectangle`/`Triangle` there is nothing y-up affects beyond the
+    centre's own coordinates.
+
+    `contains` treats the boundary as inside (`dist <= r`), and
+    `closest_point` returns the query point itself when it is already
+    inside or exactly at the centre, rather than an arbitrary point on the
+    circumference. A zero `r` collapses the circle to a point; `contains`
+    then holds only for that exact point, and `overlaps`/`intersects`
+    remain exact rather than always-false. `r` is assumed non-negative.
+    """
     var x: Float64
     var y: Float64
     var r: Float64
@@ -264,6 +291,21 @@ struct Circle:
 
 @fieldwise_init
 struct Line:
+    """A line segment from `(x0, y0)` to `(x1, y1)`.
+
+    Unlike `Rectangle`/`Circle`/`Triangle`, `Line` has no interior and is
+    not a shape: it has no `center()`, `contains(region)` beyond the two
+    endpoint-based overloads below, `area()`, or `overlaps` overload. It is
+    the one type in this module that can be the *subject* of an asymmetric
+    relation, `l.intersects(x)` -- see the comment above `intersects`
+    for why that method exists only here.
+
+    `intersects` and `_point_on_segment`-based checks treat the endpoints
+    and any touching/collinear-overlapping point as inclusive. A
+    zero-length line (`x0,y0 == x1,y1`) is a degenerate point segment:
+    `intersects` and `closest_point` remain exact for it (a point can
+    still "intersect" the collapsed line if it coincides with it).
+    """
     var x0: Float64
     var y0: Float64
     var x1: Float64
@@ -374,6 +416,22 @@ struct Line:
 
 @fieldwise_init
 struct Triangle:
+    """A triangle defined by its three vertices `(x1,y1)`, `(x2,y2)`, `(x3,y3)`.
+
+    Unlike `Rectangle`/`Circle`, a `Triangle` is not centre-positioned in
+    its fields -- `center()` (the centroid) is derived, and `move_to`
+    translates all three vertices so the centroid lands on the given
+    point. Vertex winding (clockwise or counter-clockwise) does not matter
+    to any method here; `contains` and `area` both work from unsigned or
+    sign-normalized quantities.
+
+    `contains` treats every edge as inside (boundary-inclusive), matching
+    `Rectangle`/`Circle`. When the three vertices are collinear (including
+    all three coincident), the hull has zero area and collapses to the
+    longest edge as a segment; `contains`/`overlaps`/`area` all remain
+    exact for this degenerate case rather than reporting a false
+    containment, overlap, or a divide-by-zero.
+    """
     var x1: Float64
     var y1: Float64
     var x2: Float64
@@ -495,13 +553,25 @@ struct Triangle:
         ]
 
 
-# `overlaps(a, b)` is the whole overlap-testing surface: one specialized,
-# exact overload per unordered shape pair, so a symmetric relation reads as
-# a symmetric call. Each pair picks the cheapest exact test for that
-# combination rather than routing through a single generic algorithm --
-# `Circle` vs. anything else is a `closest_point`-then-`contains` check
-# (exact only because a circle's containment is radial from its centre),
-# and any pair of straight-edged shapes is SAT over `_polygons_overlap`.
+# `overlaps(a, b)` is the whole overlap-testing surface for regions: one
+# specialized, exact overload per unordered shape pair (`Rectangle`,
+# `Circle`, `Triangle` -- `Line` has no interior and is deliberately
+# excluded, see the taxonomy comment above `Line.intersects`), so a
+# symmetric relation reads as a symmetric call -- `overlaps(a, b)` and
+# `overlaps(b, a)` always agree, and the reverse-order overload is a
+# one-line delegation to the other. Each pair picks the cheapest exact
+# test for that combination rather than routing through a single generic
+# algorithm -- `Circle` vs. anything else is a `closest_point`-then-
+# `contains` check (exact only because a circle's containment is radial
+# from its centre), and any pair of straight-edged shapes is SAT over
+# `_polygons_overlap`.
+#
+# Every overload is boundary-inclusive: shapes that only touch (shared
+# edge, shared corner, tangent circles) count as overlapping. Degenerate
+# inputs -- a zero-size rectangle, a zero-radius circle, a collinear or
+# fully degenerate triangle -- remain exact rather than reporting a false
+# overlap; `_polygons_overlap`'s own comment covers how SAT stays sound
+# when a polygon collapses to a segment or a point.
 def overlaps(a: Rectangle, b: Rectangle) -> Bool:
     return (a.left() <= b.right() and a.right() >= b.left() and
             a.bottom() <= b.top() and a.top() >= b.bottom())
