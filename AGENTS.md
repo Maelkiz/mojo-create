@@ -21,7 +21,8 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 
 | Module | Path | Responsibility |
 |---|---|---|
-| `core` | `src/create/core/` | Program trait, run loops, Canvas, Surface, Viewport, Context, Time, Input, Font, Color |
+| `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
+| `render` | `src/create/render/` | Canvas, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
@@ -34,21 +35,21 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the windowed entry point |
 | `src/create/core/frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
-| `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
-| `src/create/core/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
-| `src/create/core/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
-| `src/create/core/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
-| `src/create/core/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
-| `src/create/core/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
-| `src/create/core/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
-| `src/create/core/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
-| `src/create/core/align.mojo` | `HAlign` (`LEFT`/`CENTER`/`RIGHT`), `VAlign` (`TOP`/`MIDDLE`/`BOTTOM`) |
-| `src/create/core/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
 | `src/create/core/context.mojo` | `Context` — width/height/time/autoscale passed to every frame |
 | `src/create/core/time.mojo` | `Time` — frame delta, frame count, elapsed seconds |
 | `src/create/core/input.mojo` | `Input` — keyboard state, mouse position/buttons |
 | `src/create/core/key.mojo` | `Key` — named keycodes for the `Int` overloads |
 | `src/create/core/path.mojo` | `script_dir()` — the directory of the running program, for asset paths |
+| `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
+| `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
+| `src/create/render/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
+| `src/create/render/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
+| `src/create/render/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
+| `src/create/render/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
+| `src/create/render/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
+| `src/create/render/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
+| `src/create/render/align.mojo` | `HAlign` (`LEFT`/`CENTER`/`RIGHT`), `VAlign` (`TOP`/`MIDDLE`/`BOTTOM`) |
+| `src/create/render/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
 | `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
@@ -119,7 +120,7 @@ A file reports PASS/FAIL per test and exits non-zero if any failed. `pixi run te
 Rendering is tested for real. `run_headless[T]` runs the same sequence as `run` — `create`, then
 `update` and `render` per frame, letterbox after — over an owned `MemorySurface`, with synthetic 16ms
 frames and empty input, and hands the buffer back. `MemorySurface.pixel(x, y)` reads one pixel out, so
-[tests/core/test_canvas.mojo](tests/core/test_canvas.mojo) asserts on centring, y-up orientation,
+[tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) asserts on centring, y-up orientation,
 alpha compositing, stroke scaling, letterbox bars and sprite blits instead of eyeballing them. Pass
 `pixel_width`/`pixel_height` to give the framebuffer a different shape from the design size — a 1:1
 mapping has no scale factor and no bars, so autoscale is untestable without it.
@@ -139,22 +140,33 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
-**What `core` re-exports is a closure rule, not a convenience list.** `core` re-exports a `math` or
-`sprite` symbol exactly when a `core` signature names that type or the symbol constructs one for it
-— `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and `identity`/`translate`/
-`rotate`/`scale` are how a caller builds that `Matrix`; likewise `canvas.sprite` takes a
-`SpriteAnimator`, and `SpriteAnimation` is how a caller builds one — so `from create.core import *`
-is callable without a second import. Hence `Vector3`, `Random`, the util functions and `inverse`/`apply`/
-`perspective` are absent: no `core` signature names them. Reach for `create.math` for those. Adding a
-name to `core/__init__.mojo` is not a judgement call — check whether a `core` signature names it.
+**What a module re-exports is a closure rule, not a convenience list.** A module re-exports a
+symbol from a lower one exactly when one of its own signatures names that type or the symbol
+constructs one for it — `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and
+`identity`/`translate`/`rotate`/`scale` are how a caller builds that `Matrix`; likewise
+`canvas.sprite` takes a `SpriteAnimator`, and `SpriteAnimation` is how a caller builds one. Hence
+`Vector3`, `Random`, the util functions and `inverse`/`apply`/`perspective` are absent: no signature
+names them. Reach for `create.math` for those.
 
-**That edge is nominal.** Outside the re-exports above, `core` names `Sprite` and `SpriteAnimator`
-only in `canvas.sprite`'s overloads — no `core` code depends on what those types contain.
-`raster.blit_sprite` takes a pixel pointer plus its width and height rather than an image type, so
+The rule now applies at two levels. `render/__init__.mojo` closes over `math` and `sprite`;
+`core/__init__.mojo` closes over `render` on top of that, because `Program.render` names `Canvas` and
+`Context` names `AutoScale`. The user-facing effect is unchanged — `from create.core import *` is
+still the single import a program needs, and no example was touched by the split. Adding a name to
+either `__init__.mojo` is not a judgement call — check whether a signature names it.
+
+**That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
+`SpriteAnimator` only in `canvas.sprite`'s overloads — no `render` code depends on what those types
+contain. `raster.blit_sprite` takes a pixel pointer plus its width and height rather than an image type, so
 the rasteriser is written against no layout but its own and the BMP/PNG/JPEG decoders stay out of the
-render path entirely. Keep it that way: a new `core` function that needs pixels takes the buffer, not
-the type that owns it. Removing the last of the edge would mean moving `Sprite` beside `Surface` and
+render path entirely. Keep it that way: a new `render` function that needs pixels takes the buffer,
+not the type that owns it. Removing the last of the edge would mean moving `Sprite` beside `Surface` and
 giving up `Sprite.load`, which costs every example an API break to change an arrow no user sees.
+
+**`render` never imports `core`.** Every edge between them runs one way — `program`, `context`,
+`frame`, `run` and `headless` reach into `render`, and nothing comes back. That is what lets
+`render` be split off at all, and a package boundary now enforces it: an import the other way is a
+cycle, not a style violation. `render` depends only on `math` and `sprite`, so the whole drawing
+stack is usable without a run loop, which is what `run_headless` already relies on.
 
 **A `Program` can own `Program`s.** Multiple screens are not a distinct feature: a root `Program`
 holds each screen as a plain field, in the same `update`/`render` shape but *not* implementing the
@@ -342,7 +354,7 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
 1. **`-I src` is required for every `mojo run`.** Without it, `from create.core import *` fails with a module-not-found error. All pixi tasks include it; bare `mojo run` calls must add it manually.
 
 2. **Paths resolve against the CWD, not the source file.** The packaged font is loaded as the literal
-   relative path `defaults/fonts/NotoSans.ttf` ([font.mojo](src/create/core/font.mojo), used by
+   relative path `defaults/fonts/NotoSans.ttf` ([font.mojo](src/create/render/font.mojo), used by
    `TextRenderer._ensure_font`), so **`canvas.text()` only works when the process CWD is the repo
    root.** Run from anywhere else and every text draw raises:
 
