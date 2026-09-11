@@ -1,7 +1,6 @@
 """Scalar helpers for animation and ranges.
 
-Not re-exported by `create.core` — no library signature names them — so a
-program reaching for these imports `create.math`.
+Reached through `from create import *`, or by name from `create.math`.
 """
 
 from std.math import floor, pi, clamp

@@ -34,13 +34,16 @@ The subpackages stay importable on their own — `from create.render import *`
 gives the drawing stack with no run loop, which is what `run_headless` is built
 on — so this module is a convenience, not a layer.
 
-**What this module re-exports is the union of the subpackages, not a closure.**
-The subpackages each re-export a symbol from a lower one exactly when one of
-their own signatures names it; that rule is what keeps `Vector3` and `Random`
-out of `create.core`. The root has no signatures of its own, so it needs a
-different rule: it re-exports everything public, and a star import of each
-subpackage is how it stays that way. A name added to `math/__init__.mojo`
-appears here with no second edit, so the two cannot drift apart.
+**What this module re-exports is the union of the subpackages.** Each of them
+exports the names it owns and nothing from a layer below — `create.core` names
+`Canvas` and `Rectangle` in its signatures but exports neither — so a single
+subpackage star is never a preamble; this module is. It re-exports everything
+public by star-importing all five, so a name added to `math/__init__.mojo`
+appears here with no second edit and the two cannot drift apart.
+
+Code that wants less than the whole surface imports by name from the package
+that defines it (`from create.math import overlaps`), rather than starring one
+subpackage.
 
 The stars widen nothing on their own. A star import skips `_`-prefixed
 declarations and reaches only what a package's `__init__.mojo` lists, so

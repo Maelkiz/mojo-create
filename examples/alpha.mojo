@@ -1,4 +1,3 @@
-from create.math import sin, cos
 from create import *
 
 

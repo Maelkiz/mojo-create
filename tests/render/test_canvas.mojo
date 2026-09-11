@@ -838,9 +838,7 @@ struct AnimatorBlit(Program):
     """Eight 2x2 frames, frame i tinted R = i * 20, advanced by the run loop.
 
     `SpriteAnimation`, `SpriteAnimator` and the `canvas.sprite` overload all
-    arrive through `from create import *` alone -- and through
-    `from create.core import *` too, by the closure rule in AGENTS.md, since
-    `canvas.sprite` now names the animator.
+    arrive through `from create import *` alone.
     """
 
     var animator: SpriteAnimator
