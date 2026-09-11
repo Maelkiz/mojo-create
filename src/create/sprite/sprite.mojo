@@ -1,23 +1,18 @@
 from std.ffi import _DLHandle
 
+from create.bytes import le_uint, sign_extend_32
+
 
 def _read_u16(data: List[UInt8], off: Int) -> Int:
-    return Int(data[off]) | (Int(data[off + 1]) << 8)
+    return le_uint(data.unsafe_ptr(), off, 2)
 
 
 def _read_i32(data: List[UInt8], off: Int) -> Int:
-    var v = Int(data[off]) | (Int(data[off + 1]) << 8) | (Int(data[off + 2]) << 16) | (Int(data[off + 3]) << 24)
-    if v >= 0x80000000:
-        return v - 0x100000000
-    return v
+    return sign_extend_32(_read_u32(data, off))
 
 
 def _read_u32(data: List[UInt8], off: Int) -> Int:
-    return Int(data[off]) | (Int(data[off + 1]) << 8) | (Int(data[off + 2]) << 16) | (Int(data[off + 3]) << 24)
-
-
-def _u32_at_inline(buf: InlineArray[UInt8, 104], off: Int) -> Int:
-    return Int(buf[off]) | (Int(buf[off+1]) << 8) | (Int(buf[off+2]) << 16) | (Int(buf[off+3]) << 24)
+    return le_uint(data.unsafe_ptr(), off, 4)
 
 
 def _jpeg_dimensions(data: List[UInt8]) raises -> Tuple[Int, Int]:
@@ -130,8 +125,8 @@ struct Sprite(Movable):
         if ok == 0:
             raise Error("Failed to begin reading PNG")
 
-        var w = _u32_at_inline(img, 12)
-        var h = _u32_at_inline(img, 16)
+        var w = le_uint(img.unsafe_ptr(), 12, 4)
+        var h = le_uint(img.unsafe_ptr(), 16, 4)
         img[20] = 3  # PNG_FORMAT_RGBA
 
         var s = Sprite(w, h)
