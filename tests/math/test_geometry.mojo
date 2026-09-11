@@ -143,6 +143,18 @@ def test_line_intersects_parallel() raises -> None:
 def test_line_intersects_same_line() raises -> None:
     var a = Line(0.0, 0.0, 4.0, 0.0)
     var b = Line(0.0, 0.0, 4.0, 0.0)
+    assert_true(a.intersects(b))
+
+
+def test_line_intersects_partially_overlapping_collinear() raises -> None:
+    var a = Line(0.0, 0.0, 4.0, 0.0)
+    var b = Line(2.0, 0.0, 6.0, 0.0)
+    assert_true(a.intersects(b))
+
+
+def test_line_intersects_disjoint_collinear() raises -> None:
+    var a = Line(0.0, 0.0, 2.0, 0.0)
+    var b = Line(3.0, 0.0, 5.0, 0.0)
     assert_equal(a.intersects(b), False)
 
 
@@ -383,12 +395,12 @@ def test_line_zero_length() raises -> None:
     assert_equal(l.length_sq(), 0.0)
 
 
-def test_line_zero_length_never_intersects() raises -> None:
+def test_line_zero_length_intersects_when_on_segment() raises -> None:
     var l = Line(2.0, 3.0, 2.0, 3.0)
     var crossing = Line(0.0, 0.0, 4.0, 4.0)
     assert_equal(l.intersects(crossing), False)
     var touching = Line(2.0, 3.0, 5.0, 6.0)
-    assert_equal(l.intersects(touching), False)
+    assert_true(l.intersects(touching))
     var far = Line(10.0, 10.0, 20.0, 20.0)
     assert_equal(l.intersects(far), False)
 
