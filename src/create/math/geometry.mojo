@@ -128,6 +128,23 @@ struct Rectangle:
     def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
 
+    def contains(self, other: Rectangle) -> Bool:
+        return (self.left() <= other.left() and other.right() <= self.right()
+            and self.bottom() <= other.bottom() and other.top() <= self.top())
+
+    def contains(self, c: Circle) -> Bool:
+        return (self.left() <= c.x - c.r and c.x + c.r <= self.right()
+            and self.bottom() <= c.y - c.r and c.y + c.r <= self.top())
+
+    def contains(self, t: Triangle) -> Bool:
+        for p in t._points():
+            if not self.contains(p):
+                return False
+        return True
+
+    def contains(self, l: Line) -> Bool:
+        return self.contains(l.x0, l.y0) and self.contains(l.x1, l.y1)
+
     def move_to(mut self, x: Float64, y: Float64):
         self.x = x; self.y = y
 
@@ -192,6 +209,27 @@ struct Circle:
 
     def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)
+
+    def contains(self, other: Circle) -> Bool:
+        var dx = other.x - self.x
+        var dy = other.y - self.y
+        var dist = sqrt(dx * dx + dy * dy)
+        return dist + other.r <= self.r
+
+    def contains(self, r: Rectangle) -> Bool:
+        for p in r._points():
+            if not self.contains(p):
+                return False
+        return True
+
+    def contains(self, t: Triangle) -> Bool:
+        for p in t._points():
+            if not self.contains(p):
+                return False
+        return True
+
+    def contains(self, l: Line) -> Bool:
+        return self.contains(l.x0, l.y0) and self.contains(l.x1, l.y1)
 
     def move_to(mut self, x: Float64, y: Float64):
         self.x = x; self.y = y
@@ -380,6 +418,34 @@ struct Triangle:
         var has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
         var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
         return not (has_neg and has_pos)
+
+    def contains(self, other: Triangle) -> Bool:
+        for p in other._points():
+            if not self.contains(p):
+                return False
+        return True
+
+    def contains(self, r: Rectangle) -> Bool:
+        for p in r._points():
+            if not self.contains(p):
+                return False
+        return True
+
+    def contains(self, c: Circle) -> Bool:
+        if not self.contains(c.x, c.y):
+            return False
+        var p1 = _closest_on_segment(c.x, c.y, self.x1, self.y1, self.x2, self.y2)
+        var p2 = _closest_on_segment(c.x, c.y, self.x2, self.y2, self.x3, self.y3)
+        var p3 = _closest_on_segment(c.x, c.y, self.x3, self.y3, self.x1, self.y1)
+        var dx1 = p1.x - c.x; var dy1 = p1.y - c.y
+        var dx2 = p2.x - c.x; var dy2 = p2.y - c.y
+        var dx3 = p3.x - c.x; var dy3 = p3.y - c.y
+        var r_sq = c.r * c.r
+        return (dx1 * dx1 + dy1 * dy1 >= r_sq and dx2 * dx2 + dy2 * dy2 >= r_sq
+            and dx3 * dx3 + dy3 * dy3 >= r_sq)
+
+    def contains(self, l: Line) -> Bool:
+        return self.contains(l.x0, l.y0) and self.contains(l.x1, l.y1)
 
     def move_to(mut self, x: Float64, y: Float64):
         var c = self.center()

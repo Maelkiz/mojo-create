@@ -653,5 +653,170 @@ def test_overlaps_collapsed_point_inside_triangle() raises -> None:
     assert_true(overlaps(point, t))
 
 
+def test_rect_contains_rect_yes() raises -> None:
+    var outer = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var inner = Rectangle(1.0, 1.0, 4.0, 4.0)
+    assert_true(outer.contains(inner))
+
+
+def test_rect_contains_rect_overlapping_not_contained() raises -> None:
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var b = Rectangle(8.0, 8.0, 6.0, 6.0)
+    assert_true(overlaps(a, b))
+    assert_equal(a.contains(b), False)
+
+
+def test_rect_contains_rect_boundary_coincident() raises -> None:
+    var outer = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var same = Rectangle(0.0, 0.0, 10.0, 10.0)
+    assert_true(outer.contains(same))
+
+
+def test_rect_contains_circle_yes() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var c = Circle(0.0, 0.0, 2.0)
+    assert_true(r.contains(c))
+
+
+def test_rect_contains_circle_overlapping_not_contained() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var c = Circle(5.0, 5.0, 2.0)
+    assert_true(overlaps(r, c))
+    assert_equal(r.contains(c), False)
+
+
+def test_rect_contains_triangle_yes() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var t = Triangle(-1.0, -1.0, 1.0, -1.0, 0.0, 1.0)
+    assert_true(r.contains(t))
+
+
+def test_rect_contains_triangle_overlapping_not_contained() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var t = Triangle(4.0, 4.0, 8.0, 4.0, 4.0, 8.0)
+    assert_true(overlaps(r, t))
+    assert_equal(r.contains(t), False)
+
+
+def test_rect_contains_line_yes() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var l = Line(-2.0, -2.0, 2.0, 2.0)
+    assert_true(r.contains(l))
+
+
+def test_rect_contains_line_no() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var l = Line(-2.0, -2.0, 20.0, 2.0)
+    assert_equal(r.contains(l), False)
+
+
+def test_circle_contains_circle_yes() raises -> None:
+    var outer = Circle(0.0, 0.0, 10.0)
+    var inner = Circle(1.0, 1.0, 2.0)
+    assert_true(outer.contains(inner))
+
+
+def test_circle_contains_circle_overlapping_not_contained() raises -> None:
+    var a = Circle(0.0, 0.0, 5.0)
+    var b = Circle(6.0, 0.0, 3.0)
+    assert_true(overlaps(a, b))
+    assert_equal(a.contains(b), False)
+
+
+def test_circle_contains_circle_boundary_coincident() raises -> None:
+    var outer = Circle(0.0, 0.0, 10.0)
+    var inner = Circle(4.0, 0.0, 6.0)
+    assert_true(outer.contains(inner))
+
+
+def test_circle_contains_rect_yes() raises -> None:
+    var c = Circle(0.0, 0.0, 10.0)
+    var r = Rectangle(0.0, 0.0, 4.0, 4.0)
+    assert_true(c.contains(r))
+
+
+def test_circle_contains_rect_overlapping_not_contained() raises -> None:
+    var c = Circle(0.0, 0.0, 5.0)
+    var r = Rectangle(4.0, 4.0, 4.0, 4.0)
+    assert_true(overlaps(c, r))
+    assert_equal(c.contains(r), False)
+
+
+def test_circle_contains_triangle_yes() raises -> None:
+    var c = Circle(0.0, 0.0, 10.0)
+    var t = Triangle(-1.0, -1.0, 1.0, -1.0, 0.0, 1.0)
+    assert_true(c.contains(t))
+
+
+def test_circle_contains_triangle_overlapping_not_contained() raises -> None:
+    var c = Circle(0.0, 0.0, 5.0)
+    var t = Triangle(0.0, 0.0, 8.0, 0.0, 0.0, 8.0)
+    assert_true(overlaps(c, t))
+    assert_equal(c.contains(t), False)
+
+
+def test_circle_contains_line_yes() raises -> None:
+    var c = Circle(0.0, 0.0, 10.0)
+    var l = Line(-2.0, -2.0, 2.0, 2.0)
+    assert_true(c.contains(l))
+
+
+def test_circle_contains_line_no() raises -> None:
+    var c = Circle(0.0, 0.0, 10.0)
+    var l = Line(-2.0, -2.0, 20.0, 2.0)
+    assert_equal(c.contains(l), False)
+
+
+def test_triangle_contains_triangle_yes() raises -> None:
+    var outer = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var inner = Triangle(-1.0, -1.0, 1.0, -1.0, 0.0, 1.0)
+    assert_true(outer.contains(inner))
+
+
+def test_triangle_contains_triangle_overlapping_not_contained() raises -> None:
+    var a = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var b = Triangle(0.0, 0.0, 20.0, 0.0, 20.0, 20.0)
+    assert_true(overlaps(a, b))
+    assert_equal(a.contains(b), False)
+
+
+def test_triangle_contains_rect_yes() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var r = Rectangle(0.0, -8.0, 2.0, 2.0)
+    assert_true(t.contains(r))
+
+
+def test_triangle_contains_rect_overlapping_not_contained() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var r = Rectangle(0.0, 8.0, 6.0, 6.0)
+    assert_true(overlaps(t, r))
+    assert_equal(t.contains(r), False)
+
+
+def test_triangle_contains_circle_yes() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var c = Circle(0.0, -8.0, 1.0)
+    assert_true(t.contains(c))
+
+
+def test_triangle_contains_circle_bulges_past_edge_rejected() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var c = Circle(0.0, -9.5, 1.0)
+    assert_true(t.contains(c.center()))
+    assert_equal(t.contains(c), False)
+
+
+def test_triangle_contains_line_yes() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var l = Line(-1.0, -8.0, 1.0, -8.0)
+    assert_true(t.contains(l))
+
+
+def test_triangle_contains_line_no() raises -> None:
+    var t = Triangle(-10.0, -10.0, 10.0, -10.0, 0.0, 10.0)
+    var l = Line(-1.0, -8.0, 100.0, -8.0)
+    assert_equal(t.contains(l), False)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
