@@ -48,7 +48,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/render/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
 | `src/create/render/text.mojo` | `TextRenderer` — font loading, glyph cache, text layout |
 | `src/create/render/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
-| `src/create/render/align.mojo` | `HAlign` (`LEFT`/`CENTER`/`RIGHT`), `VAlign` (`TOP`/`MIDDLE`/`BOTTOM`) |
+| `src/create/render/align.mojo` | `HorizontalAlignment` (`LEFT`/`CENTER`/`RIGHT`), `VerticalAlignment` (`TOP`/`MIDDLE`/`BOTTOM`) |
 | `src/create/render/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
 | `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps[A,B]` |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
@@ -136,7 +136,7 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **Imports:**
 
-- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `CanvasState`, `Color`, `HAlign`/`VAlign`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
+- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `CanvasState`, `Color`, `HorizontalAlignment`/`VerticalAlignment`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
@@ -238,7 +238,7 @@ Consequences worth internalising:
 
 - `rotate(angle)` turns **counter-clockwise**, the mathematical convention.
 - Downward motion is negative: gravity is a negative `vel_y`, a jump is positive. See [examples/movement/src/player.mojo](examples/movement/src/player.mojo).
-- Glyphs and sprites are **not** flipped — only their anchor point is mapped, so `VAlign.TOP`/`VAlign.BOTTOM` still mean the top and bottom of the text box.
+- Glyphs and sprites are **not** flipped — only their anchor point is mapped, so `VerticalAlignment.TOP`/`VerticalAlignment.BOTTOM` still mean the top and bottom of the text box.
 - `input.mouse` is delivered in world coordinates, so it can be negative.
 
 **All shapes are center-positioned** (unlike Processing). `canvas.rect((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner.
@@ -246,13 +246,13 @@ Consequences worth internalising:
 `Vector2` has `@implicit` constructors from `Tuple[Float64, Float64]`, `Tuple[Int, Int]` and both mixed pairs, so any `Vector2` position argument accepts a bare tuple: `canvas.rect((0, 0), 100, 100)`, `canvas.circle((-100, 0), 50)`.
 
 **Text and style defaults:** `canvas.font_size(n)`, `font_weight(FontWeight.BOLD)`,
-`text_align(HAlign.CENTER, VAlign.MIDDLE)`, then `canvas.text("hi", pos)`. `text_align` is
-overloaded on the axis: pass an `HAlign`, a `VAlign`, or both — there is no separate
-`text_baseline`, and `VAlign.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not typographic
-baselines.
+`text_align(HorizontalAlignment.CENTER, VerticalAlignment.MIDDLE)`, then
+`canvas.text("hi", pos)`. `text_align` is overloaded on the axis: pass a
+`HorizontalAlignment`, a `VerticalAlignment`, or both — there is no separate `text_baseline`, and
+`VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM` are edges of the text box, not typographic baselines.
 `canvas.font(f)` swaps the face. Every frame starts from `Style()`: fill `WHITE`, **stroke `BLACK`
-and enabled**, stroke width 1, font size 16, weight `REGULAR`, halign `LEFT`, valign `TOP`.
-Stroke-on-by-default is the one that surprises — a `rect` drawn without `no_stroke()` gets a black
+and enabled**, stroke width 1, font size 16, weight `REGULAR`, horizontal alignment `LEFT`,
+vertical alignment `TOP`. Stroke-on-by-default is the one that surprises — a `rect` drawn without `no_stroke()` gets a black
 outline.
 
 **Alpha:** every pixel write goes through `_blend`, which composites source-over via `Color.over`. A fill, stroke, sprite, glyph, or `background` with `a < 255` blends with what is already there — `canvas.background(Color(0x11, 0x11, 0x11, 24))` fades the previous frame into motion trails. Opaque and fully transparent colors skip the read-back, so the common path costs a raw store.
@@ -426,7 +426,7 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `StyleGuard` | RAII wrapper from `canvas.style()` — restores fill, stroke and font settings on scope exit |
 | `Color` | `Color(r, g, b, a=255)` or `Color(gray)`; factories `Color.hex(0x336699)`, `Color.hsv(h, s, v)`, `Color.lerp(a, b, t)`; constants `BLACK`/`WHITE`/`DARK_GRAY`/`GRAY`/`LIGHT_GRAY`/`RED`/`GREEN`/`BLUE`/`CYAN`/`MAGENTA`/`YELLOW`/`ORANGE`; queries `.luminance()`, `.to_hsv()`, `.over(dst)` |
-| `HAlign` / `VAlign` | Text anchoring, set through the overloaded `canvas.text_align`: `HAlign.LEFT`/`CENTER`/`RIGHT`, `VAlign.TOP`/`MIDDLE`/`BOTTOM`. Stored on `Style` as `text_halign`/`text_valign` |
+| `HorizontalAlignment` / `VerticalAlignment` | Text anchoring, set through the overloaded `canvas.text_align`: `HorizontalAlignment.LEFT`/`CENTER`/`RIGHT`, `VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM`. Stored on `Style` as `text_horizontal_alignment`/`text_vertical_alignment` |
 | `Font` / `FontWeight` | Packaged Noto faces, lazily loaded on first text draw, with a symbols fallback for missing glyphs; weights `THIN`/`LIGHT`/`REGULAR`/`MEDIUM`/`BOLD`/`BLACK` |
 | `Key` / `MouseButton` | Named codes for the `Int` overloads of the `Input` queries |
 | `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |

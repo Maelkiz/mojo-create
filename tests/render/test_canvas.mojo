@@ -713,8 +713,8 @@ struct TextThroughCanvas(Program):
         canvas.background(Color.BLACK)
         canvas.fill(Color.WHITE)
         canvas.font_size(24)
-        canvas.text_align(HAlign.LEFT)
-        canvas.text_align(VAlign.TOP)
+        canvas.text_align(HorizontalAlignment.LEFT)
+        canvas.text_align(VerticalAlignment.TOP)
         canvas.text("Hi", 0.0, 0.0)
 
 
@@ -761,7 +761,7 @@ struct SmallText(Program):
         canvas.background(Color.BLACK)
         canvas.fill(Color.WHITE)
         canvas.font_size(12)
-        canvas.text_align(HAlign.LEFT, VAlign.TOP)
+        canvas.text_align(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
         canvas.text("Hi", 0.0, 0.0)
 
 
@@ -777,7 +777,7 @@ struct BigText(Program):
         canvas.background(Color.BLACK)
         canvas.fill(Color.WHITE)
         canvas.font_size(48)
-        canvas.text_align(HAlign.LEFT, VAlign.TOP)
+        canvas.text_align(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
         canvas.text("Hi", 0.0, 0.0)
 
 

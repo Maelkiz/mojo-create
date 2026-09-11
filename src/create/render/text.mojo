@@ -1,5 +1,5 @@
 from std.math import max
-from .align import HAlign, VAlign
+from .align import HorizontalAlignment, VerticalAlignment
 from .color import Color
 from .font import Font, GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from .raster import blit_glyph
@@ -67,7 +67,7 @@ struct TextRenderer(Movable):
         """Lay `s` out around the already-mapped anchor `(tx, ty)` and draw it.
 
         The caller maps the anchor; glyphs rasterise upright in pixel space, so
-        `VAlign.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
+        `VerticalAlignment.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
         however the world axes are oriented.
         """
         var size = max(Int(Float64(style.font_size) * pixel_scale + 0.5), 1)
@@ -83,19 +83,19 @@ struct TextRenderer(Movable):
 
         var draw_x = Int(tx)
         var draw_y = Int(ty)
-        if style.text_halign == HAlign.CENTER:
+        if style.text_horizontal_alignment == HorizontalAlignment.CENTER:
             draw_x -= tw // 2
-        elif style.text_halign == HAlign.RIGHT:
+        elif style.text_horizontal_alignment == HorizontalAlignment.RIGHT:
             draw_x -= tw
 
         var asc = self._font[0].ascender
         var desc = self._font[0].descender
         var baseline_y = draw_y
-        if style.text_valign == VAlign.TOP:
+        if style.text_vertical_alignment == VerticalAlignment.TOP:
             baseline_y += asc
-        elif style.text_valign == VAlign.MIDDLE:
+        elif style.text_vertical_alignment == VerticalAlignment.MIDDLE:
             baseline_y += (asc + desc) // 2
-        elif style.text_valign == VAlign.BOTTOM:
+        elif style.text_vertical_alignment == VerticalAlignment.BOTTOM:
             baseline_y += desc
 
         # Second pass: render

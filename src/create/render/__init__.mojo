@@ -1,5 +1,5 @@
 from .color import Color
-from .align import HAlign, VAlign
+from .align import HorizontalAlignment, VerticalAlignment
 from .autoscale import AutoScale
 from .surface import Surface, MemorySurface
 from .viewport import Viewport

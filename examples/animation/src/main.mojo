@@ -114,7 +114,7 @@ struct Game(Program):
         )
 
         canvas.fill(Color(150, 160, 180))
-        canvas.text_align(HAlign.CENTER)
+        canvas.text_align(HorizontalAlignment.CENTER)
         canvas.font_size(20)
         canvas.text(
             "A / D to run  -  SPACE to spin  -  P to pause spin animation",

@@ -5,7 +5,7 @@
 
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
 
-from create.render.align import HAlign, VAlign
+from create.render.align import HorizontalAlignment, VerticalAlignment
 from create.render.color import Color
 from create.render.font import FontWeight
 from create.render.style import Style
@@ -35,21 +35,26 @@ def _ink_box(m: MemorySurface) -> Tuple[Int, Int, Int, Int]:
     return (x0, y0, x1, y1)
 
 
-def _style(halign: HAlign, valign: VAlign) -> Style:
+def _style(
+    horizontal: HorizontalAlignment, vertical: VerticalAlignment
+) -> Style:
     var s = Style()
     s.fill = Color.WHITE
     s.font_size = 24
-    s.text_halign = halign
-    s.text_valign = valign
+    s.text_horizontal_alignment = horizontal
+    s.text_vertical_alignment = vertical
     return s^
 
 
 def _draw(
-    halign: HAlign, valign: VAlign, x: Float64, y: Float64
+    horizontal: HorizontalAlignment,
+    vertical: VerticalAlignment,
+    x: Float64,
+    y: Float64,
 ) raises -> MemorySurface:
     var m = MemorySurface(200, 120)
     var t = TextRenderer()
-    t.draw(m.surface(), "Hi", x, y, _style(halign, valign), 1.0)
+    t.draw(m.surface(), "Hi", x, y, _style(horizontal, vertical), 1.0)
     return m^
 
 
@@ -80,7 +85,7 @@ def test_fallback_is_attempted_at_most_once() raises -> None:
 
 
 def test_draw_puts_ink_below_and_right_of_a_top_left_anchor() raises -> None:
-    var m = _draw(HAlign.LEFT, VAlign.TOP, 40.0, 30.0)
+    var m = _draw(HorizontalAlignment.LEFT, VerticalAlignment.TOP, 40.0, 30.0)
     var box = _ink_box(m)
     assert_true(box[2] >= 0, "nothing was drawn")
     assert_true(box[0] >= 40, "ink started left of the anchor")
@@ -89,9 +94,15 @@ def test_draw_puts_ink_below_and_right_of_a_top_left_anchor() raises -> None:
 
 
 def test_centre_align_shifts_ink_left_of_left_align() raises -> None:
-    var left = _ink_box(_draw(HAlign.LEFT, VAlign.TOP, 100.0, 30.0))
-    var centre = _ink_box(_draw(HAlign.CENTER, VAlign.TOP, 100.0, 30.0))
-    var right = _ink_box(_draw(HAlign.RIGHT, VAlign.TOP, 100.0, 30.0))
+    var left = _ink_box(
+        _draw(HorizontalAlignment.LEFT, VerticalAlignment.TOP, 100.0, 30.0)
+    )
+    var centre = _ink_box(
+        _draw(HorizontalAlignment.CENTER, VerticalAlignment.TOP, 100.0, 30.0)
+    )
+    var right = _ink_box(
+        _draw(HorizontalAlignment.RIGHT, VerticalAlignment.TOP, 100.0, 30.0)
+    )
     assert_true(centre[0] < left[0], "CENTER did not shift left of LEFT")
     assert_true(right[0] < centre[0], "RIGHT did not shift left of CENTER")
 
@@ -100,9 +111,15 @@ def test_baseline_shifts_ink_up_the_buffer() raises -> None:
     # Glyphs rasterise upright regardless of the world y axis, so TOP must put
     # the box below the anchor and BOTTOM above it — in pixel rows, upward
     # means smaller.
-    var top = _ink_box(_draw(HAlign.LEFT, VAlign.TOP, 40.0, 60.0))
-    var middle = _ink_box(_draw(HAlign.LEFT, VAlign.MIDDLE, 40.0, 60.0))
-    var bottom = _ink_box(_draw(HAlign.LEFT, VAlign.BOTTOM, 40.0, 60.0))
+    var top = _ink_box(
+        _draw(HorizontalAlignment.LEFT, VerticalAlignment.TOP, 40.0, 60.0)
+    )
+    var middle = _ink_box(
+        _draw(HorizontalAlignment.LEFT, VerticalAlignment.MIDDLE, 40.0, 60.0)
+    )
+    var bottom = _ink_box(
+        _draw(HorizontalAlignment.LEFT, VerticalAlignment.BOTTOM, 40.0, 60.0)
+    )
     assert_true(middle[1] < top[1], "MIDDLE did not sit above TOP")
     assert_true(bottom[1] < middle[1], "BOTTOM did not sit above MIDDLE")
 
@@ -111,10 +128,24 @@ def test_pixel_scale_grows_the_glyphs() raises -> None:
     # Font size is authored in world units, so autoscale must reach the raster.
     var m1 = MemorySurface(200, 120)
     var t1 = TextRenderer()
-    t1.draw(m1.surface(), "Hi", 20.0, 20.0, _style(HAlign.LEFT, VAlign.TOP), 1.0)
+    t1.draw(
+        m1.surface(),
+        "Hi",
+        20.0,
+        20.0,
+        _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP),
+        1.0,
+    )
     var m2 = MemorySurface(200, 120)
     var t2 = TextRenderer()
-    t2.draw(m2.surface(), "Hi", 20.0, 20.0, _style(HAlign.LEFT, VAlign.TOP), 2.0)
+    t2.draw(
+        m2.surface(),
+        "Hi",
+        20.0,
+        20.0,
+        _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP),
+        2.0,
+    )
     var small = _ink_box(m1)
     var big = _ink_box(m2)
     assert_true(
@@ -134,8 +165,8 @@ def test_style_defaults() raises -> None:
     assert_true(s.stroke_enabled)
     assert_equal(s.font_size, 16)
     assert_equal(s.font_weight, FontWeight.REGULAR)
-    assert_true(s.text_halign == HAlign.LEFT)
-    assert_true(s.text_valign == VAlign.TOP)
+    assert_true(s.text_horizontal_alignment == HorizontalAlignment.LEFT)
+    assert_true(s.text_vertical_alignment == VerticalAlignment.TOP)
 
 
 def main() raises:

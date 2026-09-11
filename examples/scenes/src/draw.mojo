@@ -40,12 +40,12 @@ struct Draw:
         with canvas.style():
             canvas.fill(Color(180, 180, 190))
             canvas.font_size(18)
-            canvas.text_align(HAlign.CENTER)
-            # VAlign.BOTTOM anchors the text box's bottom edge at y, so it
+            canvas.text_align(HorizontalAlignment.CENTER)
+            # VerticalAlignment.BOTTOM anchors the text box's bottom edge at y, so it
             # grows upward from the margin instead of downward past it — the
-            # default VAlign.TOP would run this line's descenders straight
+            # default VerticalAlignment.TOP would run this line's descenders straight
             # through canvas.bottom() and into the letterbox clip.
-            canvas.text_align(VAlign.BOTTOM)
+            canvas.text_align(VerticalAlignment.BOTTOM)
             canvas.text(
                 "left-drag to paint    right-click for menu",
                 0,

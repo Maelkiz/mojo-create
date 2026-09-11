@@ -1,4 +1,4 @@
-from .align import HAlign, VAlign
+from .align import HorizontalAlignment, VerticalAlignment
 from .color import Color
 from .font import FontWeight
 
@@ -18,8 +18,8 @@ struct Style(Copyable, Movable):
     var stroke_enabled: Bool
     var font_size: Int
     var font_weight: Int
-    var text_halign: HAlign
-    var text_valign: VAlign
+    var text_horizontal_alignment: HorizontalAlignment
+    var text_vertical_alignment: VerticalAlignment
 
     def __init__(out self):
         self.fill = Color.WHITE
@@ -29,5 +29,5 @@ struct Style(Copyable, Movable):
         self.stroke_enabled = True
         self.font_size = 16
         self.font_weight = FontWeight.REGULAR
-        self.text_halign = HAlign.LEFT
-        self.text_valign = VAlign.TOP
+        self.text_horizontal_alignment = HorizontalAlignment.LEFT
+        self.text_vertical_alignment = VerticalAlignment.TOP
