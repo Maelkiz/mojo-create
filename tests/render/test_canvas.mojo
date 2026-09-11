@@ -900,5 +900,54 @@ def test_animator_sized_overload_scales() raises -> None:
     assert_equal(m.pixel(29, 29), Color.BLACK)
 
 
+struct AnimatorEveryOverload(Program):
+    """Draws through all six `canvas.sprite(SpriteAnimator, ...)` overloads.
+
+    Five of them delegate to the two that index the frame, so without a call
+    site each they are never type-checked: a library build only checks the
+    `def` bodies it reaches. The assertions below double as the positioning
+    check -- every overload must land its frame on the same anchor its
+    `Sprite` counterpart would.
+    """
+
+    var animator: SpriteAnimator
+
+    def __init__(out self, var animator: SpriteAnimator):
+        self.animator = animator^
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> AnimatorEveryOverload:
+        var frames = List[Sprite]()
+        frames.append(Sprite.solid(2, 2, 255, 0, 0))
+        return AnimatorEveryOverload(
+            SpriteAnimator(ArcPointer(SpriteAnimation(frames^)))
+        )
+
+    def render(self, mut canvas: Canvas) raises:
+        canvas.background(Color.BLACK)
+        # Top row: the unsized overloads, at 1:1 so the 2x2 frame covers its
+        # own anchor pixel.
+        canvas.sprite(self.animator, -40.0, 40.0)
+        canvas.sprite(self.animator, -20, 40)
+        canvas.sprite(self.animator, Vector2(0.0, 40.0))
+        # Bottom row: the sized overloads, scaled up to 4x4.
+        canvas.sprite(self.animator, -40.0, -40.0, 4, 4)
+        canvas.sprite(self.animator, -20, -40, 4, 4)
+        canvas.sprite(self.animator, Vector2(0.0, -40.0), 4, 4)
+
+
+def test_every_animator_overload_draws_at_its_anchor() raises -> None:
+    # World (x, y) maps to pixel (50 + x, 50 - y) at 1:1 on a 100x100 frame.
+    var m = run_headless[AnimatorEveryOverload](100, 100)
+    assert_equal(m.pixel(10, 10), Color.RED)   # (a, Float64, Float64)
+    assert_equal(m.pixel(30, 10), Color.RED)   # (a, Int, Int)
+    assert_equal(m.pixel(50, 10), Color.RED)   # (a, Vector2)
+    assert_equal(m.pixel(10, 90), Color.RED)   # (a, Float64, Float64, w, h)
+    assert_equal(m.pixel(30, 90), Color.RED)   # (a, Int, Int, w, h)
+    assert_equal(m.pixel(50, 90), Color.RED)   # (a, Vector2, w, h)
+    # Between the two rows nothing was drawn.
+    assert_equal(m.pixel(50, 50), Color.BLACK)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

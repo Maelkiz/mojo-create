@@ -591,26 +591,27 @@ struct Canvas[origin: Origin[mut=True]]:
 
         The frame is indexed here rather than handed back by an accessor on
         `SpriteAnimator`: a `List` element's origin is not spellable from user
-        code, so a reference to it cannot cross a function boundary.
+        code, so a reference to it cannot cross a function boundary. That is
+        also why only this overload and the sized one below index it — the
+        rest delegate here, so the inline indexing lives in two places rather
+        than six.
         """
         self.sprite(a.animation[].frames[a.frame_index], cx, cy)
 
     def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int):
-        self.sprite(a.animation[].frames[a.frame_index], Float64(cx), Float64(cy))
+        self.sprite(a, Float64(cx), Float64(cy))
 
     def sprite(mut self, a: SpriteAnimator, pos: Vector2):
-        self.sprite(a.animation[].frames[a.frame_index], pos.x, pos.y)
+        self.sprite(a, pos.x, pos.y)
 
     def sprite(mut self, a: SpriteAnimator, cx: Float64, cy: Float64, w: Int, h: Int):
         self.sprite(a.animation[].frames[a.frame_index], cx, cy, w, h)
 
     def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int, w: Int, h: Int):
-        self.sprite(
-            a.animation[].frames[a.frame_index], Float64(cx), Float64(cy), w, h
-        )
+        self.sprite(a, Float64(cx), Float64(cy), w, h)
 
     def sprite(mut self, a: SpriteAnimator, pos: Vector2, w: Int, h: Int):
-        self.sprite(a.animation[].frames[a.frame_index], pos.x, pos.y, w, h)
+        self.sprite(a, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
         self._style.font_size = size
