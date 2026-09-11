@@ -1,6 +1,6 @@
 from std.os import listdir
 
-from create.graphics.sprite import Sprite
+from create.sprite.sprite import Sprite
 
 
 struct SpriteAnimation(Movable):

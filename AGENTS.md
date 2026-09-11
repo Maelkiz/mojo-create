@@ -23,7 +23,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 |---|---|---|
 | `core` | `src/create/core/` | Program trait, run loops, Canvas, Surface, Viewport, Context, Time, Input, Font, Color |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
-| `graphics` | `src/create/graphics/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
+| `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
 
 ## Key Files
@@ -53,9 +53,9 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
 | `src/create/math/util.mojo` | `lerp`, `map`, `norm`, `smoothstep`, `sign`, `fract`, `fmod`, `degrees`, `radians` |
-| `src/create/graphics/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
-| `src/create/graphics/animation.mojo` | `SpriteAnimation` — frame sequence + fps; `from_sheet`, `from_folder` |
-| `src/create/graphics/animator.mojo` | `SpriteAnimator` — the playhead over one animation |
+| `src/create/sprite/sprite.mojo` | `Sprite` struct + BMP/PNG/JPEG parsers |
+| `src/create/sprite/animation.mojo` | `SpriteAnimation` — frame sequence + fps; `from_sheet`, `from_folder` |
+| `src/create/sprite/animator.mojo` | `SpriteAnimator` — the playhead over one animation |
 | `src/create/audio/sound.mojo` | `Sound` — decoded PCM + format/channels/freq, `load`/`from_pcm` |
 | `src/create/audio/audio.mojo` | `Audio` — playback device, voice lifecycle, `play`/`stop`/`update` |
 
@@ -140,7 +140,7 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 - `from create.audio import *` — `Sound`, `Audio`.
 
 **What `core` re-exports is a closure rule, not a convenience list.** `core` re-exports a `math` or
-`graphics` symbol exactly when a `core` signature names that type or the symbol constructs one for it
+`sprite` symbol exactly when a `core` signature names that type or the symbol constructs one for it
 — `canvas.rect` takes a `Rectangle`, `canvas.transform` a `Matrix`, and `identity`/`translate`/
 `rotate`/`scale` are how a caller builds that `Matrix`; likewise `canvas.sprite` takes a
 `SpriteAnimator`, and `SpriteAnimation` is how a caller builds one — so `from create.core import *`

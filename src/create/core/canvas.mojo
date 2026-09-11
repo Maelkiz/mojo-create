@@ -12,8 +12,8 @@ from create.math.matrix import (
     inverse,
     apply as mat_apply,
 )
-from create.graphics.sprite import Sprite
-from create.graphics.animator import SpriteAnimator
+from create.sprite.sprite import Sprite
+from create.sprite.animator import SpriteAnimator
 from .style import Style
 from .text import TextRenderer
 from .surface import Surface

@@ -7,9 +7,9 @@ from create.math.geometry import (
 )
 from create.math.vector2 import Vector2
 from create.math.matrix import Matrix, identity, translate, rotate, scale
-from create.graphics.sprite import Sprite
-from create.graphics.animation import SpriteAnimation
-from create.graphics.animator import SpriteAnimator
+from create.sprite.sprite import Sprite
+from create.sprite.animation import SpriteAnimation
+from create.sprite.animator import SpriteAnimator
 from .color import Color
 from .align import HAlign, VAlign
 from .autoscale import AutoScale

@@ -2,7 +2,7 @@ from std.math import max, min, abs
 from .color import Color
 from .font import GlyphInfo
 from .surface import Surface
-from create.graphics.sprite import Sprite
+from create.sprite.sprite import Sprite
 
 
 def blend[o: Origin[mut=True]](s: Surface[o], off: Int, c: Color):

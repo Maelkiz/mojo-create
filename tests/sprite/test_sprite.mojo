@@ -1,5 +1,5 @@
 from std.testing import TestSuite, assert_equal, assert_true, assert_raises
-from create.graphics.sprite import Sprite, _jpeg_dimensions
+from create.sprite.sprite import Sprite, _jpeg_dimensions
 
 
 def test_solid_dimensions() raises -> None:

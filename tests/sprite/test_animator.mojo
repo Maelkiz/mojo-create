@@ -1,6 +1,6 @@
 from std.memory import ArcPointer
 from std.testing import TestSuite, assert_equal, assert_true, assert_false
-from create.graphics import Sprite, SpriteAnimation, SpriteAnimator
+from create.sprite import Sprite, SpriteAnimation, SpriteAnimator
 
 
 def _animation(count: Int, fps: Float64 = 10.0) raises -> ArcPointer[SpriteAnimation]:

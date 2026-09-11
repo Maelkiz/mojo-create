@@ -7,7 +7,7 @@ from std.testing import TestSuite, assert_equal
 from create.core import *
 from create.core.headless import run_headless
 from create.core.surface import MemorySurface
-from create.graphics.sprite import Sprite
+from create.sprite.sprite import Sprite
 
 
 @fieldwise_init
