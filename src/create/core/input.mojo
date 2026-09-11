@@ -1,3 +1,5 @@
+from std.math import floor
+
 from create.math.vector2 import Vector2
 from .key import Key, KeyBits
 
@@ -51,6 +53,19 @@ struct Input(Movable):
         self.wheel = Vector2(0, 0)
         self._pressed_buttons = 0
         self._released_buttons = 0
+
+    def _set_mouse(mut self, x: Float64, y: Float64):
+        """Record a world-space pointer position.
+
+        The single writer of `mouse`, `mouse_x` and `mouse_y`, so the three
+        event arms that report a position cannot disagree about which of them
+        a position updates. World space is centred, so both coordinates go
+        negative and the Int forms floor rather than truncate — truncation
+        would round the left and bottom halves of the screen the wrong way.
+        """
+        self.mouse = Vector2(x, y)
+        self.mouse_x = Int(floor(x))
+        self.mouse_y = Int(floor(y))
 
     def _check(self, key: String, bits: KeyBits) -> Bool:
         var k = key.lower()
