@@ -7,10 +7,10 @@ from std.testing import TestSuite, assert_equal, assert_true, assert_false
 
 from create.render.align import HorizontalAlignment, VerticalAlignment
 from create.render.color import Color
-from create.render.font import FontWeight
+from create.render.font import Font, FontWeight, FONT_DEFAULT_PATH, _GlyphInfo
 from create.render._style import Style
 from create.render.surface import MemorySurface
-from create.render._text import TextRenderer
+from create.render._text import TextRenderer, _GLYPH_CACHE_LIMIT
 
 
 def _ink_box(m: MemorySurface) -> Tuple[Int, Int, Int, Int]:
@@ -56,6 +56,23 @@ def _draw(
     var t = TextRenderer()
     t.draw(m.surface(), "Hi", x, y, _style(horizontal, vertical), 1.0)
     return m^
+
+
+def _draw_with(mut t: TextRenderer, var style: Style) raises -> MemorySurface:
+    """Draw "Hi" through an existing renderer, so its cache carries over."""
+    var m = MemorySurface(200, 120)
+    t.draw(m.surface(), "Hi", 40.0, 30.0, style^, 1.0)
+    return m^
+
+
+def _same_pixels(a: MemorySurface, b: MemorySurface) -> Bool:
+    if a.width != b.width or a.height != b.height:
+        return False
+    for y in range(a.height):
+        for x in range(a.width):
+            if a.pixel(x, y) != b.pixel(x, y):
+                return False
+    return True
 
 
 def test_construction_touches_no_disk() raises -> None:
@@ -167,6 +184,80 @@ def test_style_defaults() raises -> None:
     assert_equal(s.font_weight, FontWeight.REGULAR)
     assert_true(s.text_horizontal_alignment == HorizontalAlignment.LEFT)
     assert_true(s.text_vertical_alignment == VerticalAlignment.TOP)
+
+
+
+def test_repeating_a_draw_adds_no_cache_entries() raises -> None:
+    # The point of the cache: a static line of text rasterises its glyphs on
+    # the frame it first appears and on no frame after.
+    var t = TextRenderer()
+    var top_left = _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
+    var first = _draw_with(t, top_left.copy())
+    var after_first = len(t._glyphs)
+    var second = _draw_with(t, top_left.copy())
+    assert_true(after_first > 0, "nothing was cached")
+    assert_equal(len(t._glyphs), after_first)
+    # A cache that served a stale or wrongly-keyed mask would still draw
+    # something, so the pixels have to match, not just the entry count.
+    assert_true(_same_pixels(first, second), "the cached draw differed")
+
+
+def test_size_and_weight_are_part_of_the_key() raises -> None:
+    # Both change the mask, so neither may be served from the other's entry.
+    var t = TextRenderer()
+    var base = _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
+
+    var regular = _draw_with(t, base.copy())
+    var entries = len(t._glyphs)
+
+    var bigger = base.copy()
+    bigger.font_size = base.font_size * 2
+    var big = _draw_with(t, bigger^)
+    assert_true(len(t._glyphs) > entries, "a new size reused the old masks")
+    entries = len(t._glyphs)
+    assert_false(_same_pixels(regular, big), "a larger size drew the same ink")
+
+    var bold = base.copy()
+    bold.font_weight = FontWeight.BLACK
+    var heavy = _draw_with(t, bold^)
+    assert_true(len(t._glyphs) > entries, "a new weight reused the old masks")
+    assert_false(
+        _same_pixels(regular, heavy), "a heavier weight drew the same ink"
+    )
+
+
+def test_swapping_the_font_drops_the_cache() raises -> None:
+    # The key says nothing about which face rendered the mask, so a face swap
+    # would otherwise keep drawing the old font's glyphs.
+    var t = TextRenderer()
+    var top_left = _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
+    _ = _draw_with(t, top_left^)
+    assert_true(len(t._glyphs) > 0, "nothing was cached")
+    t.set_font(Font(FONT_DEFAULT_PATH, 24))
+    assert_equal(len(t._glyphs), 0)
+
+
+def test_the_cache_is_bounded() raises -> None:
+    # Autoscale mints a fresh pixel size per window size, so the key space is
+    # unbounded in a way a long-running program really reaches. The dict is
+    # filled directly rather than through `_ensure_glyph`: what is under test
+    # is the guard, and rasterising four thousand real glyphs to reach it
+    # would cost the suite a minute and prove nothing extra.
+    var t = TextRenderer()
+    t._ensure_font(16)
+    for i in range(_GLYPH_CACHE_LIMIT):
+        var key = t._glyph_key(0xE000 + i, 16, FontWeight.REGULAR)
+        t._glyphs[key] = _GlyphInfo(0, 0, 0, 0, 4)
+    assert_equal(len(t._glyphs), _GLYPH_CACHE_LIMIT)
+
+    # The next miss drops the lot rather than growing past the limit, and the
+    # draw it came from still lands its ink.
+    var top_left = _style(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
+    var m = _draw_with(t, top_left^)
+    assert_true(
+        len(t._glyphs) < _GLYPH_CACHE_LIMIT, "the cache grew past its limit"
+    )
+    assert_true(_ink_box(m)[2] >= 0, "nothing was drawn after a cache drop")
 
 
 def main() raises:

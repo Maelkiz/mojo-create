@@ -1,3 +1,4 @@
+from std.collections import Dict
 from std.math import max
 from .align import HorizontalAlignment, VerticalAlignment
 from .color import Color
@@ -5,6 +6,15 @@ from .font import Font, _GlyphInfo, FONT_DEFAULT_PATH, FONT_FALLBACK_PATH
 from ._raster import blit_glyph
 from ._style import Style
 from .surface import Surface
+
+comptime _GLYPH_CACHE_LIMIT = 4096
+"""Cached masks kept before the cache is dropped whole.
+
+Autoscale makes the pixel size a function of the window, so a window being
+dragged larger mints a fresh size — and a fresh set of masks — every frame.
+Unbounded, that grows without limit; dropping the lot on the rare occasion it
+fills costs one repopulating frame and needs no recency bookkeeping.
+"""
 
 
 struct TextRenderer(Movable):
@@ -18,15 +28,20 @@ struct TextRenderer(Movable):
     var _font: List[Font]
     var _fallback_font: List[Font]
     var _fallback_attempted: Bool
+    var _glyphs: Dict[Int, _GlyphInfo]
 
     def __init__(out self):
         self._font = List[Font]()
         self._fallback_font = List[Font]()
         self._fallback_attempted = False
+        self._glyphs = Dict[Int, _GlyphInfo]()
 
     def set_font(mut self, var f: Font):
         self._font = List[Font]()
         self._font.append(f^)
+        # Cached masks belong to the face that drew them, and the key says
+        # nothing about which face that was — a swap has to drop them.
+        self._glyphs.clear()
 
     def _ensure_font(mut self, size: Int) raises:
         """Lazily load the packaged default/fallback fonts on first use.
@@ -45,13 +60,45 @@ struct TextRenderer(Movable):
             except:
                 pass
 
-    def _glyph(mut self, codepoint: Int, size: Int) raises -> _GlyphInfo:
-        """Render one glyph, falling back for codepoints the main face lacks."""
+    def _glyph_key(self, codepoint: Int, size: Int, weight: Int) -> Int:
+        """Pack what a mask depends on into one key.
+
+        A codepoint is 21 bits and a weight 10, so all three pack into an Int
+        with room to spare.
+        """
+        return codepoint | (size << 21) | (weight << 37)
+
+    def _ensure_glyph(
+        mut self, codepoint: Int, size: Int, weight: Int
+    ) raises -> Int:
+        """Cache the mask for `(codepoint, size, weight)` and return its key.
+
+        Every FreeType call in the text path is behind this miss: rasterising a
+        glyph costs an `FT_Load_Char` and an `FT_Render_Glyph` over the C ABI,
+        and choosing the face costs an `FT_Get_Char_Index` on top. Laying a
+        string out reads each glyph twice — once to measure, once to draw — so
+        uncached, a static line of text paid all three per character per frame.
+
+        The mask is alpha only and the pen advance is a number, so nothing here
+        depends on the fill, the position or the alignment; only these three
+        inputs change what is stored.
+        """
+        var key = self._glyph_key(codepoint, size, weight)
+        if key in self._glyphs:
+            return key
+        if len(self._glyphs) >= _GLYPH_CACHE_LIMIT:
+            self._glyphs.clear()
+        # Both faces are set to the requested weight here rather than at the
+        # call site, because this is the only place either one rasterises.
         if len(self._fallback_font) > 0 and not self._font[0].has_glyph(
             codepoint
         ):
-            return self._fallback_font[0].render(codepoint, size)
-        return self._font[0].render(codepoint, size)
+            self._fallback_font[0]._set_weight(weight)
+            self._glyphs[key] = self._fallback_font[0].render(codepoint, size)
+        else:
+            self._font[0]._set_weight(weight)
+            self._glyphs[key] = self._font[0].render(codepoint, size)
+        return key
 
     def draw[
         o: Origin[mut=True]
@@ -72,14 +119,15 @@ struct TextRenderer(Movable):
         """
         var size = max(Int(Float64(style.font_size) * pixel_scale + 0.5), 1)
         self._ensure_font(size)
-        self._font[0]._set_weight(style.font_weight)
+        var weight = style.font_weight
         var c = style.fill
 
         # Two-pass: measure total advance for alignment, then render.
         # First pass: measure (iterate codepoints for correct Unicode handling)
         var tw = 0
         for cp in s.codepoints():
-            tw += self._glyph(Int(cp), size).advance_x
+            var key = self._ensure_glyph(Int(cp), size, weight)
+            tw += self._glyphs[key].advance_x
 
         var draw_x = Int(tx)
         var draw_y = Int(ty)
@@ -101,7 +149,9 @@ struct TextRenderer(Movable):
         # Second pass: render
         var cx = draw_x
         for cp in s.codepoints():
-            var g = self._glyph(Int(cp), size)
+            # Bound by reference: the mask stays in the cache rather than being
+            # copied out of it once per character.
+            ref g = self._glyphs[self._ensure_glyph(Int(cp), size, weight)]
             if g.width > 0 and g.height > 0:
                 blit_glyph(
                     surf, g, cx + g.bearing_x, baseline_y - g.bearing_y, c
