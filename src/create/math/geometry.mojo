@@ -16,6 +16,13 @@ def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Fl
     return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
 
 
+def _point_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Bool:
+    var cross = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+    if cross != 0.0:
+        return False
+    return min(ax, bx) <= px <= max(ax, bx) and min(ay, by) <= py <= max(ay, by)
+
+
 def _project_range[N: Int](nx: Float64, ny: Float64, pts: InlineArray[Vector2, N]) -> Tuple[Float64, Float64]:
     var lo = nx * pts[0].x + ny * pts[0].y
     var hi = lo
@@ -234,6 +241,18 @@ struct Triangle:
         return self.contains(v.x, v.y)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
+        var signed_area2 = (self.x2 - self.x1) * (self.y3 - self.y1) - (self.y2 - self.y1) * (self.x3 - self.x1)
+        if signed_area2 == 0.0:
+            # Degenerate hull: a segment (or a point). Contained iff on the
+            # longest edge -- the other two edges are contained within it.
+            var len12 = (self.x2 - self.x1) * (self.x2 - self.x1) + (self.y2 - self.y1) * (self.y2 - self.y1)
+            var len23 = (self.x3 - self.x2) * (self.x3 - self.x2) + (self.y3 - self.y2) * (self.y3 - self.y2)
+            var len31 = (self.x1 - self.x3) * (self.x1 - self.x3) + (self.y1 - self.y3) * (self.y1 - self.y3)
+            if len12 >= len23 and len12 >= len31:
+                return _point_on_segment(px, py, self.x1, self.y1, self.x2, self.y2)
+            if len23 >= len31:
+                return _point_on_segment(px, py, self.x2, self.y2, self.x3, self.y3)
+            return _point_on_segment(px, py, self.x3, self.y3, self.x1, self.y1)
         var d1 = (self.x2 - self.x1) * (py - self.y1) - (self.y2 - self.y1) * (px - self.x1)
         var d2 = (self.x3 - self.x2) * (py - self.y2) - (self.y3 - self.y2) * (px - self.x2)
         var d3 = (self.x1 - self.x3) * (py - self.y3) - (self.y1 - self.y3) * (px - self.x3)

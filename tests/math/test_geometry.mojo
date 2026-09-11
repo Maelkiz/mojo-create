@@ -439,5 +439,29 @@ def test_triangle_collinear_vertices_overlaps() raises -> None:
     assert_true(overlaps(t, covering))
 
 
+def test_triangle_distinct_collinear_vertices_rejects_off_segment_point() raises -> None:
+    # Three distinct collinear vertices along y = x. (50, 50) sits on that
+    # infinite line but far outside the segment -- must not be "contained".
+    var t = Triangle(0.0, 0.0, 1.0, 1.0, 2.0, 2.0)
+    assert_equal(t.contains(50.0, 50.0), False)
+
+
+def test_triangle_distinct_collinear_vertices_contains_hull_point() raises -> None:
+    var t = Triangle(0.0, 0.0, 1.0, 1.0, 2.0, 2.0)
+    assert_true(t.contains(1.0, 1.0))
+
+
+def test_triangle_fully_degenerate_point() raises -> None:
+    var t = Triangle(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    assert_true(t.contains(0.0, 0.0))
+    assert_equal(t.contains(1.0, 0.0), False)
+
+
+def test_overlaps_circle_distinct_collinear_triangle_far_away() raises -> None:
+    var t = Triangle(0.0, 0.0, 1.0, 1.0, 2.0, 2.0)
+    var c = Circle(50.0, 50.0, 1.0)
+    assert_equal(overlaps(c, t), False)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
