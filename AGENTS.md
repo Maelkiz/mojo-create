@@ -36,7 +36,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
 | `src/create/core/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
-| `src/create/core/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, sprite and glyph blits |
+| `src/create/core/raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
 | `src/create/core/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
 | `src/create/core/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
 | `src/create/core/style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
@@ -147,6 +147,14 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 is callable without a second import. Hence `Vector3`, `Random`, the util functions and `inverse`/`apply`/
 `perspective` are absent: no `core` signature names them. Reach for `create.math` for those. Adding a
 name to `core/__init__.mojo` is not a judgement call — check whether a `core` signature names it.
+
+**That edge is nominal.** Outside the re-exports above, `core` names `Sprite` and `SpriteAnimator`
+only in `canvas.sprite`'s overloads — no `core` code depends on what those types contain.
+`raster.blit_sprite` takes a pixel pointer plus its width and height rather than an image type, so
+the rasteriser is written against no layout but its own and the BMP/PNG/JPEG decoders stay out of the
+render path entirely. Keep it that way: a new `core` function that needs pixels takes the buffer, not
+the type that owns it. Removing the last of the edge would mean moving `Sprite` beside `Surface` and
+giving up `Sprite.load`, which costs every example an API break to change an arrow no user sees.
 
 **A `Program` can own `Program`s.** Multiple screens are not a distinct feature: a root `Program`
 holds each screen as a plain field, in the same `update`/`render` shape but *not* implementing the
