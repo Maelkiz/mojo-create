@@ -1,9 +1,10 @@
+from .vector3 import Vector3
 from std.math import sqrt
 
 
-struct Vector2(Copyable, ImplicitlyCopyable, Movable, Writable):
+struct Vector2(Equatable, Copyable, ImplicitlyCopyable, Movable, Writable):
     """A 2D point or direction: arithmetic operators, `mag`, `normalize`,
-    `dot`, `dist`, `lerp`.
+    `dot`, `dist`, `lerp`, and `xyz` to widen into a `Vector3`.
 
     The tuple constructors are `@implicit` on purpose: every position argument
     in the library takes a `Vector2`, so `canvas.rectangle((0, 0), 100, 100)` works
@@ -108,3 +109,6 @@ struct Vector2(Copyable, ImplicitlyCopyable, Movable, Writable):
         return Vector2(
             self.x + (other.x - self.x) * t, self.y + (other.y - self.y) * t
         )
+
+    def xyz(self, z: Float64 = 0.0) -> Vector3:
+        return Vector3(self.x, self.y, z)

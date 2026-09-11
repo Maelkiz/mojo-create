@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
 from create.math.vector2 import Vector2
+from create.math.vector3 import Vector3
 from std.math import isnan, isinf
 
 
@@ -192,6 +193,20 @@ def test_init_tuple_float_int() raises -> None:
     var v: Vector2 = (3.5, 4)
     assert_equal(v.x, 3.5)
     assert_equal(v.y, 4.0)
+
+
+def test_xyz_defaults_z_to_zero() raises -> None:
+    var v = Vector2(1.5, 2.5).xyz()
+    assert_equal(v.x, 1.5)
+    assert_equal(v.y, 2.5)
+    assert_equal(v.z, 0.0)
+
+
+def test_xyz_takes_z() raises -> None:
+    var v = Vector2(1.5, 2.5).xyz(3.5)
+    assert_equal(v.x, 1.5)
+    assert_equal(v.y, 2.5)
+    assert_equal(v.z, 3.5)
 
 
 def main() raises:
