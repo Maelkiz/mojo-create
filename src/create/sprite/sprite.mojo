@@ -100,18 +100,41 @@ struct Sprite(Movable):
         return s^
 
     @staticmethod
-    def _extension(path: String) -> String:
+    def _stem_end(path: String) -> Int:
+        """Index of the last `.` in `path`, or its length when it has none.
+
+        Where the stem ends and any extension begins. Shared with the frame
+        ordering in `animation`, which needs the same split to find the number
+        a name ends in. Scans the whole path, not just the last segment, so
+        `assets/v1.2/sprite` reports the dot in the directory -- long-standing
+        behaviour, pinned by test.
+        """
         var bytes = path.as_bytes()
-        var dot = -1
+        var end = len(bytes)
         for i in range(len(bytes)):
             if bytes[i] == 46:  # '.'
-                dot = i
-        if dot < 0:
+                end = i
+        return end
+
+    @staticmethod
+    def _extension(path: String) -> String:
+        var bytes = path.as_bytes()
+        var dot = Sprite._stem_end(path)
+        if dot == len(bytes):
             return ""
         var ext = String()
         for i in range(dot + 1, len(bytes)):
             ext += String(chr(Int(bytes[i]) | 32))  # lowercase
         return ext
+
+    @staticmethod
+    def supports_extension(ext: String) -> Bool:
+        """Whether `load` has a decoder for this lowercase extension.
+
+        The one list of formats the library reads. `from_folder` filters a
+        directory with it; keep it in step with `load`'s dispatch below.
+        """
+        return ext == "png" or ext == "jpg" or ext == "jpeg" or ext == "bmp"
 
     @staticmethod
     def _load_png(data: List[UInt8]) raises -> Sprite:
@@ -200,28 +223,24 @@ struct Sprite(Movable):
             var s = Sprite(w, h)
             var dst = s.pixels.unsafe_ptr()
 
-            if bpp == 24:
-                var row_stride = ((w * 3 + 3) // 4) * 4
-                for row in range(h):
-                    var src_row = (h - 1 - row) if not top_down else row
-                    var src_base = pixel_offset + src_row * row_stride
-                    for col in range(w):
-                        var src = src_base + col * 3
-                        var d = (row * w + col) * 4
-                        dst[unsafe_offset=d] = data[src + 2]      # R
-                        dst[unsafe_offset=d + 1] = data[src + 1]  # G
-                        dst[unsafe_offset=d + 2] = data[src]      # B
-                        dst[unsafe_offset=d + 3] = 255
-            else:  # 32-bit
-                for row in range(h):
-                    var src_row = (h - 1 - row) if not top_down else row
-                    var src_base = pixel_offset + src_row * w * 4
-                    for col in range(w):
-                        var src = src_base + col * 4
-                        var d = (row * w + col) * 4
-                        dst[unsafe_offset=d] = data[src + 2]      # R
-                        dst[unsafe_offset=d + 1] = data[src + 1]  # G
-                        dst[unsafe_offset=d + 2] = data[src]      # B
-                        dst[unsafe_offset=d + 3] = data[src + 3]  # A
+            # 24- and 32-bit differ only in the source stride and where alpha
+            # comes from. Rows are padded to a 4-byte boundary, which the
+            # stride formula already gives as exactly `w * 4` at 32-bit.
+            var bytes_per_px = bpp // 8
+            var row_stride = ((w * bytes_per_px + 3) // 4) * 4
+            for row in range(h):
+                # Bottom-up is the BMP default; a negative height means the
+                # rows were stored top-down instead.
+                var src_row = (h - 1 - row) if not top_down else row
+                var src_base = pixel_offset + src_row * row_stride
+                for col in range(w):
+                    var src = src_base + col * bytes_per_px
+                    var d = (row * w + col) * 4
+                    dst[unsafe_offset=d] = data[src + 2]      # R
+                    dst[unsafe_offset=d + 1] = data[src + 1]  # G
+                    dst[unsafe_offset=d + 2] = data[src]      # B
+                    dst[unsafe_offset=d + 3] = (
+                        data[src + 3] if bytes_per_px == 4 else 255
+                    )
 
             return s^
