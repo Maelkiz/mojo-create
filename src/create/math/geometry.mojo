@@ -94,6 +94,9 @@ struct Rectangle:
     def __init__(out self, pos: Vector2, w: Float64, h: Float64):
         self = Rectangle(pos.x, pos.y, w, h)
 
+    def __init__(out self, pos: Vector2, w: Int, h: Int):
+        self = Rectangle(pos.x, pos.y, Float64(w), Float64(h))
+
     def __init__(out self, pos: Vector2, size: Vector2):
         self = Rectangle(pos.x, pos.y, size.x, size.y)
 
@@ -103,6 +106,9 @@ struct Rectangle:
     def closest_point(self, px: Float64, py: Float64) -> Vector2:
         return Vector2(max(self.left(), min(px, self.right())),
                      max(self.bottom(), min(py, self.top())))
+
+    def closest_point(self, v: Vector2) -> Vector2:
+        return self.closest_point(v.x, v.y)
 
     def left(self) -> Float64:
         return self.x - self.w / 2.0
@@ -175,6 +181,9 @@ struct Circle:
             return Vector2(px, py)
         var dist = sqrt(dist_sq)
         return Vector2(self.x + dx / dist * self.r, self.y + dy / dist * self.r)
+
+    def closest_point(self, v: Vector2) -> Vector2:
+        return self.closest_point(v.x, v.y)
 
     def contains(self, px: Float64, py: Float64) -> Bool:
         var dx = px - self.x
@@ -345,6 +354,9 @@ struct Triangle:
         if d1 <= d2 and d1 <= d3: return p1
         if d2 <= d3: return p2
         return p3
+
+    def closest_point(self, v: Vector2) -> Vector2:
+        return self.closest_point(v.x, v.y)
 
     def contains(self, v: Vector2) -> Bool:
         return self.contains(v.x, v.y)

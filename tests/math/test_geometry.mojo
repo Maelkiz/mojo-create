@@ -51,6 +51,28 @@ def test_rect_closest_point_inside() raises -> None:
     assert_equal(p.y, 1.0)
 
 
+def test_rect_closest_point_vector2() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var p = r.closest_point(Vector2(10.0, 0.0))
+    assert_equal(p.x, 5.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_rect_closest_point_bare_tuple() raises -> None:
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)
+    var p = r.closest_point((10.0, 0.0))
+    assert_equal(p.x, 5.0)
+    assert_equal(p.y, 0.0)
+
+
+def test_rect_vector2_int_constructor() raises -> None:
+    var r = Rectangle(Vector2(1.0, 2.0), 10, 6)
+    assert_equal(r.x, 1.0)
+    assert_equal(r.y, 2.0)
+    assert_equal(r.w, 10.0)
+    assert_equal(r.h, 6.0)
+
+
 def test_rect_move_to() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 10.0)
     r.move_to(5.0, 5.0)
@@ -101,6 +123,13 @@ def test_circle_closest_point_inside() raises -> None:
     var p = c.closest_point(1.0, 0.0)
     assert_equal(p.x, 1.0)
     assert_equal(p.y, 0.0)
+
+
+def test_circle_closest_point_vector2() raises -> None:
+    var c = Circle(0.0, 0.0, 5.0)
+    var p = c.closest_point(Vector2(10.0, 0.0))
+    assert_almost_equal(p.x, 5.0, atol=1e-9)
+    assert_almost_equal(p.y, 0.0, atol=1e-9)
 
 
 def test_circle_move_to() raises -> None:
@@ -289,6 +318,13 @@ def test_triangle_center() raises -> None:
     var c = t.center()
     assert_almost_equal(c.x, 3.0, atol=1e-9)
     assert_almost_equal(c.y, 2.0, atol=1e-9)
+
+
+def test_triangle_closest_point_vector2() raises -> None:
+    var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
+    var p = t.closest_point(Vector2(3.0, 2.0))
+    assert_equal(p.x, 3.0)
+    assert_equal(p.y, 2.0)
 
 
 def test_triangle_contains_inside() raises -> None:
