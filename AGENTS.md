@@ -315,7 +315,8 @@ enforces it:
 - `animator.update(ctx.time.delta)` — the playhead only advances here. See
   [animator.mojo](src/create/sprite/animator.mojo) and [examples/animation/src/main.mojo](examples/animation/src/main.mojo).
 - `tween.update(ctx.time.delta)` — same shape and same failure: a tween never ticked sits at its
-  `start` forever. See [tween.mojo](src/create/math/tween.mojo).
+  `start` forever. See [tween.mojo](src/create/math/tween.mojo) and [examples/tween.mojo](examples/tween.mojo),
+  which also cycles the easing curves against one shared playhead.
 
 Both an animation and a sound are shared assets, held as `ArcPointer` fields (`from std.memory
 import ArcPointer`) so several entities or voices share one buffer by refcount instead of copying
