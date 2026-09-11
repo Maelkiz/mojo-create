@@ -87,8 +87,8 @@ Two git hooks gate the repo; there is no CI, so these are the only automated che
 
 | Hook | Runs | Cost |
 |---|---|---|
-| `.githooks/pre-commit` | Builds `tests/core/test_smoke.mojo` | ~1.5s, constant |
-| `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | ~16s |
+| `.githooks/pre-commit` | Builds `tests/core/test_smoke.mojo` | Constant — does not grow with the repo |
+| `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | Grows with the example and test count |
 
 Neither runs until `pixi run setup` has been done in the clone.
 
