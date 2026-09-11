@@ -12,8 +12,13 @@ def _closest_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: 
     return Vector2(ax + t * dx, ay + t * dy)
 
 
-def _ccw(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Bool:
-    return (cy - ay) * (bx - ax) > (by - ay) * (cx - ax)
+def _orientation(ax: Float64, ay: Float64, bx: Float64, by: Float64, cx: Float64, cy: Float64) -> Int:
+    var cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax)
+    if cross > 0.0:
+        return 1
+    if cross < 0.0:
+        return -1
+    return 0
 
 
 def _point_on_segment(px: Float64, py: Float64, ax: Float64, ay: Float64, bx: Float64, by: Float64) -> Bool:
@@ -220,10 +225,23 @@ struct Line:
         return sqrt(self.length_sq())
 
     def intersects(self, other: Line) -> Bool:
-        return (_ccw(self.x0, self.y0, other.x0, other.y0, other.x1, other.y1) !=
-                _ccw(self.x1, self.y1, other.x0, other.y0, other.x1, other.y1) and
-                _ccw(self.x0, self.y0, self.x1, self.y1, other.x0, other.y0) !=
-                _ccw(self.x0, self.y0, self.x1, self.y1, other.x1, other.y1))
+        var o1 = _orientation(self.x0, self.y0, self.x1, self.y1, other.x0, other.y0)
+        var o2 = _orientation(self.x0, self.y0, self.x1, self.y1, other.x1, other.y1)
+        var o3 = _orientation(other.x0, other.y0, other.x1, other.y1, self.x0, self.y0)
+        var o4 = _orientation(other.x0, other.y0, other.x1, other.y1, self.x1, self.y1)
+
+        if o1 != 0 and o2 != 0 and o1 != o2 and o3 != 0 and o4 != 0 and o3 != o4:
+            return True
+        # Collinear arms -- inclusive: touching or overlapping counts.
+        if o1 == 0 and _point_on_segment(other.x0, other.y0, self.x0, self.y0, self.x1, self.y1):
+            return True
+        if o2 == 0 and _point_on_segment(other.x1, other.y1, self.x0, self.y0, self.x1, self.y1):
+            return True
+        if o3 == 0 and _point_on_segment(self.x0, self.y0, other.x0, other.y0, other.x1, other.y1):
+            return True
+        if o4 == 0 and _point_on_segment(self.x1, self.y1, other.x0, other.y0, other.x1, other.y1):
+            return True
+        return False
 
 
 @fieldwise_init
