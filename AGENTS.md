@@ -52,7 +52,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/render/font.mojo` | `Font`, `FontWeight`, and the paths of the two packaged Noto faces |
 | `src/create/render/align.mojo` | `HorizontalAlignment` (`LEFT`/`CENTER`/`RIGHT`), `VerticalAlignment` (`TOP`/`MIDDLE`/`BOTTOM`) |
 | `src/create/render/color.mojo` | `Color` — constants, `hex`/`hsv`/`lerp` factories, `over` compositing |
-| `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; `overlaps(a, b)`, one exact overload per shape pair |
+| `src/create/math/geometry.mojo` | `Rectangle`, `Circle`, `Line`, `Triangle`; the `overlaps`/`intersects`/`contains` relation taxonomy (see Terminology) |
 | `src/create/math/matrix.mojo` | Generic `Matrix[rows,cols]` with 2D/3D transform constructors |
 | `src/create/math/random.mojo` | `Random` — seeded generator: `float`, `int`, `bool` |
 | `src/create/math/util.mojo` | `lerp`, `map`, `norm`, `smoothstep`, `sign`, `fract`, `fmod`, `degrees`, `radians` |
@@ -197,7 +197,9 @@ builds one, so `overlaps` itself is never pulled in by it. Leaving it out anyway
 program written against `from create.core import *` gets three shapes and no way to test them
 against each other, which defeats the point of re-exporting the shapes at all. So `overlaps` is
 re-exported from `core` as a deliberate exception, on consumer-ergonomics grounds, not because any
-signature forces it.
+signature forces it. `intersects` and `contains` need no such exception: both are methods on the
+shapes themselves (`l.intersects(x)`, `s.contains(x)`), not free functions, so they need no
+`__init__.mojo` entry at all — they come along for free with the shape they're called on.
 
 **That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
 `SpriteAnimator` only in `canvas.sprite`'s overloads — no `render` code depends on what those types
@@ -379,6 +381,7 @@ docstring; this table is not an API reference and must not grow into one.
 | `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
 | Asset vs. playhead | `SpriteAnimation` and `Sound` are immutable artwork, shared by `ArcPointer`; `SpriteAnimator` and an `Audio` voice are one entity's position in it. The rate (`fps`) belongs to the asset, not the playhead |
+| `overlaps` / `intersects` / `contains` | The three geometry relations in [geometry.mojo](src/create/math/geometry.mojo), and they don't overlap in role. `overlaps(a, b)` is a free function, symmetric between two regions (`Rectangle`/`Circle`/`Triangle`). `l.intersects(x)` is a method on `Line` only, asymmetric — `Line` has no interior, so it can only ever be the subject, never an operand of a symmetric test. `s.contains(x)` is a method on the containing region, also asymmetric. A `Line` is never a region: it has no `overlaps` overload and no `center()`/`area()` |
 
 ## Do
 
