@@ -137,37 +137,28 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **Defining a program:** implement `Program` (`create` + `render`, optional `update`) and pass it to `run[T]`. See [examples/movement/src/main.mojo](examples/movement/src/main.mojo) for the full shape, or [tests/core/test_smoke.mojo](tests/core/test_smoke.mojo) for the minimum. Both are compile-gated, so neither can go stale.
 
-**Imports: `from create import *` is what a program writes.** It is the whole public surface —
-everything the subpackages below re-export, in one line. Every example and every test uses it.
+**Imports: `from create import *` is what a program writes.** It is the whole public surface in one
+line. Every example and every test uses it.
 
-The subpackages remain importable on their own, for code that wants a narrower surface than a
-program does:
+Each subpackage exports the names it owns and nothing from a layer below:
 
-- `from create.core import *` — the run loop and everything a `Program`'s signatures name, which by the closure rule below pulls in most of `render`, `math` and `sprite` too. Read `core/__init__.mojo` for the exact set.
-- `from create.render import *` — the drawing stack with no run loop, which is what `run_headless` is built on. Adds `Viewport`.
-- `from create.math import *` — adds `Vector3`, `Random`, `Easing`/`ease`/`Tween`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
+- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `script_dir`.
+- `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`.
+- `from create.math import *` — `Vector2`/`Vector3`, `Matrix` and its constructors, the geometry shapes and `overlaps`, `Random`, `Easing`/`ease`/`Tween`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
+- `from create.sprite import *` — `Sprite`, `SpriteAnimation`, `SpriteAnimator`.
 - `from create.audio import *` — `Sound`, `Audio`.
 
-**The root is a union, the subpackages are closures — two different rules.**
-[`create/__init__.mojo`](src/create/__init__.mojo) has no signatures of its own, so it cannot use
-the closure rule below; it star-imports all five subpackages instead, which is what makes it exactly
-their union and keeps it from drifting as they change. Adding a name there is never right — add it
-to the subpackage that owns it and the root picks it up.
+So there are two shapes and no middle one: take the preamble whole, or name what you import from
+the package that defines it (`from create.math import overlaps`, `from create.core import
+script_dir`). Star-importing a single subpackage is not a preamble — `from create.core import *`
+alone cannot name `Canvas`, and is not meant to.
 
-**What a module re-exports is a closure rule, not a convenience list.** A module re-exports a
-symbol from a lower one exactly when one of its own signatures names that type or the symbol
-constructs one for it — `canvas.rectangle` takes a `Rectangle`, `canvas.transform` a `Matrix`, and
-`identity`/`translate`/`rotate`/`scale` are how a caller builds that `Matrix`; likewise
-`canvas.sprite` takes a `SpriteAnimator`, and `SpriteAnimation` is how a caller builds one. Hence
-`Vector3`, `Random`, `Tween`, the util functions and `inverse`/`apply`/`perspective` are absent: no
-signature names them. Reach for `create.math` for those.
-
-The rule now applies at two levels. `render/__init__.mojo` closes over `math` and `sprite`;
-`core/__init__.mojo` closes over `render` on top of that, because `Program.render` names `Canvas` and
-`Context` names `AutoScale`. That is why `from create.core import *` reaches most of `render`,
-`math` and `sprite` on its own — and why it read as the default import before the root package
-existed. Adding a name to either `__init__.mojo` is not a judgement call — check whether a
-signature names it.
+**The root is the union.** [`create/__init__.mojo`](src/create/__init__.mojo) has no signatures of
+its own; it star-imports all five subpackages, which is what makes it exactly their union and keeps
+it from drifting as they change. Adding a name there is never right — add it to the subpackage that
+owns it and the root picks it up. Likewise, a subpackage never re-exports a symbol from a lower one:
+`core` names `Canvas` and `Rectangle` in its signatures but exports neither, because the root already
+carries them and nothing else asks. 
 
 **Public surface is exactly what an `__init__.mojo` re-exports, and the compiler enforces it.** A
 star import skips `_`-prefixed top-level declarations and reaches nothing a package's
@@ -184,7 +175,7 @@ So a new declaration is internal unless it is being added to an `__init__.mojo` 
 Put it in a `_module.mojo` if the whole file is plumbing; give it a `_name` if it sits in a module
 users import from.
 
-**`_bytes` is outside the rule, deliberately.** It is a leaf: it imports nothing, and no
+**`_bytes` is a leaf, and deliberately outside every package.** It imports nothing, and no
 `__init__.mojo` re-exports it. `sprite` and `render` both need to assemble little-endian bytes into
 an `Int` and neither may depend on the other, so the one copy of that loop lives at the root where
 both can reach it. It is internal plumbing, not public surface — adding it to an `__init__.mojo`
@@ -192,19 +183,8 @@ would be wrong, since no user-facing signature names `le_uint` or `sign_extend_3
 importing it is not a violation of the `render`-never-imports-`core` rule: `_bytes` is not `core`,
 and depending on a leaf cannot make a cycle.
 
-**`overlaps` is outside the rule too, the opposite way.** `core` re-exports `Rectangle`, `Circle`
-and `Triangle` under the closure rule — `Context`/`Program` name them — but the rule only reaches
-symbols a re-exported signature *names or constructs*, and no signature in `core` takes a `Bool` or
-builds one, so `overlaps` itself is never pulled in by it. Leaving it out anyway would mean a
-program written against `from create.core import *` gets three shapes and no way to test them
-against each other, which defeats the point of re-exporting the shapes at all. So `overlaps` is
-re-exported from `core` as a deliberate exception, on consumer-ergonomics grounds, not because any
-signature forces it. `intersects` and `contains` need no such exception: both are methods on the
-shapes themselves (`l.intersects(x)`, `s.contains(x)`), not free functions, so they need no
-`__init__.mojo` entry at all — they come along for free with the shape they're called on.
-
-**That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
-`SpriteAnimator` only in `canvas.sprite`'s overloads — no `render` code depends on what those types
+**The `render`-to-`sprite` edge is nominal.** `render` names `Sprite` and `SpriteAnimator` only in
+`canvas.sprite`'s overloads — no `render` code depends on what those types
 contain. `raster.blit_sprite` takes a pixel pointer plus its width and height rather than an image type, so
 the rasteriser is written against no layout but its own and the BMP/PNG/JPEG decoders stay out of the
 render path entirely. Keep it that way: a new `render` function that needs pixels takes the buffer,

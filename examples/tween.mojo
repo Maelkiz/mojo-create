@@ -1,5 +1,4 @@
 from create import *
-from create.math import ease
 
 # The gallery, top to bottom. LINEAR first so every other row reads as a
 # departure from it.

@@ -1,6 +1,4 @@
 from create import *
-from create.sprite import Sprite
-from create.math import clamp
 
 
 @fieldwise_init

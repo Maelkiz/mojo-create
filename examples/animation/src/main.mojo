@@ -1,7 +1,6 @@
 from std.memory import ArcPointer
 
 from create import *
-from create.math import clamp
 
 comptime _SIZE = 128
 comptime _GROUND = -140.0

@@ -8,8 +8,7 @@ struct Vector3(Equatable, Copyable, ImplicitlyCopyable, Movable, Writable):
     `Vector2`.
 
     Drawing is 2D, so nothing in the library takes one — it is here for a
-    program doing its own 3D work, and lives in `create.math` rather than the
-    `create.core` re-exports for exactly that reason.
+    program doing its own 3D work.
     """
 
     var x: Float64
