@@ -93,7 +93,9 @@ struct _GlyphInfo(Movable):
     """One rendered glyph: its coverage mask and where to put it.
 
     The mask is alpha only — the colour comes from the style at blit time, so
-    one cached glyph serves every colour it is ever drawn in.
+    one cached glyph serves every colour it is ever drawn in. `TextRenderer`
+    keeps them, keyed by codepoint, pixel size and weight; a `Font` renders
+    one and forgets it.
     """
 
     var pixels: List[UInt8]   # 8-bit grayscale alpha, row-major
@@ -117,8 +119,8 @@ struct Font(Movable):
     """One loaded face, rendered through freetype over the C ABI.
 
     A face is a heavy handle, not a per-frame value — `TextRenderer` loads the
-    packaged faces once and caches glyphs; `canvas.font` swaps in another and
-    it survives the frame in `PersistentCanvasState`.
+    packaged faces once and caches what they render; `canvas.font` swaps in
+    another and it survives the frame in `PersistentCanvasState`.
 
     Size and weight are sticky state on the face rather than arguments to
     `render`, which is why both setters return early when nothing changed:
