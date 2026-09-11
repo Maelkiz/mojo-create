@@ -83,7 +83,8 @@ def _polygons_overlap[N: Int, M: Int](a: InlineArray[Vector2, N], b: InlineArray
 
 @fieldwise_init
 struct Rectangle:
-    """An axis-aligned rectangle, positioned by its centre.
+    """An axis-aligned rectangle: `center`, `size`, `area`, `left`/`right`/
+    `bottom`/`top`, `closest_point`, `contains`, `move_to`, `translate`.
 
     `x`/`y` is the centre, not a corner -- consistent with every shape in
     this module and with `canvas.rectangle`. `w`/`h` are full width and
@@ -194,7 +195,8 @@ struct Rectangle:
 
 @fieldwise_init
 struct Circle:
-    """A circle, positioned by its centre.
+    """A circle: `center`, `area`, `diameter`, `closest_point`, `contains`,
+    `move_to`, `translate`.
 
     `x`/`y` is the centre and `r` the radius -- there is no orientation, so
     unlike `Rectangle`/`Triangle` there is nothing y-up affects beyond the
@@ -291,7 +293,8 @@ struct Circle:
 
 @fieldwise_init
 struct Line:
-    """A line segment from `(x0, y0)` to `(x1, y1)`.
+    """A line segment from `(x0, y0)` to `(x1, y1)`: `length`, `length_sq`,
+    `midpoint`, `closest_point`, `intersects`, `move_to`, `translate`.
 
     Unlike `Rectangle`/`Circle`/`Triangle`, `Line` has no interior and is
     not a shape: it has no `center()`, `contains(region)` beyond the two
@@ -416,7 +419,9 @@ struct Line:
 
 @fieldwise_init
 struct Triangle:
-    """A triangle defined by its three vertices `(x1,y1)`, `(x2,y2)`, `(x3,y3)`.
+    """A triangle defined by its three vertices `(x1,y1)`, `(x2,y2)`,
+    `(x3,y3)`: `center`, `area`, `closest_point`, `contains`, `move_to`,
+    `translate`.
 
     Unlike `Rectangle`/`Circle`, a `Triangle` is not centre-positioned in
     its fields -- `center()` (the centroid) is derived, and `move_to`
@@ -470,11 +475,8 @@ struct Triangle:
     def closest_point(self, v: Vector2) -> Vector2:
         return self.closest_point(v.x, v.y)
 
-    def contains(self, v: Vector2) -> Bool:
-        return self.contains(v.x, v.y)
-
     def contains(self, px: Float64, py: Float64) -> Bool:
-        var signed_area2 = (self.x2 - self.x1) * (self.y3 - self.y1) - (self.y2 - self.y1) * (self.x3 - self.x1)
+        var signed_area2 =(self.x2 - self.x1) * (self.y3 - self.y1) - (self.y2 - self.y1) * (self.x3 - self.x1)
         if signed_area2 == 0.0:
             # Degenerate hull: a segment (or a point). Contained iff on the
             # longest edge -- the other two edges are contained within it.
@@ -492,6 +494,9 @@ struct Triangle:
         var has_neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
         var has_pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
         return not (has_neg and has_pos)
+
+    def contains(self, v: Vector2) -> Bool:
+        return self.contains(v.x, v.y)
 
     def contains(self, other: Triangle) -> Bool:
         for p in other._points():
