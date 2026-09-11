@@ -6,7 +6,7 @@ from .viewport import Viewport
 from .font import Font, FontWeight
 from .canvas import (
     Canvas,
-    CanvasState,
+    PersistentCanvasState,
     StyleGuard as StyleGuard,
     TransformGuard as TransformGuard,
 )

@@ -1,4 +1,4 @@
-from create.render.canvas import Canvas, CanvasState
+from create.render.canvas import Canvas, PersistentCanvasState
 from .context import Context
 from .input import Input
 from .program import Program
@@ -12,8 +12,8 @@ def step[
     mut ctx: Context,
     input: Input,
     surf: Surface[o],
-    var state: CanvasState,
-) raises -> CanvasState:
+    var state: PersistentCanvasState,
+) raises -> PersistentCanvasState:
     """Advance `program` by one frame onto `surf` and hand its state back.
 
     The windowed and headless loops differ in how they get a frame started —
@@ -24,7 +24,7 @@ def step[
 
     `state` travels in and out because a `Canvas` is a per-frame view: it is
     built over this frame's surface and dropped before the frame is presented,
-    so anything longer-lived than a frame rides in `CanvasState`.
+    so anything longer-lived than a frame rides in `PersistentCanvasState`.
     """
     program.update(ctx, input)
     var canvas = Canvas(surf, ctx.view, state^)

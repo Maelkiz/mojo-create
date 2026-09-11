@@ -2,13 +2,20 @@ from std.math import min, max, sqrt
 from .vector2 import Vector2
 
 
-trait Convex:
+trait ConvexShape:
+    """A shape that supports point queries and `overlaps` tests.
+
+    Implementers must be convex: the overlap test walks from one shape's
+    centre to the other's nearest surface point, which only decides
+    containment correctly for shapes with no re-entrant edges.
+    """
+
     def center(self) -> Vector2: ...
     def closest_point(self, px: Float64, py: Float64) -> Vector2: ...
     def contains(self, px: Float64, py: Float64) -> Bool: ...
 
 
-def overlaps[A: Convex, B: Convex](a: A, b: B) -> Bool:
+def overlaps[A: ConvexShape, B: ConvexShape](a: A, b: B) -> Bool:
     var c = a.center()
     var p = b.closest_point(c.x, c.y)
     return a.contains(p.x, p.y)
@@ -37,7 +44,7 @@ def _project_max(nx: Float64, ny: Float64, ax: Float64, ay: Float64, bx: Float64
 
 
 @fieldwise_init
-struct Rectangle(Convex):
+struct Rectangle(ConvexShape):
     var x: Float64
     var y: Float64
     var w: Float64
@@ -108,7 +115,7 @@ struct Rectangle(Convex):
 
 
 @fieldwise_init
-struct Circle(Convex):
+struct Circle(ConvexShape):
     var x: Float64
     var y: Float64
     var r: Float64
@@ -199,7 +206,7 @@ struct Line:
 
 
 @fieldwise_init
-struct Triangle(Convex):
+struct Triangle(ConvexShape):
     var x1: Float64
     var y1: Float64
     var x2: Float64

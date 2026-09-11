@@ -1,4 +1,4 @@
-from .geometry import Convex, overlaps, Rectangle, Circle, Line, Triangle
+from .geometry import ConvexShape, overlaps, Rectangle, Circle, Line, Triangle
 from .util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
 from .vector2 import Vector2
 from .vector3 import Vector3

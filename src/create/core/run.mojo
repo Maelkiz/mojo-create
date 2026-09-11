@@ -10,7 +10,7 @@ from window.event import (
     MouseButtonUp,
     MouseWheel,
 )
-from create.render.canvas import CanvasState
+from create.render.canvas import PersistentCanvasState
 from .frame import step
 from create.render.surface import Surface
 from .input import Input
@@ -90,7 +90,7 @@ def _run_loop[
     # Style and loaded fonts live here rather than in the Canvas, which is
     # rebuilt every frame; the transform stack deliberately does not, so each
     # frame starts unrotated and untranslated.
-    var state = CanvasState()
+    var state = PersistentCanvasState()
     # Seeded here rather than in run() so the program's create() — which may
     # load fonts or decode audio — does not land in the first frame's delta.
     ctx.time._start(win.ticks())

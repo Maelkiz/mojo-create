@@ -136,7 +136,7 @@ file minimal: it builds on every commit, and its cost must not grow with the exa
 
 **Imports:**
 
-- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `CanvasState`, `Color`, `HorizontalAlignment`/`VerticalAlignment`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
+- `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `Canvas`, `PersistentCanvasState`, `Color`, `HorizontalAlignment`/`VerticalAlignment`, `AutoScale`, `Font`/`FontWeight`, `Sprite`, `SpriteAnimation`/`SpriteAnimator`, `Surface`/`MemorySurface`, `script_dir`, plus `Vector2`, `Matrix`, `identity`/`translate`/`rotate`/`scale` and the geometry shapes.
 - `from create.math import *` — adds `Vector3`, `Random`, `inverse`/`apply`/`perspective`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.audio import *` — `Sound`, `Audio`.
 
@@ -189,10 +189,11 @@ pair, including that hook and a deliberately-never-cleared canvas so ink accumul
 **`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
 over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
 pointer, which is what makes `run_headless` possible at all. Anything that must survive the frame
-boundary lives in `CanvasState` (loaded fonts, letterbox colour), moved in at construction and
-back out by `_release`. The transform stack and the style deliberately do **not**: every frame starts
-unrotated, untranslated and at the default style, so a missing pop or a forgotten `no_stroke` cannot
-leak into the next one. Nothing may hold a `Canvas` across frames; hold the `CanvasState` instead.
+boundary lives in `PersistentCanvasState` (loaded fonts, letterbox colour), moved in at
+construction and back out by `_release`. The transform stack and the style deliberately do **not**:
+every frame starts unrotated, untranslated and at the default style, so a missing pop or a forgotten
+`no_stroke` cannot leak into the next one. Nothing may hold a `Canvas` across frames; hold the
+`PersistentCanvasState` instead.
 
 Both loops share [frame.mojo](src/create/core/frame.mojo)'s `step` for the frame body, so the windowed
 and headless paths cannot drift in what a frame *is*; they differ only in how one gets started (SDL
@@ -422,14 +423,14 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the coordinate space a program is authored in, and the factor `ctx.autoscale` scales by. Independent of the window: unchanged by a resize or by fullscreen. Fixed under `AutoScale.FIT`; under `EXTEND` the reported size grows with the window |
 | `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
-| `CanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
+| `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` | RAII wrapper from `canvas.transform(m)` — pops the matrix on scope exit |
 | `StyleGuard` | RAII wrapper from `canvas.style()` — restores fill, stroke and font settings on scope exit |
 | `Color` | `Color(r, g, b, a=255)` or `Color(gray)`; factories `Color.hex(0x336699)`, `Color.hsv(h, s, v)`, `Color.lerp(a, b, t)`; constants `BLACK`/`WHITE`/`DARK_GRAY`/`GRAY`/`LIGHT_GRAY`/`RED`/`GREEN`/`BLUE`/`CYAN`/`MAGENTA`/`YELLOW`/`ORANGE`; queries `.luminance()`, `.to_hsv()`, `.over(dst)` |
 | `HorizontalAlignment` / `VerticalAlignment` | Text anchoring, set through the overloaded `canvas.text_align`: `HorizontalAlignment.LEFT`/`CENTER`/`RIGHT`, `VerticalAlignment.TOP`/`MIDDLE`/`BOTTOM`. Stored on `Style` as `text_horizontal_alignment`/`text_vertical_alignment` |
 | `Font` / `FontWeight` | Packaged Noto faces, lazily loaded on first text draw, with a symbols fallback for missing glyphs; weights `THIN`/`LIGHT`/`REGULAR`/`MEDIUM`/`BOLD`/`BLACK` |
 | `Key` / `MouseButton` | Named codes for the `Int` overloads of the `Input` queries |
-| `Convex` | Trait for SAT collision: implement `center()`, `closest_point()`, `contains()` |
+| `ConvexShape` | Trait for `overlaps` and point queries: implement `center()`, `closest_point()`, `contains()`. Implementers must be convex — the test is a centre-to-nearest-point walk, not SAT |
 | `Matrix` | Generic `Matrix[rows, cols]` plus free functions `identity`, `inverse`, `apply`, `translate`, `rotate`, `scale`, `perspective` |
 | `Random` | Seeded generator: `Random()` or `Random(seed)`, then `.float()`, `.float(lo, hi)`, `.int(lo, hi)`, `.bool()` |
 | `Sprite` | Pixel buffer: `Sprite.load(path)` or `Sprite.load(path, w, h)` (BMP/PNG/JPEG, detected by extension), `Sprite.solid(w, h, r, g, b, a)`, `Sprite.from_rgba(w, h, data)`, `.resize(w, h)` |
