@@ -243,6 +243,37 @@ struct Line:
             return True
         return False
 
+    def closest_point(self, px: Float64, py: Float64) -> Vector2:
+        return _closest_on_segment(px, py, self.x0, self.y0, self.x1, self.y1)
+
+    def closest_point(self, v: Vector2) -> Vector2:
+        return self.closest_point(v.x, v.y)
+
+    def midpoint(self) -> Vector2:
+        return Vector2((self.x0 + self.x1) / 2.0, (self.y0 + self.y1) / 2.0)
+
+    def move_to(mut self, x: Float64, y: Float64):
+        var m = self.midpoint()
+        var dx = x - m.x; var dy = y - m.y
+        self.x0 += dx; self.y0 += dy
+        self.x1 += dx; self.y1 += dy
+
+    def move_to(mut self, x: Int, y: Int):
+        self.move_to(Float64(x), Float64(y))
+
+    def move_to(mut self, pos: Vector2):
+        self.move_to(pos.x, pos.y)
+
+    def translate(mut self, dx: Float64, dy: Float64):
+        self.x0 += dx; self.y0 += dy
+        self.x1 += dx; self.y1 += dy
+
+    def translate(mut self, dx: Int, dy: Int):
+        self.translate(Float64(dx), Float64(dy))
+
+    def translate(mut self, delta: Vector2):
+        self.translate(delta.x, delta.y)
+
 
 @fieldwise_init
 struct Triangle:
