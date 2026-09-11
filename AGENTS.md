@@ -26,6 +26,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
+| `bytes` | `src/create/bytes.mojo` | Internal leaf — little-endian integer decoding. Imports nothing, re-exported by nothing |
 
 ## Key Files
 
@@ -59,6 +60,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/sprite/animator.mojo` | `SpriteAnimator` — the playhead over one animation |
 | `src/create/audio/sound.mojo` | `Sound` — decoded PCM + format/channels/freq, `load`/`from_pcm` |
 | `src/create/audio/audio.mojo` | `Audio` — playback device, voice lifecycle, `play`/`stop`/`update` |
+| `src/create/bytes.mojo` | `le_uint`, `sign_extend_32` — the one byte-assembly loop, shared by the image decoders and the freetype struct readers |
 
 ## Build & Test
 
@@ -153,6 +155,14 @@ The rule now applies at two levels. `render/__init__.mojo` closes over `math` an
 `Context` names `AutoScale`. The user-facing effect is unchanged — `from create.core import *` is
 still the single import a program needs, and no example was touched by the split. Adding a name to
 either `__init__.mojo` is not a judgement call — check whether a signature names it.
+
+**`bytes` is outside the rule, deliberately.** It is a leaf: it imports nothing, and no
+`__init__.mojo` re-exports it. `sprite` and `render` both need to assemble little-endian bytes into
+an `Int` and neither may depend on the other, so the one copy of that loop lives at the root where
+both can reach it. It is internal plumbing, not public surface — adding it to an `__init__.mojo`
+would be wrong, since no user-facing signature names `le_uint` or `sign_extend_32`. `render`
+importing it is not a violation of the `render`-never-imports-`core` rule: `bytes` is not `core`,
+and depending on a leaf cannot make a cycle.
 
 **That edge is nominal.** Outside the re-exports above, `render` names `Sprite` and
 `SpriteAnimator` only in `canvas.sprite`'s overloads — no `render` code depends on what those types
@@ -293,6 +303,15 @@ Under `EXTEND`, `ctx.width`/`height` change with the window, so layout must anch
 
 **Mouse buttons:** `input.is_mouse_down()` / `input.mouse_just_pressed()` / `input.mouse_just_released()` take a button number, defaulting to `MouseButton.LEFT` so the common case needs no argument. `MouseButton` (`LEFT`/`MIDDLE`/`RIGHT`/`BACK`/`FORWARD`) names the rest — prefer it over the raw int, since the numbering isn't obvious (`RIGHT` is 3, not 2). Values match SDL's numbering, but `BACK`/`FORWARD` are named for the side thumb buttons' actual job (SDL calls them X1/X2), not SDL's internal label. `input.wheel` is this frame's scroll delta, zeroed every frame like the key edge bits. `input.mouse_press_pos` is the world position at the most recent press this frame — captured at the press event itself, so it doesn't drift if the mouse keeps moving before the frame ends.
 
+`Input._set_mouse(x, y)` is the single writer of `mouse`, `mouse_x` and `mouse_y`. The three event
+arms in `run.mojo` that carry a pointer position all go through it, which is the point: when they
+each wrote the fields themselves, the `MouseButtonUp` arm updated the `Int` pair and left `mouse`
+holding the previous frame's position. A new event that reports a position calls `_set_mouse` and
+adds only what is genuinely its own — `mouse_press_pos` on a press, say. The conversion to the `Int`
+fields **floors** rather than truncates, because world space is centred: `Int(-0.5)` is `0` but
+`floor(-0.5)` is `-1`, so truncating would round the left and bottom halves of the screen toward the
+origin. Being a method on a plain struct, it is testable without a window, which `run.mojo` is not.
+
 `Program` has no input callbacks — `update`'s `input` parameter is the only input surface, and it is complete: every window event either updates a field on `Input` or is otherwise already reflected in `Context` (`ctx.width`/`height` refresh every frame, so a resize needs no separate notification). This is also what makes input scriptable in a test: `Input` is a plain struct, so `run_headless` or a direct `step(...)` call can fill it in and drive click- or key-driven behaviour without a window — see [tests/core/test_frame.mojo](tests/core/test_frame.mojo).
 
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`, `SpriteAnimator`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.
@@ -412,6 +431,13 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
    The reference never crosses a function boundary there, so it needs no nameable origin. Don't try
    to add the accessor back.
 
+   Only two of `canvas.sprite`'s six animator overloads index the frame this way — the two taking
+   `Float64` coordinates. The other four delegate to them, so the workaround is confined rather than
+   copied six times. Note that a library build only type-checks the `def` bodies it reaches, so those
+   four were compiled by nothing until
+   [tests/render/test_canvas.mojo](tests/render/test_canvas.mojo) gained a program that draws through
+   all six; keep that test when adding an overload.
+
 ## Terminology
 
 | Term | Meaning |
@@ -433,7 +459,7 @@ by one step, so a long frame skips ahead instead of drifting behind the animatio
 | `ConvexShape` | Trait for `overlaps` and point queries: implement `center()`, `closest_point()`, `contains()`. Implementers must be convex — the test is a centre-to-nearest-point walk, not SAT |
 | `Matrix` | Generic `Matrix[rows, cols]` plus free functions `identity`, `inverse`, `apply`, `translate`, `rotate`, `scale`, `perspective` |
 | `Random` | Seeded generator: `Random()` or `Random(seed)`, then `.float()`, `.float(lo, hi)`, `.int(lo, hi)`, `.bool()` |
-| `Sprite` | Pixel buffer: `Sprite.load(path)` or `Sprite.load(path, w, h)` (BMP/PNG/JPEG, detected by extension), `Sprite.solid(w, h, r, g, b, a)`, `Sprite.from_rgba(w, h, data)`, `.resize(w, h)` |
+| `Sprite` | Pixel buffer: `Sprite.load(path)` or `Sprite.load(path, w, h)` (BMP/PNG/JPEG, detected by extension), `Sprite.solid(w, h, r, g, b, a)`, `Sprite.from_rgba(w, h, data)`, `.resize(w, h)`; `Sprite.supports_extension(ext)` is the one list of readable formats, which `SpriteAnimation.from_folder` filters by |
 | `SpriteAnimation` | Frame sequence + rate: `SpriteAnimation(frames, fps)` (raises on an empty list), `SpriteAnimation.from_sheet(sheet, frame_width, frame_height, start, count, fps)`, `SpriteAnimation.from_folder(path, fps)`; `.frames`, `.fps`, `.count()`, `.frame_duration()`. Held as an `ArcPointer[SpriteAnimation]` |
 | `SpriteAnimator` | One entity's playhead over a `SpriteAnimation`: `use`/`play`/`loop` (each also taking an animation), `pause`/`resume`/`stop`, `update(dt)`, `is_playing()`/`is_finished()`, `.frame_index`. `use` is a no-op on the animation already held |
 | `Sound` | Decoded PCM audio + format/channels/freq; loaded via `Sound.load(path)` or synthesized via `Sound.from_pcm(samples)` |
