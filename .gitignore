@@ -2,8 +2,9 @@
 .pixi/*
 !.pixi/config.toml
 
-# IDE
-.vscode/
+# IDE — settings.json is shared (points the LSP at src/); the rest is personal
+.vscode/*
+!.vscode/settings.json
 
 # build artifacts
 *.mojoc
