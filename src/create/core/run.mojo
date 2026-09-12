@@ -96,14 +96,7 @@ def run[
     dynamic trait dispatch, which is also why `Backend` switches on a `kind`.
     """
     if backend == BACKEND_GPU:
-        if fullscreen:
-            # `GLWindow` takes no fullscreen flag, and silently opening a
-            # windowed program is worse than saying so.
-            raise Error(
-                "the GPU backend has no fullscreen mode yet — run it"
-                " windowed, or use the default CPU backend"
-            )
-        run_gl[P](title, width, height)
+        run_gl[P](title, width, height, fullscreen)
         return
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()

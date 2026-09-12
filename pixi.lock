@@ -119,15 +119,15 @@ environments:
 packages:
 - conda: /home/karl/Git/mojo-window/output/linux-64/mojo-window-0.2.0-hb0f4dca_0.conda
   subdir: linux-64
-  sha256: 2d49726fd220ed0fd3a06eb66929ba4c84596dc57ce42e859c9b282636b5b169
-  md5: cafb5d84c08b7e94866f3af4bde7c1c2
+  sha256: f475c56ef3be23e8c0411cfd1d95400b0797e14102156a7dc4ebed4cd480e1be
+  md5: 075ad055eadb62883e37d13aaad6bf32
   depends:
   - mojo-compiler >=1.0.0,<2.0a0
   - sdl3 >=3.4,<4
   - sdl3 >=3.4.16,<4.0a0
   channel: file:///home/karl/Git/mojo-window/output
   license: MIT
-  size: 98415
+  size: 99639
   timestamp: 1789206019208
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
   build_number: 20
