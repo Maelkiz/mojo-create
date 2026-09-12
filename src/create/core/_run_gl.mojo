@@ -34,7 +34,9 @@ geometry path for every kind. A driver that refuses the request fails context
 creation outright, so the caller retries once without it."""
 
 
-def _open_window(title: String, width: Int, height: Int) raises -> GLWindow:
+def _open_window(
+    title: String, width: Int, height: Int, fullscreen: Bool
+) raises -> GLWindow:
     """A multisampled GL window, falling back to none if the driver refuses.
 
     `GLWindow` deliberately does not degrade silently — an unsupported sample
@@ -42,9 +44,11 @@ def _open_window(title: String, width: Int, height: Int) raises -> GLWindow:
     antialias is a better outcome than a program that will not start.
     """
     try:
-        return GLWindow(title, width, height, msaa=_MSAA_SAMPLES)
+        return GLWindow(
+            title, width, height, msaa=_MSAA_SAMPLES, fullscreen=fullscreen
+        )
     except:
-        return GLWindow(title, width, height)
+        return GLWindow(title, width, height, fullscreen=fullscreen)
 
 
 def _update_dimensions(mut win: GLWindow, mut ctx: Context) raises -> Float64:
@@ -97,9 +101,14 @@ def run_gl[
     title: String,
     width: Int = 1280,
     height: Int = 720,
+    fullscreen: Bool = False,
     vsync: Bool = True,
 ) raises:
     """Open a GL window and run `P` on the GPU backend until it quits.
+
+    `fullscreen` covers the display; the design resolution is still
+    `width`/`height`, so the program is authored in the same space either way
+    and the viewport scales it to whatever the display turns out to be.
 
     `vsync=False` is for benchmarking only: without it every frame waits for
     the display and the measurement is the refresh rate rather than the
@@ -109,7 +118,7 @@ def run_gl[
     both the window size and the space the program is authored in, scaled to
     the window by `AutoScale.FIT` unless `create` says otherwise.
     """
-    var win = _open_window(title, width, height)
+    var win = _open_window(title, width, height, fullscreen)
     win.set_swap_interval(1 if vsync else 0)
     var ctx = Context()
     ctx.view.set_design(width, height)

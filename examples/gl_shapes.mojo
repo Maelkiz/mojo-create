@@ -8,8 +8,15 @@ stroke, a stroke wider than its shape, a rotated rect, a diagonal line, a
 letterbox bar under `FIT`.
 
     pixi run create examples/gl_shapes.mojo
+    pixi run create examples/gl_shapes.mojo fullscreen
     mojo build -I src examples/gl_shapes.mojo -o build/gl_shapes && ./build/gl_shapes
+
+`fullscreen` covers the display without changing the design resolution, so the
+letterbox bars stay in the frame and just get wider — the GPU backend takes the
+flag exactly as the CPU one does. Escape quits.
 """
+
+from std.sys import argv
 
 from create import *
 
@@ -131,4 +138,4 @@ struct App(Program):
 
 
 def main() raises:
-    run[App]("GL Shapes", 1280, 720, backend=BACKEND_GPU)
+    run[App]("GL Shapes", 1280, 720, fullscreen=True, backend=BACKEND_GPU)
