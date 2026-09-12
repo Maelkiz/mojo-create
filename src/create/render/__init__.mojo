@@ -1,4 +1,4 @@
-from ._backend import BACKEND_CPU as BACKEND_CPU, BACKEND_GPU as BACKEND_GPU
+from .render_backend import RenderBackend
 from .color import Color
 from .align import HorizontalAlignment, VerticalAlignment
 from .autoscale import AutoScale

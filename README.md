@@ -33,11 +33,11 @@ def main() raises:
     run[MyApp]("Example Sketch", fullscreen=True)
 ```
 
-Rendering runs on the CPU by default. `backend=BACKEND_GPU` runs the same program through an
+Rendering runs on the CPU by default. `backend=RenderBackend.GPU` runs the same program through an
 OpenGL 3.3 backend instead — no other change to the program:
 
 ```mojo
-run[MyApp]("Example Sketch", backend=BACKEND_GPU)
+run[MyApp]("Example Sketch", backend=RenderBackend.GPU)
 ```
 
 Run the example programs using the `create` pixi task:

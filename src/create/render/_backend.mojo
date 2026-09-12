@@ -28,9 +28,7 @@ from ._style import Style
 from ._transform import pixel_scale, stroke_width_px, uniform
 from .surface import Surface
 from ._text import TextRenderer
-
-comptime BACKEND_CPU = 0
-comptime BACKEND_GPU = 1
+from .render_backend import RenderBackend
 
 
 def device_bounds(
@@ -77,7 +75,7 @@ struct Backend(Movable):
     var text: TextRenderer
     var images: Dict[Int, _Image]
     var gl: Optional[GLRenderer]
-    """The GPU resources, present exactly when `kind == BACKEND_GPU`.
+    """The GPU resources, present exactly when `kind == RenderBackend.GPU`.
 
     They live on `Backend` rather than beside it so that the fonts, the image
     cache and the command buffer stay in one place whichever path presents
@@ -93,16 +91,16 @@ struct Backend(Movable):
     allocation is reused frame to frame instead of being rebuilt per frame.
     """
 
-    def __init__(out self, kind: Int = BACKEND_CPU) raises:
+    def __init__(out self, kind: Int = RenderBackend.CPU) raises:
         """A GPU backend builds its GL resources here, so a current context
-        is a precondition of `BACKEND_GPU` — the GL run loop opens its window
+        is a precondition of `RenderBackend.GPU` — the GL run loop opens its window
         first for exactly that reason."""
         self.kind = kind
         self.text = TextRenderer()
         self.images = Dict[Int, _Image]()
         self.commands = List[DrawCommand]()
         self.gl = Optional[GLRenderer]()
-        if kind == BACKEND_GPU:
+        if kind == RenderBackend.GPU:
             self.gl = Optional(GLRenderer())
 
     def record(mut self, var c: DrawCommand):
@@ -138,7 +136,7 @@ struct Backend(Movable):
         if not self.gl:
             raise Error(
                 "present_gpu called on a backend that has no GL renderer —"
-                " construct it with kind=BACKEND_GPU"
+                " construct it with kind=RenderBackend.GPU"
             )
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
