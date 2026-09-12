@@ -1,4 +1,3 @@
-from std.math import max, min, abs
 from .color import Color
 from .align import HorizontalAlignment, VerticalAlignment
 from .autoscale import AutoScale
@@ -14,35 +13,37 @@ from create.math.matrix import (
 )
 from create.sprite.sprite import Sprite
 from create.sprite.animator import SpriteAnimator
-from ._style import Style
-from ._text import TextRenderer
-from .surface import Surface
-from ._raster import (
-    blend,
-    blit_glyph,
-    blit_sprite,
-    fill_all,
-    fill_pixels,
-    fill_triangle,
-    line_pixels,
+from ._backend import Backend
+from ._command import (
+    circle_command,
+    clear_command,
+    letterbox_command,
+    line_command,
+    rect_command,
+    sprite_command,
+    text_command,
+    triangle_command,
 )
+from ._style import Style
+from .surface import Surface
 
 
 struct PersistentCanvasState(Movable):
     """The part of a `Canvas` that outlives the frame it was drawn in.
 
     A `Canvas` is built fresh over each frame's framebuffer, so anything it
-    must remember between frames — the loaded fonts — is moved out at the end
-    of one frame and into the next. The transform stack and the style are
+    must remember between frames — the backend, and through it the loaded
+    fonts, the glyph cache and the interned sprite images — is moved out at the
+    end of one frame and into the next. The transform stack and the style are
     deliberately absent: both start fresh every frame by construction, so a
     missing pop or a forgotten `no_stroke` cannot leak into the next frame.
     """
 
-    var text: TextRenderer
+    var backend: Backend
     var letterbox: Color
 
     def __init__(out self):
-        self.text = TextRenderer()
+        self.backend = Backend()
         self.letterbox = Color(0x22)
 
 
@@ -105,6 +106,13 @@ struct Canvas[origin: Origin[mut=True]]:
     Origin erasure would sidestep it, but `MutableAnyOrigin` is not a known
     declaration in this Mojo version. `__init__` takes `out self`, so there is
     no existing borrow to alias against. Don't reach for the `_sync` shape.
+
+    A draw call touches no pixels: it appends a `DrawCommand` to the backend's
+    recording, and the backend replays the whole frame afterwards. So a
+    `Canvas` is a recorder, and the geometry it records is *local* — the shape
+    as the program asked for it, paired with the current transform — never
+    device pixels. A style is resolved at record time, so a later `fill()`
+    cannot reach back and change what an earlier command paints.
 
     Every pixel write blends source-over, so a fill, stroke, sprite, glyph or
     `background` with `a < 255` composites with what is already there.
@@ -184,95 +192,36 @@ struct Canvas[origin: Origin[mut=True]]:
     def top(self) -> Float64:
         return self.view.top()
 
-    def _fill_pixels(mut self, x0: Int, y0: Int, x1: Int, y1: Int, c: Color):
-        fill_pixels(self._surf, x0, y0, x1, y1, c)
-
     def _draw_letterbox(mut self):
-        """Paint the window area outside the design bounds.
+        """Record the window area outside the design bounds.
 
         Runs after render, so it doubles as the clip for anything drawn past
         the edges of the design area. Nothing to do under `AutoScale.EXTEND`:
         the design covers the whole frame, so there is neither a bar to paint
         nor an out-of-bounds region to clip — and rounding the extended size
         could otherwise leave a one-pixel seam along an edge.
+
+        The one command whose geometry is already in device pixels: it is the
+        frame's clip rather than something the program drew, so no transform
+        applies to it.
         """
         if not self.view.scaled() or self.autoscale == AutoScale.EXTEND:
             return
-        var W = self._surf.width
-        var H = self._surf.height
-        var cx0 = Int(self.view.offset_x)
-        var cy0 = Int(self.view.offset_y)
-        var cx1 = Int(
-            self.view.offset_x + Float64(self.width) * self.scale + 0.5
+        var cx0 = Float64(Int(self.view.offset_x))
+        var cy0 = Float64(Int(self.view.offset_y))
+        var cx1 = Float64(
+            Int(self.view.offset_x + Float64(self.width) * self.scale + 0.5)
         )
-        var cy1 = Int(
-            self.view.offset_y + Float64(self.height) * self.scale + 0.5
+        var cy1 = Float64(
+            Int(self.view.offset_y + Float64(self.height) * self.scale + 0.5)
         )
-        var c = self.letterbox
-        if cy0 > 0:
-            self._fill_pixels(0, 0, W, cy0, c)
-        if cy1 < H:
-            self._fill_pixels(0, cy1, W, H, c)
-        if cx0 > 0:
-            self._fill_pixels(0, cy0, cx0, cy1, c)
-        if cx1 < W:
-            self._fill_pixels(cx1, cy0, W, cy1, c)
-
-    def _uniform(self) -> Bool:
-        """True when the transform is an axis-aligned uniform scale plus a
-        translation — a rect stays a rect, a circle stays a circle.
-
-        The base mapping alone qualifies (it scales by `s` and `-s`), so plain
-        drawing keeps the integer raster paths even under autoscale. Only
-        rotation, shear, and non-uniform scales fall through to the per-pixel
-        inverse mapping.
-        """
-        var m = self._transform
-        return (
-            m[0, 1] == 0.0
-            and m[1, 0] == 0.0
-            and m[2, 0] == 0.0
-            and m[2, 1] == 0.0
-            and m[2, 2] == 1.0
-            and abs(m[0, 0]) == abs(m[1, 1])
+        self._state.backend.record(
+            letterbox_command(self.letterbox, cx0, cy0, cx1, cy1)
         )
 
-    def _pixel_scale(self) -> Float64:
-        """World units per pixel along the current transform.
-
-        Stroke width, font size, and sprite extents are authored in world units
-        but rasterised in pixels, so they all scale by this. Falls back to the
-        autoscale factor when the transform is not uniform and no single factor
-        exists.
-        """
-        if self._uniform():
-            return abs(self._transform[0, 0])
-        return self.scale
-
-    def _device_bounds(
-        self, lx0: Float64, ly0: Float64, lx1: Float64, ly1: Float64
-    ) -> Tuple[Int, Int, Int, Int]:
-        """Device-space scan bounds for the local box `[lx0, lx1] x [ly0, ly1]`.
-
-        Returns `(x_min, y_min, x_max, y_max)`, half-open on the maxima and
-        clipped to the surface. The bounds come from the four *corners*, not
-        the edge midpoints: under a rotation the midpoints are no longer the
-        extremes, and scanning between them clips the shape.
-        """
-        var p0 = mat_apply(self._transform, lx0, ly0)
-        var p1 = mat_apply(self._transform, lx1, ly0)
-        var p2 = mat_apply(self._transform, lx1, ly1)
-        var p3 = mat_apply(self._transform, lx0, ly1)
-        var x_min = max(Int(min(min(p0[0], p1[0]), min(p2[0], p3[0]))), 0)
-        var x_max = min(
-            Int(max(max(p0[0], p1[0]), max(p2[0], p3[0]))) + 1, self._surf.width
-        )
-        var y_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
-        var y_max = min(
-            Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1,
-            self._surf.height,
-        )
-        return (x_min, y_min, x_max, y_max)
+    # `_uniform`, `_pixel_scale`, `_device_bounds` and `_stroke_width_px` used
+    # to live here. They are properties of a matrix, not of a canvas, and only
+    # the replay needs them now — see `_backend.mojo`.
 
     def transform(
         mut self, m: Matrix[3, 3]
@@ -327,26 +276,6 @@ struct Canvas[origin: Origin[mut=True]]:
         transform's frame."""
         return mat_apply(self._user_inv, x, y)
 
-    def _stroke_width_px(self) -> Int:
-        """Stroke width in framebuffer pixels, never thinner than one."""
-        return max(
-            Int(Float64(self._style.stroke_width) * self._pixel_scale() + 0.5),
-            1,
-        )
-
-    def _line_pixels(
-        mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64
-    ):
-        line_pixels(
-            self._surf,
-            x0,
-            y0,
-            x1,
-            y1,
-            self._style.stroke,
-            self._stroke_width_px(),
-        )
-
     def fill(mut self, color: Color):
         """Paint the inside of shapes in `color`, and re-enable filling.
 
@@ -382,135 +311,26 @@ struct Canvas[origin: Origin[mut=True]]:
         trails are drawn: `canvas.background(Color(0x11, 0x11, 0x11, 24))`
         fades the previous frame a little further each time.
         """
-        fill_all(self._surf, color)
+        self._state.backend.record(clear_command(color))
 
     def rectangle(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
-        var surf = self._surf
-        var W = surf.width
-        var lx0 = x - w / 2.0
-        var ly0 = y - h / 2.0
-        var lx1 = x + w / 2.0
-        var ly1 = y + h / 2.0
-
-        if self._uniform():
-            # Axis-aligned: map the two opposite corners and order them, since
-            # the y flip in the base mapping sends the smaller world y to the
-            # larger pixel row.
-            var p0 = mat_apply(self._transform, lx0, ly0)
-            var p1 = mat_apply(self._transform, lx1, ly1)
-            var x0 = Int(min(p0[0], p1[0]))
-            var y0 = Int(min(p0[1], p1[1]))
-            var iw = Int(abs(p1[0] - p0[0]))
-            var ih = Int(abs(p1[1] - p0[1]))
-            if self._style.fill_enabled:
-                fill_pixels(surf, x0, y0, x0 + iw, y0 + ih, self._style.fill)
-            if self._style.stroke_enabled:
-                var sw = self._stroke_width_px()
-                var c = self._style.stroke
-                fill_pixels(surf, x0, y0, x0 + iw, y0 + sw, c)
-                fill_pixels(surf, x0, y0 + ih - sw, x0 + iw, y0 + ih, c)
-                fill_pixels(surf, x0, y0 + sw, x0 + sw, y0 + ih - sw, c)
-                fill_pixels(
-                    surf, x0 + iw - sw, y0 + sw, x0 + iw, y0 + ih - sw, c
-                )
-        else:
-            var b = self._device_bounds(lx0, ly0, lx1, ly1)
-            var sx_min = b[0]
-            var sy_min = b[1]
-            var sx_max = b[2]
-            var sy_max = b[3]
-            var sw_f = Float64(self._style.stroke_width)
-            for row in range(sy_min, sy_max):
-                for col in range(sx_min, sx_max):
-                    var local = mat_apply(
-                        self._transform_inv, Float64(col), Float64(row)
-                    )
-                    var lx = local[0]
-                    var ly = local[1]
-                    if lx < lx0 or lx > lx1 or ly < ly0 or ly > ly1:
-                        continue
-                    var off = (row * W + col) * 4
-                    var in_inner = (
-                        lx >= lx0 + sw_f
-                        and lx <= lx1 - sw_f
-                        and ly >= ly0 + sw_f
-                        and ly <= ly1 - sw_f
-                    )
-                    if self._style.fill_enabled and (
-                        not self._style.stroke_enabled or in_inner
-                    ):
-                        blend(surf, off, self._style.fill)
-                    elif self._style.stroke_enabled and not in_inner:
-                        blend(surf, off, self._style.stroke)
+        self._state.backend.record(
+            rect_command(self._transform, self._style, x, y, w, h)
+        )
 
     def circle(mut self, cx: Float64, cy: Float64, r: Float64):
-        var surf = self._surf
-        var W = surf.width
-        var H = surf.height
-        var r2 = r * r
-        var r_inner = r - Float64(self._style.stroke_width)
-        var r_inner2 = r_inner * r_inner
-
-        if self._uniform():
-            # A uniform scale keeps a circle a circle, so it stays a distance
-            # test — just in pixels rather than world units.
-            var p = mat_apply(self._transform, cx, cy)
-            var pcx = p[0]
-            var pcy = p[1]
-            var pr = r * self._pixel_scale()
-            var pr2 = pr * pr
-            var pr_inner = pr - Float64(self._stroke_width_px())
-            var pr_inner2 = pr_inner * pr_inner
-            var x0 = max(Int(pcx - pr), 0)
-            var y0 = max(Int(pcy - pr), 0)
-            var x1 = min(Int(pcx + pr) + 1, W)
-            var y1 = min(Int(pcy + pr) + 1, H)
-            for row in range(y0, y1):
-                var dy = Float64(row) - pcy
-                for col in range(x0, x1):
-                    var dx = Float64(col) - pcx
-                    var d2 = dx * dx + dy * dy
-                    if d2 <= pr2:
-                        var off = (row * W + col) * 4
-                        if self._style.fill_enabled and (
-                            not self._style.stroke_enabled
-                            or pr_inner <= 0.0
-                            or d2 <= pr_inner2
-                        ):
-                            blend(surf, off, self._style.fill)
-                        elif self._style.stroke_enabled and d2 > pr_inner2:
-                            blend(surf, off, self._style.stroke)
-        else:
-            var b = self._device_bounds(cx - r, cy - r, cx + r, cy + r)
-            var sx_min = b[0]
-            var sy_min = b[1]
-            var sx_max = b[2]
-            var sy_max = b[3]
-            for row in range(sy_min, sy_max):
-                for col in range(sx_min, sx_max):
-                    var local = mat_apply(
-                        self._transform_inv, Float64(col), Float64(row)
-                    )
-                    var dx = local[0] - cx
-                    var dy = local[1] - cy
-                    var d2 = dx * dx + dy * dy
-                    if d2 <= r2:
-                        var off = (row * W + col) * 4
-                        if self._style.fill_enabled and (
-                            not self._style.stroke_enabled
-                            or r_inner <= 0.0
-                            or d2 <= r_inner2
-                        ):
-                            blend(surf, off, self._style.fill)
-                        elif self._style.stroke_enabled and d2 > r_inner2:
-                            blend(surf, off, self._style.stroke)
+        self._state.backend.record(
+            circle_command(self._transform, self._style, cx, cy, r)
+        )
 
     def line(mut self, x0: Float64, y0: Float64, x1: Float64, y1: Float64):
+        # Recorded only when it would draw: a stroke-less line is the one shape
+        # with nothing left to paint, so the command would be pure overhead.
         if not self._style.stroke_enabled:
             return
-        var p0 = mat_apply(self._transform, x0, y0)
-        var p1 = mat_apply(self._transform, x1, y1)
-        self._line_pixels(p0[0], p0[1], p1[0], p1[1])
+        self._state.backend.record(
+            line_command(self._transform, self._style, x0, y0, x1, y1)
+        )
 
     def triangle(
         mut self,
@@ -521,23 +341,11 @@ struct Canvas[origin: Origin[mut=True]]:
         x3: Float64,
         y3: Float64,
     ):
-        var p1 = mat_apply(self._transform, x1, y1)
-        var p2 = mat_apply(self._transform, x2, y2)
-        var p3 = mat_apply(self._transform, x3, y3)
-        var sx1 = p1[0]
-        var sy1 = p1[1]
-        var sx2 = p2[0]
-        var sy2 = p2[1]
-        var sx3 = p3[0]
-        var sy3 = p3[1]
-        if self._style.fill_enabled:
-            fill_triangle(
-                self._surf, sx1, sy1, sx2, sy2, sx3, sy3, self._style.fill
+        self._state.backend.record(
+            triangle_command(
+                self._transform, self._style, x1, y1, x2, y2, x3, y3
             )
-        if self._style.stroke_enabled:
-            self._line_pixels(sx1, sy1, sx2, sy2)
-            self._line_pixels(sx2, sy2, sx3, sy3)
-            self._line_pixels(sx3, sy3, sx1, sy1)
+        )
 
     def rectangle(mut self, x: Int, y: Int, w: Int, h: Int):
         self.rectangle(Float64(x), Float64(y), Float64(w), Float64(h))
@@ -594,42 +402,39 @@ struct Canvas[origin: Origin[mut=True]]:
         self.sprite(s, Float64(cx), Float64(cy))
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64):
-        # One sprite pixel per framebuffer pixel — worth a dedicated blit, but
-        # only while nothing resizes it. Anything else goes through the sized
-        # overload, which resamples.
-        if not self._uniform() or self._pixel_scale() != 1.0:
-            self.sprite(s, cx, cy, s.width, s.height)
-            return
-        var p = mat_apply(self._transform, cx, cy)
-        blit_sprite(
-            self._surf,
-            s.pixels.unsafe_ptr(),
-            s.width,
-            s.height,
-            Int(p[0]) - s.width // 2,
-            Int(p[1]) - s.height // 2,
-            s.width,
-            s.height,
-        )
+        """Draw `s` at its own pixel size.
+
+        The same command as the sized overload: at a pixel scale of 1 the two
+        agree exactly, and the one-sprite-pixel-per-framebuffer-pixel shortcut
+        they used to differ by now lives inside `blit_sprite`, where the replay
+        can take it without the record site having to know.
+        """
+        self.sprite(s, cx, cy, s.width, s.height)
 
     def sprite(mut self, s: Sprite, pos: Vector2):
         self.sprite(s, pos.x, pos.y)
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int):
         # Rotation and shear are not resampled — only position and scale apply.
-        var p = mat_apply(self._transform, cx, cy)
-        var sf = self._pixel_scale()
-        var dw = max(Int(Float64(w) * sf + 0.5), 1)
-        var dh = max(Int(Float64(h) * sf + 0.5), 1)
-        blit_sprite(
-            self._surf,
-            s.pixels.unsafe_ptr(),
-            s.width,
-            s.height,
-            Int(p[0]) - dw // 2,
-            Int(p[1]) - dh // 2,
-            dw,
-            dh,
+        #
+        # The image is interned *now*, not at replay: the command then carries
+        # an id rather than a borrow of the program's pixels, which is what
+        # keeps caller-owned memory out of a buffer that outlives the call.
+        var image = self._state.backend.intern_image(
+            s._id, s.pixels.unsafe_ptr(), s.width, s.height
+        )
+        self._state.backend.record(
+            sprite_command(
+                self._transform,
+                self._style,
+                cx,
+                cy,
+                Float64(w),
+                Float64(h),
+                image,
+                s.width,
+                s.height,
+            )
         )
 
     def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int):
@@ -703,13 +508,14 @@ struct Canvas[origin: Origin[mut=True]]:
     def font(mut self, var f: Font):
         """Swap the face. Lives in `PersistentCanvasState`, so unlike the style
         settings a font outlives the frame that set it."""
-        self._state.text.set_font(f^)
+        self._state.backend.text.set_font(f^)
 
     def text(mut self, s: String, x: Float64, y: Float64) raises:
         if not self._style.fill_enabled:
             return
-        # Only the anchor is mapped — the layout itself happens in pixel space.
-        var p = mat_apply(self._transform, x, y)
-        var surf = self._surf
-        var scale = self._pixel_scale()
-        self._state.text.draw(surf, s, p[0], p[1], self._style, scale)
+        # Deferred whole. Nothing about the layout is decided here: the
+        # advances, the alignment and the baseline all come out of the font,
+        # which the backend owns, so they are resolved at replay.
+        self._state.backend.record(
+            text_command(self._transform, self._style, x, y, s.copy())
+        )
