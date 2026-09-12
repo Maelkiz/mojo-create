@@ -93,15 +93,24 @@ def _run_loop[
 
 def run_gl[
     P: Program
-](title: String, width: Int = 1280, height: Int = 720) raises:
+](
+    title: String,
+    width: Int = 1280,
+    height: Int = 720,
+    vsync: Bool = True,
+) raises:
     """Open a GL window and run `P` on the GPU backend until it quits.
+
+    `vsync=False` is for benchmarking only: without it every frame waits for
+    the display and the measurement is the refresh rate rather than the
+    renderer.
 
     The design-resolution contract is `run`'s, unchanged: `width`/`height` are
     both the window size and the space the program is authored in, scaled to
     the window by `AutoScale.FIT` unless `create` says otherwise.
     """
     var win = _open_window(title, width, height)
-    win.set_swap_interval(1)
+    win.set_swap_interval(1 if vsync else 0)
     var ctx = Context()
     ctx.view.set_design(width, height)
     ctx.autoscale = AutoScale.FIT
