@@ -25,7 +25,6 @@ from ._command import (
     triangle_command,
 )
 from ._style import Style
-from .surface import Surface
 
 
 struct PersistentCanvasState(Movable):
@@ -47,14 +46,12 @@ struct PersistentCanvasState(Movable):
         self.letterbox = Color(0x22)
 
 
-struct TransformGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
-    Movable
-):
+struct TransformGuard[origin: Origin[mut=True]](Movable):
     """Pops the matrix `canvas.transform` pushed, on scope exit."""
 
-    var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
+    var _canvas: Pointer[Canvas, Self.origin]
 
-    def __init__(out self, ref[Self.origin] canvas: Canvas[Self.surf_origin]):
+    def __init__(out self, ref[Self.origin] canvas: Canvas):
         self._canvas = Pointer(to=canvas)
 
     def __enter__(mut self):
@@ -64,19 +61,17 @@ struct TransformGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
         self._canvas[]._pop_transform()
 
 
-struct StyleGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
-    Movable
-):
+struct StyleGuard[origin: Origin[mut=True]](Movable):
     """Restores the style the canvas had when the scope was entered.
 
     `Style` is a plain value, so the guard carries its own snapshot and no
     stack is needed — nesting works because each guard restores what it saw.
     """
 
-    var _canvas: Pointer[Canvas[Self.surf_origin], Self.origin]
+    var _canvas: Pointer[Canvas, Self.origin]
     var _saved: Style
 
-    def __init__(out self, ref[Self.origin] canvas: Canvas[Self.surf_origin]):
+    def __init__(out self, ref[Self.origin] canvas: Canvas):
         self._saved = canvas._style.copy()
         self._canvas = Pointer(to=canvas)
 
@@ -87,25 +82,26 @@ struct StyleGuard[surf_origin: Origin[mut=True], origin: Origin[mut=True]](
         self._canvas[]._style = self._saved.copy()
 
 
-struct Canvas[origin: Origin[mut=True]]:
+struct Canvas:
     """A drawing surface for one frame.
 
-    Built fresh each frame over that frame's `Surface`, which is why it has
-    exactly one parameter: `Program.render(self, mut canvas: Canvas)` infers
-    it, so user code never spells the backend. State that must survive the
-    frame goes in and out through `PersistentCanvasState`.
+    Built fresh each frame and dropped before the frame is presented. State
+    that must survive the frame goes in and out through
+    `PersistentCanvasState`.
 
-    Rebuilding is also the only way to point at a new framebuffer. Handing an
-    existing `Canvas` a fresh `Surface` does not compile -- the type embeds the
-    window's pixel origin, so a `canvas._sync(Surface(win.pixels(), ...))` call
-    is a second mutable path to the same window:
+    **It takes no parameters, and holds no `Surface`.** It used to need one
+    origin parameter for the framebuffer it borrowed, which constrained the
+    whole API: a second parameter would have broken every
+    `Program.render(self, mut canvas: Canvas)` signature at once, and pointing
+    an existing `Canvas` at a new framebuffer could not compile at all. Both
+    limits are gone because a `Canvas` no longer touches pixels — it records,
+    and the backend replays onto a `Surface` the canvas never sees. Don't
+    reintroduce a `Surface` field or a parameter to hold one.
 
-        error: aliasing values passed mutably to 'self' argument and passed
-        mutably to 's' argument in '_sync' call
-
-    Origin erasure would sidestep it, but `MutableAnyOrigin` is not a known
-    declaration in this Mojo version. `__init__` takes `out self`, so there is
-    no existing borrow to alias against. Don't reach for the `_sync` shape.
+    Its extent comes from the `Viewport` rather than from a framebuffer. The
+    two can disagree for one frame after a resize, which is harmless here: the
+    extent is only used for coordinate arithmetic, and the replay clips against
+    the real surface it is handed.
 
     A draw call touches no pixels: it appends a `DrawCommand` to the backend's
     recording, and the backend replays the whole frame afterwards. So a
@@ -124,7 +120,6 @@ struct Canvas[origin: Origin[mut=True]]:
     var scale: Float64
     var letterbox: Color
     var view: Viewport
-    var _surf: Surface[Self.origin]
     var _state: PersistentCanvasState
     # Style is per-frame, not carried in `_state`: `Canvas` is only reachable
     # from `render`, so nothing can seed a style outside a frame and carrying
@@ -143,13 +138,9 @@ struct Canvas[origin: Origin[mut=True]]:
     var _transform_stack: List[Matrix[3, 3]]
 
     def __init__(
-        out self,
-        surf: Surface[Self.origin],
-        view: Viewport,
-        var state: PersistentCanvasState,
+        out self, view: Viewport, var state: PersistentCanvasState
     ):
-        """Adopt this frame's framebuffer, mapping and carried-over state."""
-        self._surf = surf
+        """Adopt this frame's mapping and carried-over state."""
         self.view = view.copy()
         self.width = view.width
         self.height = view.height
@@ -225,7 +216,7 @@ struct Canvas[origin: Origin[mut=True]]:
 
     def transform(
         mut self, m: Matrix[3, 3]
-    ) -> TransformGuard[Self.origin, origin_of(self)]:
+    ) -> TransformGuard[origin_of(self)]:
         """Apply `m` to everything drawn inside a `with` block.
 
         ```mojo
@@ -238,15 +229,15 @@ struct Canvas[origin: Origin[mut=True]]:
         pop shifts every later draw in the frame, so go through here.
         """
         self._push_transform(m)
-        return TransformGuard[Self.origin, origin_of(self)](self)
+        return TransformGuard[origin_of(self)](self)
 
-    def style(mut self) -> StyleGuard[Self.origin, origin_of(self)]:
+    def style(mut self) -> StyleGuard[origin_of(self)]:
         """Scope the fill, stroke and font settings to a `with` block.
 
         For helpers that set style before drawing: without this, a callee's
         `no_stroke()` silently applies to whatever the caller draws next.
         """
-        return StyleGuard[Self.origin, origin_of(self)](self)
+        return StyleGuard[origin_of(self)](self)
 
     def _push_transform(mut self, m: Matrix[3, 3]):
         # Parent first, then child: a point is mapped by the innermost matrix
