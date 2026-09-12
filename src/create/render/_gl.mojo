@@ -78,6 +78,10 @@ comptime GL_TEXTURE_WRAP_T: UInt32 = 0x2803
 comptime GL_LINEAR: Int32 = 0x2601
 comptime GL_NEAREST: Int32 = 0x2600
 comptime GL_CLAMP_TO_EDGE: Int32 = 0x812F
+comptime GL_FRAMEBUFFER: UInt32 = 0x8D40
+comptime GL_COLOR_ATTACHMENT0: UInt32 = 0x8CE0
+comptime GL_FRAMEBUFFER_COMPLETE: UInt32 = 0x8CD5
+comptime GL_PACK_ALIGNMENT: UInt32 = 0x0D05
 comptime GL_UNPACK_ALIGNMENT: UInt32 = 0x0CF5
 
 
@@ -166,6 +170,16 @@ comptime _ActiveTexture = def (UInt32) thin abi("C") -> None
 comptime _PixelStorei = def (UInt32, Int32) thin abi("C") -> None
 
 comptime _DrawArrays = def (UInt32, Int32, Int32) thin abi("C") -> None
+comptime _GenFramebuffers = def (Int32, _UInts) thin abi("C") -> None
+comptime _BindFramebuffer = def (UInt32, UInt32) thin abi("C") -> None
+comptime _DeleteFramebuffers = def (Int32, _UInts) thin abi("C") -> None
+comptime _FramebufferTexture2D = def (
+    UInt32, UInt32, UInt32, UInt32, Int32
+) thin abi("C") -> None
+comptime _CheckFramebufferStatus = def (UInt32) thin abi("C") -> UInt32
+comptime _ReadPixels = def (
+    Int32, Int32, Int32, Int32, UInt32, UInt32, _Bytes
+) thin abi("C") -> None
 
 
 # ------------------------------------------------------------------ loading
@@ -273,6 +287,16 @@ struct GL(Movable):
     var pixel_storei: _PixelStorei
 
     var draw_arrays: _DrawArrays
+    var gen_framebuffers: _GenFramebuffers
+    var bind_framebuffer: _BindFramebuffer
+    var delete_framebuffers: _DeleteFramebuffers
+    var framebuffer_texture_2d: _FramebufferTexture2D
+    var check_framebuffer_status: _CheckFramebufferStatus
+    var read_pixels: _ReadPixels
+    """Framebuffer objects and readback. No frame uses either — they exist
+    for `tests/render/test_gl_parity.mojo`, which needs to draw at an exact
+    pixel size the window manager cannot veto, and to see what the GPU drew.
+    """
 
     var delete_buffers: _DeleteObjects
     var delete_vertex_arrays: _DeleteObjects
@@ -339,6 +363,22 @@ struct GL(Movable):
         self.pixel_storei = _bind[_PixelStorei](lib, "glPixelStorei")
 
         self.draw_arrays = _bind[_DrawArrays](lib, "glDrawArrays")
+        self.gen_framebuffers = _bind[_GenFramebuffers](
+            lib, "glGenFramebuffers"
+        )
+        self.bind_framebuffer = _bind[_BindFramebuffer](
+            lib, "glBindFramebuffer"
+        )
+        self.delete_framebuffers = _bind[_DeleteFramebuffers](
+            lib, "glDeleteFramebuffers"
+        )
+        self.framebuffer_texture_2d = _bind[_FramebufferTexture2D](
+            lib, "glFramebufferTexture2D"
+        )
+        self.check_framebuffer_status = _bind[_CheckFramebufferStatus](
+            lib, "glCheckFramebufferStatus"
+        )
+        self.read_pixels = _bind[_ReadPixels](lib, "glReadPixels")
 
         self.delete_buffers = _bind[_DeleteObjects](lib, "glDeleteBuffers")
         self.delete_vertex_arrays = _bind[_DeleteObjects](
