@@ -3,7 +3,7 @@ from create.sprite import Sprite, SpriteAnimation
 from create.sprite.animation import _frame_number, _sort_frame_names
 
 
-def _sheet(cols: Int, rows: Int, cell: Int) -> Sprite:
+def _sheet(cols: Int, rows: Int, cell: Int) raises -> Sprite:
     """A cols x rows sheet of `cell`-sized cells, each a distinct solid red.
 
     Cell n is filled with R = n + 1, so a frame's identity is readable from any

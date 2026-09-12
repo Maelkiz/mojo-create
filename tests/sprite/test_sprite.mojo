@@ -476,5 +476,33 @@ def test_stem_end_without_a_dot_is_the_length() raises -> None:
     assert_equal(Sprite._stem_end(""), 0)
 
 
+def test_every_sprite_gets_its_own_identity() raises -> None:
+    # A backend caches one image per id, so two sprites sharing one would make
+    # the second draw the first's pixels.
+    var a = Sprite(2, 2)
+    var b = Sprite(2, 2)
+    var c = Sprite.solid(1, 1, 255, 0, 0)
+    var d = Sprite.from_rgba(1, 1, List[UInt8](length=4, fill=255))
+    assert_true(a._id != b._id)
+    assert_true(b._id != c._id)
+    assert_true(c._id != d._id)
+    assert_true(a._id > 0, "0 is reserved for no image")
+
+
+def test_a_moved_sprite_keeps_its_identity() raises -> None:
+    var a = Sprite(2, 2)
+    var want = a._id
+    var moved = a^
+    assert_equal(moved._id, want)
+
+
+def test_resizing_takes_a_fresh_identity() raises -> None:
+    # The pixels are replaced, so anything cached under the old id is stale.
+    var s = Sprite.solid(2, 2, 255, 0, 0)
+    var before = s._id
+    s.resize(4, 4)
+    assert_true(s._id != before)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()
