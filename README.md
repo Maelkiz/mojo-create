@@ -5,6 +5,8 @@ interactive graphics, inspired by Processing but built to scale — from sketch 
 game, prototype to full application. It provides a clean, modular API while 
 taking full advantage of Mojo's performance and language features.
 
+> Early development, no stable API until the first public release.
+
 ## The shape of a program
 
 ```mojo

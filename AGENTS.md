@@ -4,6 +4,12 @@
 
 Mojo Create is a creative coding library for rapid prototyping and interactive graphics, inspired by Processing but built to scale — from sketch to game, prototype to full application. It provides a clean, modular API while taking full advantage of Mojo's performance and language features.
 
+**The library is in early development.** No public release exists yet and no external consumers depend
+on the current API, so breaking changes are expected and should not be avoided for their own sake. 
+Thereby follows that documentation churn and examples or tests needing to be rewritten are not by 
+themselves reasons to reject a new idea. Weigh a change on whether it makes the library better, not on 
+how much of the repo it touches.
+
 ## Design Ethos
 
 Mojo Create follows these principles:
