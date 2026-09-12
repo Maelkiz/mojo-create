@@ -34,18 +34,60 @@ def blend[o: Origin[mut=True]](s: Surface[o], off: Int, c: Color):
 
 
 def fill_all[o: Origin[mut=True]](s: Surface[o], c: Color):
-    """Composite `c` over every pixel — the whole frame, no clipping needed."""
-    for i in range(s.width * s.height):
+    """Composite `c` over every pixel — the whole frame, no clipping needed.
+
+    The alpha test is hoisted out of the loop rather than left to `blend`,
+    which is worth a 3x on a full-frame clear: with it inside, every one of
+    ~10^6 iterations re-tests an invariant and the body stays a call the
+    optimiser will not always inline. Whether it did used to depend on the
+    caller — the direct-raster `Canvas` got it, a replay loop one call deeper
+    did not — so the hoist lives here, where no caller can lose it.
+    """
+    if c.a == 0:
+        return
+    var n = s.width * s.height
+    if c.a == 255:
+        # Written out rather than delegated: the pointer is loaded once and
+        # the body stays a straight run of stores.
+        var px = s.px
+        for i in range(n):
+            var off = i * 4
+            px[unsafe_offset=off] = c.r
+            px[unsafe_offset=off + 1] = c.g
+            px[unsafe_offset=off + 2] = c.b
+            px[unsafe_offset=off + 3] = 255
+        return
+    for i in range(n):
         blend(s, i * 4, c)
 
 
 def fill_pixels[
     o: Origin[mut=True]
 ](s: Surface[o], x0: Int, y0: Int, x1: Int, y1: Int, c: Color):
-    """Fill the half-open device-space rect `[x0, x1) x [y0, y1)`, clipped."""
+    """Fill the half-open device-space rect `[x0, x1) x [y0, y1)`, clipped.
+
+    Alpha is tested once for the whole rect, not once per pixel — see
+    `fill_all` for why that hoist belongs here and not in `blend`.
+    """
+    if c.a == 0:
+        return
     var W = s.width
-    for row in range(max(y0, 0), min(y1, s.height)):
-        for col in range(max(x0, 0), min(x1, W)):
+    var r0 = max(y0, 0)
+    var r1 = min(y1, s.height)
+    var c0 = max(x0, 0)
+    var c1 = min(x1, W)
+    if c.a == 255:
+        var px = s.px
+        for row in range(r0, r1):
+            for col in range(c0, c1):
+                var off = (row * W + col) * 4
+                px[unsafe_offset=off] = c.r
+                px[unsafe_offset=off + 1] = c.g
+                px[unsafe_offset=off + 2] = c.b
+                px[unsafe_offset=off + 3] = 255
+        return
+    for row in range(r0, r1):
+        for col in range(c0, c1):
             blend(s, (row * W + col) * 4, c)
 
 

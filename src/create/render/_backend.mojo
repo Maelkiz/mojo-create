@@ -129,11 +129,40 @@ struct Backend(Movable):
     var kind: Int
     var text: TextRenderer
     var images: Dict[Int, _Image]
+    var commands: List[DrawCommand]
+    """The frame being recorded.
+
+    The buffer lives here rather than travelling out of `Canvas` because a
+    `Tuple` of move-only values cannot be unpacked in this Mojo version — see
+    `present`, which is also where the buffer is reset. Keeping it means the
+    allocation is reused frame to frame instead of being rebuilt per frame.
+    """
 
     def __init__(out self, kind: Int = BACKEND_CPU):
         self.kind = kind
         self.text = TextRenderer()
         self.images = Dict[Int, _Image]()
+        self.commands = List[DrawCommand]()
+
+    def record(mut self, var c: DrawCommand):
+        """Append one draw to the frame being recorded."""
+        self.commands.append(c^)
+
+    def present[
+        o: Origin[mut=True]
+    ](mut self, s: Surface[o], scale: Float64) raises:
+        """Draw the recorded frame onto `s` and start a new recording.
+
+        The buffer is moved out and back rather than iterated in place: replay
+        needs `self` mutably (the glyph cache and the image cache both fill in
+        as it runs), which it cannot have while borrowing a field of `self`.
+        Moving it back keeps its capacity for the next frame.
+        """
+        var cmds = self.commands^
+        self.commands = List[DrawCommand]()
+        self.replay(s, cmds, scale)
+        cmds.clear()
+        self.commands = cmds^
 
     def intern_image[
         so: Origin

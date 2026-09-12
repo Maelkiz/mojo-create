@@ -25,13 +25,18 @@ def step[
     `state` travels in and out because a `Canvas` is a per-frame view: it is
     built over this frame's surface and dropped before the frame is presented,
     so anything longer-lived than a frame rides in `PersistentCanvasState`.
+
+    A frame is two halves: `render` records draw commands and touches no
+    pixels, then the backend replays the whole recording onto `surf`. Both
+    halves are here rather than split across the two loops, so neither loop can
+    present a frame the other would not.
     """
     program.update(ctx, input)
     var canvas = Canvas(surf, ctx.view, state^)
     program.render(canvas)
-    # The letterbox doubles as the clip for anything drawn out of bounds, so it
-    # must land while the Canvas still holds the surface.
+    # Recorded last, so it doubles as the clip for anything drawn out of
+    # bounds — the replay honours the buffer's order.
     canvas._draw_letterbox()
-    # Releasing the Canvas ends its borrow of the surface, which is what lets
-    # the frame be presented.
-    return canvas^._release()
+    var out = canvas^._release()
+    out.backend.present(surf, ctx.view.scale)
+    return out^
