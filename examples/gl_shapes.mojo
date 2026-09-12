@@ -1,21 +1,17 @@
 """The five solid command kinds, drawn on the GPU backend.
 
-The visual comparison target for the CPU path: run this, then run it against
-`run` instead of `run_gl`, and the two frames should be indistinguishable
+The visual comparison target for the CPU path: run this, then drop the
+`backend=BACKEND_GPU` argument, and the two frames should be indistinguishable
 apart from the GPU's multisampled edges. Everything on screen is deliberately
 a case the two backends could disagree about — a translucent fill under a
 stroke, a stroke wider than its shape, a rotated rect, a diagonal line, a
 letterbox bar under `FIT`.
-
-`run_gl` is internal while the GPU backend is being built, so this example
-names it by path rather than through the preamble.
 
     pixi run create examples/gl_shapes.mojo
     mojo build -I src examples/gl_shapes.mojo -o build/gl_shapes && ./build/gl_shapes
 """
 
 from create import *
-from create.core._run_gl import run_gl
 
 
 @fieldwise_init
@@ -135,4 +131,4 @@ struct App(Program):
 
 
 def main() raises:
-    run_gl[App]("GL Shapes", 1280, 720)
+    run[App]("GL Shapes", 1280, 720, backend=BACKEND_GPU)

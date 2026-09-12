@@ -1,4 +1,5 @@
 from window.window import Window
+from create.render._backend import BACKEND_CPU, BACKEND_GPU
 from create.render.canvas import PersistentCanvasState
 from ._events import apply_events
 from ._frame import step
@@ -7,6 +8,7 @@ from .input import Input
 from .context import Context
 from create.render.autoscale import AutoScale
 from .program import Program
+from ._run_gl import run_gl
 
 
 def _update_dimensions(mut win: Window, mut ctx: Context) raises:
@@ -65,6 +67,7 @@ def run[
     width: Int = 1280,
     height: Int = 720,
     fullscreen: Bool = False,
+    backend: Int = BACKEND_CPU,
 ) raises:
     """Open a window and run `P` in it until it quits.
 
@@ -86,7 +89,22 @@ def run[
     fullscreen*. Under `OFF` the design resolution goes unused entirely, which
     is the other half of why `FIT` is the default: it keeps the numbers passed
     here meaningful in every launch mode.
+
+    `backend=BACKEND_GPU` runs the same program through the GL backend
+    instead — a different window, a different loop, and the same frame. It is
+    a branch rather than a value the loop holds because Mojo 1.0 has no
+    dynamic trait dispatch, which is also why `Backend` switches on a `kind`.
     """
+    if backend == BACKEND_GPU:
+        if fullscreen:
+            # `GLWindow` takes no fullscreen flag, and silently opening a
+            # windowed program is worse than saying so.
+            raise Error(
+                "the GPU backend has no fullscreen mode yet — run it"
+                " windowed, or use the default CPU backend"
+            )
+        run_gl[P](title, width, height)
+        return
     var win = Window(title, width, height, fullscreen)
     var ctx = Context()
     # The size the program is authored against is always what the caller asked
