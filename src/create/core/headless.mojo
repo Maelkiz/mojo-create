@@ -52,5 +52,6 @@ def run_headless[
             break
         now += _FRAME_MILLIS
         ctx.time._tick(now)
-        state = step(program, ctx, input, mem.surface(), state^)
+        state = step(program, ctx, input, state^)
+        state.backend.present(mem.surface(), ctx.view.scale)
     return mem^
