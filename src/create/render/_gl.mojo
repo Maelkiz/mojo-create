@@ -67,6 +67,7 @@ comptime GL_INFO_LOG_LENGTH: UInt32 = 0x8B84
 
 comptime GL_TEXTURE_2D: UInt32 = 0x0DE1
 comptime GL_TEXTURE0: UInt32 = 0x84C0
+comptime GL_TEXTURE1: UInt32 = 0x84C1
 comptime GL_RGBA: UInt32 = 0x1908
 comptime GL_RGBA8: Int32 = 0x8058
 comptime GL_RED: UInt32 = 0x1903
@@ -127,9 +128,6 @@ comptime _DeleteObjects = def (Int32, _UInts) thin abi("C") -> None
 comptime _BindBuffer = def (UInt32, UInt32) thin abi("C") -> None
 comptime _BufferData = def (
     UInt32, Int64, _Address, UInt32
-) thin abi("C") -> None
-comptime _BufferSubData = def (
-    UInt32, Int64, Int64, _Bytes
 ) thin abi("C") -> None
 comptime _BindVertexArray = def (UInt32) thin abi("C") -> None
 comptime _VertexAttribPointer = def (
@@ -254,7 +252,6 @@ struct GL(Movable):
     var gen_buffers: _GenObjects
     var bind_buffer: _BindBuffer
     var buffer_data: _BufferData
-    var buffer_sub_data: _BufferSubData
     var gen_vertex_arrays: _GenObjects
     var bind_vertex_array: _BindVertexArray
     var vertex_attrib_pointer: _VertexAttribPointer
@@ -318,7 +315,6 @@ struct GL(Movable):
         self.gen_buffers = _bind[_GenObjects](lib, "glGenBuffers")
         self.bind_buffer = _bind[_BindBuffer](lib, "glBindBuffer")
         self.buffer_data = _bind[_BufferData](lib, "glBufferData")
-        self.buffer_sub_data = _bind[_BufferSubData](lib, "glBufferSubData")
         self.gen_vertex_arrays = _bind[_GenObjects](lib, "glGenVertexArrays")
         self.bind_vertex_array = _bind[_BindVertexArray](
             lib, "glBindVertexArray"

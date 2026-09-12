@@ -8,9 +8,12 @@ here decides geometry.
 **One batch spans as many commands as it can.** The vertex buffer accumulates
 across commands and is flushed only when something makes a shared draw call
 impossible — an opaque `CMD_CLEAR` (which resets the framebuffer, so earlier
-vertices must already have landed), a texture switch, and the end of the
-frame. Solids and text share one batch because solids never sample: the glyph
-atlas stays bound through both. That is the whole point of baking the
+vertices must already have landed), a *second* sprite texture, and the end of
+the frame. Solids, glyphs and one sprite share a batch because they sample
+different things: the atlas is permanently on texture unit 0 and sprites go on
+unit 1, so a sprite between two glyphs costs no rebind and text drawn over a
+sprite — the obvious way to write a HUD — costs no break either. That is the
+whole point of baking the
 transform per vertex rather than passing it as a uniform: a per-command
 uniform would force a draw call per command and there would be no batching to
 speak of.
@@ -59,6 +62,7 @@ from ._gl import (
     GL_SRC_ALPHA,
     GL_STREAM_DRAW,
     GL_TEXTURE0,
+    GL_TEXTURE1,
     GL_TEXTURE_2D,
     GL_TEXTURE_MAG_FILTER,
     GL_TEXTURE_MIN_FILTER,
@@ -141,7 +145,8 @@ in vec2 v_uv;
 in vec4 v_color;
 in float v_mode;
 
-uniform sampler2D u_texture;
+uniform sampler2D u_atlas;
+uniform sampler2D u_sprite;
 
 out vec4 frag_color;
 
@@ -149,9 +154,9 @@ void main() {
     if (v_mode < 0.5) {
         frag_color = v_color;
     } else if (v_mode < 1.5) {
-        frag_color = vec4(v_color.rgb, v_color.a * texture(u_texture, v_uv).r);
+        frag_color = vec4(v_color.rgb, v_color.a * texture(u_atlas, v_uv).r);
     } else {
-        frag_color = v_color * texture(u_texture, v_uv);
+        frag_color = v_color * texture(u_sprite, v_uv);
     }
 }
 """
@@ -289,12 +294,13 @@ struct GLRenderer(Movable):
     var gl: GL
     var vao: UInt32
     var vbo: UInt32
-    var vbo_bytes: Int
-    """Capacity of the VBO's current allocation, so a steady frame reuploads
-    into it with `glBufferSubData` instead of reallocating."""
     var program: UInt32
     var u_viewport: Int32
-    var u_texture: Int32
+    var viewport_w: Int
+    var viewport_h: Int
+    """What `u_viewport` and `glViewport` were last set to. The program, the
+    VAO and the sampler uniforms are set once at construction and never
+    touched again, so a steady frame's only fixed cost is the atlas bind."""
     var atlas: UInt32
     var glyphs: Dict[Int, _AtlasRect]
     """Glyph cache key to its rect in the atlas. Keyed by `TextRenderer`'s own
@@ -314,8 +320,10 @@ struct GLRenderer(Movable):
     and one upload; the pixels are read from the `_Image` only the first
     time."""
     var bound: UInt32
-    """What is on texture unit 0 right now. A batch is one `glDrawArrays`
-    against one sampler, so changing this has to flush first."""
+    """What is on texture unit 1 — the sprite unit — right now. Kept across
+    frames, since nothing else in the library binds there. A batch is one
+    `glDrawArrays`, so replacing it has to flush first; the atlas on unit 0 is
+    never replaced and so never forces one."""
     var vertices: VertexBuffer
     var draw_calls: Int
     """Batches flushed by the last `draw`. Read by the bench example and the
@@ -326,7 +334,8 @@ struct GLRenderer(Movable):
         self.program = _link(self.gl)
         self.vao = _gen_object(self.gl.gen_vertex_arrays)
         self.vbo = _gen_object(self.gl.gen_buffers)
-        self.vbo_bytes = 0
+        self.viewport_w = 0
+        self.viewport_h = 0
         self.atlas = _gen_object(self.gl.gen_textures)
         self.glyphs = Dict[Int, _AtlasRect]()
         self.shelf_x = _ATLAS_PAD
@@ -343,14 +352,15 @@ struct GLRenderer(Movable):
             self.program, _Bytes(unsafe_from_address=Int(name.unsafe_ptr()))
         )
         _ = name
-        var tex_name = String("u_texture")
-        self.u_texture = self.gl.get_uniform_location(
-            self.program, _Bytes(unsafe_from_address=Int(tex_name.unsafe_ptr()))
-        )
-        _ = tex_name
-
         self._setup_vertex_array()
         self._setup_atlas()
+
+        # Set once: nothing here varies per frame, and the program and VAO are
+        # the only ones this process ever binds.
+        self.gl.use_program(self.program)
+        self.gl.bind_vertex_array(self.vao)
+        self._sampler_unit("u_atlas", 0)
+        self._sampler_unit("u_sprite", 1)
 
         self.gl.enable(GL_BLEND)
         # Straight (non-premultiplied) alpha, matching `_raster.blend`, so a
@@ -393,6 +403,9 @@ struct GLRenderer(Movable):
         makes a sampler safe to read before any text is drawn. Texel (0, 0) is
         left opaque and outside the allocator's reach, so a `MODE_MASK` quad
         can sample "full coverage" without a glyph.
+
+        Unit 0 is the atlas's for the life of the renderer: it is bound here
+        and never replaced, which is what lets glyphs batch with sprites.
         """
         self.gl.active_texture(GL_TEXTURE0)
         self.gl.bind_texture(GL_TEXTURE_2D, self.atlas)
@@ -422,6 +435,14 @@ struct GLRenderer(Movable):
             GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
         )
 
+    def _sampler_unit(mut self, name: String, unit: Int32) raises:
+        """Point one sampler uniform at a texture unit, for good."""
+        var location = self.gl.get_uniform_location(
+            self.program, _Bytes(unsafe_from_address=Int(name.unsafe_ptr()))
+        )
+        _ = name
+        self.gl.uniform_1i(location, unit)
+
     def draw(
         mut self,
         cmds: List[DrawCommand],
@@ -437,16 +458,15 @@ struct GLRenderer(Movable):
         display scaling the two differ, and the letterbox bars have to reach
         the real edge of the frame.
         """
-        self.gl.viewport(0, 0, Int32(width), Int32(height))
-        self.gl.use_program(self.program)
-        self.gl.bind_vertex_array(self.vao)
-        self.gl.uniform_2f(
-            self.u_viewport, Float32(width), Float32(height)
-        )
-        self.gl.uniform_1i(self.u_texture, 0)
-        self.gl.active_texture(GL_TEXTURE0)
-        self.bound = 0
-        self._bind(self.atlas)
+        if width != self.viewport_w or height != self.viewport_h:
+            # A resize, so once in a while — everything else the draw needs is
+            # already set from construction.
+            self.gl.viewport(0, 0, Int32(width), Int32(height))
+            self.gl.uniform_2f(
+                self.u_viewport, Float32(width), Float32(height)
+            )
+            self.viewport_w = width
+            self.viewport_h = height
 
         self.vertices.clear()
         self.draw_calls = 0
@@ -493,7 +513,6 @@ struct GLRenderer(Movable):
         )
         if len(placed) == 0:
             return
-        self._bind(self.atlas)
         comptime inv = 1.0 / Float64(ATLAS_SIZE)
         for ref g in placed:
             var r = self._pack(g, text)
@@ -531,9 +550,10 @@ struct GLRenderer(Movable):
         self.shelf_x += g.width + _ATLAS_PAD
         self.shelf_h = max(self.shelf_h, g.height)
 
-        # An upload targets the atlas, so it has to be the bound texture —
-        # `_text` binds it before the first `_pack` of the string.
+        # An upload targets whatever is bound, so name the atlas's unit; a
+        # sprite may well be current on unit 1.
         var mask = text.glyph_mask(g.key)
+        self.gl.active_texture(GL_TEXTURE0)
         self.gl.pixel_storei(GL_UNPACK_ALIGNMENT, 1)
         self.gl.tex_sub_image_2d(
             GL_TEXTURE_2D,
@@ -551,10 +571,12 @@ struct GLRenderer(Movable):
         return rect
 
     def _bind(mut self, name: UInt32) raises:
-        """Put `name` on unit 0, flushing first if that changes the sampler."""
+        """Put `name` on the sprite unit, flushing first if that replaces a
+        texture the batch so far is sampling."""
         if name == self.bound:
             return
         self._flush()
+        self.gl.active_texture(GL_TEXTURE1)
         self.gl.bind_texture(GL_TEXTURE_2D, name)
         self.bound = name
 
@@ -574,6 +596,7 @@ struct GLRenderer(Movable):
             return self.textures[id]
         ref img = images[id]
         var name = _gen_object(self.gl.gen_textures)
+        self.gl.active_texture(GL_TEXTURE1)
         self.gl.bind_texture(GL_TEXTURE_2D, name)
         self.gl.pixel_storei(GL_UNPACK_ALIGNMENT, 1)
         self.gl.tex_image_2d(
@@ -596,6 +619,8 @@ struct GLRenderer(Movable):
             GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
         )
         # The bind above went behind `_bind`'s back; tell it what is current.
+        # Nothing was batched against the old binding — `_sprite` calls this
+        # through `_bind`, which flushed first.
         self.bound = name
         self.textures[id] = name
         return name
@@ -621,30 +646,20 @@ struct GLRenderer(Movable):
         self.vertices.quad(0.0, 0.0, w, 0.0, w, h, 0.0, h, color)
 
     def _flush(mut self) raises:
-        """Upload what has accumulated and draw it as one batch."""
+        """Upload what has accumulated and draw it as one batch.
+
+        One `glBufferData` per batch rather than an orphan followed by a
+        `glBufferSubData`: respecifying the whole store *is* the orphan, so
+        the two-call version was doing the same thing twice, and dropping it
+        measured identical (1.03-1.13 ms either way on the bench sketch).
+        """
         var count = self.vertices.count()
         if count == 0:
             return
         var size = len(self.vertices.data) * 4
         var src = Int(self.vertices.data.unsafe_ptr())
         self.gl.bind_buffer(GL_ARRAY_BUFFER, self.vbo)
-        if size > self.vbo_bytes:
-            self.gl.buffer_data(
-                GL_ARRAY_BUFFER, Int64(size), src, GL_STREAM_DRAW
-            )
-            self.vbo_bytes = size
-        else:
-            # Orphan the old storage so the driver need not stall waiting for
-            # the previous frame's draw to finish reading it.
-            self.gl.buffer_data(
-                GL_ARRAY_BUFFER, Int64(self.vbo_bytes), 0, GL_STREAM_DRAW
-            )
-            self.gl.buffer_sub_data(
-                GL_ARRAY_BUFFER,
-                0,
-                Int64(size),
-                _Bytes(unsafe_from_address=src),
-            )
+        self.gl.buffer_data(GL_ARRAY_BUFFER, Int64(size), src, GL_STREAM_DRAW)
         self.gl.draw_arrays(GL_TRIANGLES, 0, Int32(count))
         self.vertices.clear()
         self.draw_calls += 1
