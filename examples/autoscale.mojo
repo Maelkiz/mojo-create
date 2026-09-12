@@ -37,8 +37,14 @@ struct App(Program):
             else:
                 ctx.autoscale = AutoScale.FIT
         self.x += self.dir * 200.0 * ctx.time.delta
-        if self.x > ctx.right() - 40.0 or self.x < ctx.left() + 40.0:
-            self.dir = -self.dir
+        # Set the sign rather than flip it: under EXTEND/OFF a shrinking
+        # window can move ctx.right()/left() past the ball between frames,
+        # and a flip on an already-true condition alternates forever instead
+        # of turning the ball back inward.
+        if self.x > ctx.right() - 40.0:
+            self.dir = -1.0
+        elif self.x < ctx.left() + 40.0:
+            self.dir = 1.0
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color(0x99))
