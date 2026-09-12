@@ -155,7 +155,7 @@ struct SpriteAnimation(Movable):
         return SpriteAnimation(frames^, fps)
 
     @staticmethod
-    def _cut(sheet: Sprite, x: Int, y: Int, w: Int, h: Int) -> Sprite:
+    def _cut(sheet: Sprite, x: Int, y: Int, w: Int, h: Int) raises -> Sprite:
         """Copy one w x h cell at (x, y) out of the sheet, RGBA row by row."""
         var frame = Sprite(w, h)
         var src = sheet.pixels.unsafe_ptr()

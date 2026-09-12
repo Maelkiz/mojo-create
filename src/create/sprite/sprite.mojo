@@ -1,6 +1,26 @@
-from std.ffi import _DLHandle
+from std.atomic import Atomic
+from std.ffi import _DLHandle, _Global
 
 from create._bytes import le_uint, sign_extend_32
+
+
+def _new_sprite_ids() -> Atomic[DType.int64]:
+    return Atomic[DType.int64](0)
+
+
+comptime _SPRITE_IDS = _Global["create_sprite_ids", _new_sprite_ids]
+"""Process-wide counter behind `Sprite._id`.
+
+Global rather than per-`Sprite` because the point is uniqueness *between*
+sprites, and global rather than per-backend because a sprite may be drawn
+through more than one.
+"""
+
+
+def _next_sprite_id() raises -> Int:
+    """The next never-yet-used sprite identity. Starts at 1, so 0 stays free
+    to mean "no image"."""
+    return Int(_SPRITE_IDS.get_or_create_ptr()[].fetch_add(1)) + 1
 
 
 def _read_u16(data: List[UInt8], off: Int) -> Int:
@@ -51,14 +71,35 @@ struct Sprite(Movable):
     var pixels: List[UInt8]
     var width: Int
     var height: Int
+    var _id: Int
+    """This image's identity, unique for the life of the process.
 
-    def __init__(out self, width: Int, height: Int):
+    A backend caches a copy or a GPU texture per sprite and needs a key that
+    cannot collide. The pixel buffer's address cannot serve: free one sprite,
+    allocate another, and the second inherits the first's cached image. A
+    counter can only run out, and it never does at 63 bits.
+
+    Bumped by `resize`, which replaces the pixels — so a resized sprite is a
+    new image to a cache, which is exactly what it is.
+    """
+
+    def __init__(out self, width: Int, height: Int) raises:
+        """Raises only if the process-wide identity counter cannot be reached,
+        which is why every construction path here raises."""
         self.width = width
         self.height = height
         self.pixels = List[UInt8](length=width * height * 4, fill=0)
+        self._id = _next_sprite_id()
 
     @staticmethod
-    def solid(width: Int, height: Int, r: UInt8, g: UInt8, b: UInt8, a: UInt8 = 255) -> Sprite:
+    def solid(
+        width: Int,
+        height: Int,
+        r: UInt8,
+        g: UInt8,
+        b: UInt8,
+        a: UInt8 = 255,
+    ) raises -> Sprite:
         var s = Sprite(width, height)
         var ptr = s.pixels.unsafe_ptr()
         for i in range(width * height):
@@ -70,7 +111,9 @@ struct Sprite(Movable):
         return s^
 
     @staticmethod
-    def from_rgba(width: Int, height: Int, data: List[UInt8]) -> Sprite:
+    def from_rgba(
+        width: Int, height: Int, data: List[UInt8]
+    ) raises -> Sprite:
         """Precondition: `data` holds at least `width * height * 4` bytes — not bounds-checked."""
         var s = Sprite(width, height)
         var src = data.unsafe_ptr()
@@ -79,8 +122,13 @@ struct Sprite(Movable):
             dst[unsafe_offset=i] = src[unsafe_offset=i]
         return s^
 
-    def resize(mut self, new_w: Int, new_h: Int):
-        """Resize pixel buffer in place using nearest-neighbour sampling."""
+    def resize(mut self, new_w: Int, new_h: Int) raises:
+        """Resize pixel buffer in place using nearest-neighbour sampling.
+
+        Takes a fresh identity: the pixels are not the ones a backend may
+        already have cached under the old one.
+        """
+        self._id = _next_sprite_id()
         var dst = List[UInt8](length=new_w * new_h * 4, fill=0)
         if self.width == 0 or self.height == 0:
             # No source pixel to sample -- leave the zero-filled buffer as is
