@@ -14,19 +14,23 @@ from create.render._command import (
     letterbox_command,
     line_command,
     rect_command,
+    sprite_command,
     triangle_command,
 )
 from create.render._style import Style
 from create.render._tessellate import (
     MODE_SOLID,
+    MODE_TEXTURE,
     VertexBuffer,
     circle_segments,
     emit_circle,
     emit_letterbox,
     emit_line,
     emit_rect,
+    emit_sprite,
     emit_triangle,
 )
+from create.math.matrix import rotate
 from create.render.autoscale import AutoScale
 from create.render.color import Color
 from create.render.viewport import Viewport
@@ -286,6 +290,61 @@ def test_a_full_frame_content_rect_emits_no_bars() raises -> None:
         vb, letterbox_command(Color.BLACK, 0.0, 0.0, 100.0, 100.0), 100, 100
     )
     assert_equal(vb.count(), 0)
+
+
+def test_a_sprite_is_one_textured_quad_over_the_full_image() raises -> None:
+    var vb = VertexBuffer()
+    var v = _viewport(100, 100)
+    emit_sprite(
+        vb,
+        sprite_command(
+            v.base_matrix(), _plain(), 0.0, 0.0, 10.0, 10.0, 7, 32, 32
+        ),
+        v.scale,
+    )
+    assert_equal(vb.count(), 6)
+    assert_equal(vb.data[8], MODE_TEXTURE)
+    var min_u = Float32(1.0)
+    var max_u = Float32(0.0)
+    for i in range(vb.count()):
+        min_u = min(min_u, vb.data[i * _FLOATS + 2])
+        max_u = max(max_u, vb.data[i * _FLOATS + 2])
+    assert_equal(min_u, Float32(0.0))
+    assert_equal(max_u, Float32(1.0))
+
+
+def test_a_sprite_is_not_flipped() raises -> None:
+    # Row 0 of the image belongs at the top of the quad, which in device
+    # space — y down — is the smallest y.
+    var vb = VertexBuffer()
+    var v = _viewport(100, 100)
+    emit_sprite(
+        vb,
+        sprite_command(
+            v.base_matrix(), _plain(), 0.0, 0.0, 10.0, 10.0, 7, 32, 32
+        ),
+        v.scale,
+    )
+    # Vertex 0 is uv (0, 0); vertex 2 is uv (1, 1).
+    assert_equal(vb.data[3], Float32(0.0))
+    assert_equal(vb.data[2 * _FLOATS + 3], Float32(1.0))
+    assert_true(_y(vb, 0) < _y(vb, 2))
+
+
+def test_a_sprite_is_upright_under_rotation() raises -> None:
+    # Only the anchor is mapped, matching the CPU blit — a rotated transform
+    # moves the sprite but must not turn it.
+    var v = _viewport(100, 100)
+    var vb = VertexBuffer()
+    emit_sprite(
+        vb,
+        sprite_command(
+            v.base_matrix() @ rotate(0.7), _plain(), 20.0, 0.0, 10.0, 10.0, 7, 32, 32
+        ),
+        v.scale,
+    )
+    assert_equal(_y(vb, 0), _y(vb, 1))
+    assert_equal(_x(vb, 0), _x(vb, 5))
 
 
 def test_a_vertex_carries_its_colour_and_mode() raises -> None:

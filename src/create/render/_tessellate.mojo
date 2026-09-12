@@ -353,3 +353,34 @@ def emit_letterbox(
         vb.quad(0.0, cy0, cx0, cy0, cx0, cy1, 0.0, cy1, col)
     if cx1 < w:
         vb.quad(cx1, cy0, w, cy0, w, cy1, cx1, cy1, col)
+
+
+def emit_sprite(mut vb: VertexBuffer, c: DrawCommand, scale: Float64):
+    """One textured quad, axis-aligned in device space.
+
+    Deliberately not a `_mapped_quad`: the CPU replay maps the anchor and then
+    blits an upright rectangle around it, so a rotated transform turns a
+    sprite's *position* but not the sprite. Mapping four corners here would
+    rotate the image too and the two backends would diverge. The rounding
+    matches `Backend._sprite`'s for the same reason.
+
+    `v` grows with device y, which grows downward, so row 0 of the image
+    lands at the top of the quad and the sprite is not flipped.
+    """
+    var m = c.transform
+    var p = mat_apply(m, c.geom[0], c.geom[1])
+    var sf = pixel_scale(m, scale)
+    var dw = Float64(max(Int(c.geom[2] * sf + 0.5), 1))
+    var dh = Float64(max(Int(c.geom[3] * sf + 0.5), 1))
+    var x0 = Float64(Int(p[0]) - Int(dw) // 2)
+    var y0 = Float64(Int(p[1]) - Int(dh) // 2)
+    var x1 = x0 + dw
+    var y1 = y0 + dh
+    # White, so `MODE_TEXTURE`'s multiply passes the sampled pixels through.
+    var tint = Color.WHITE
+    vb.push(x0, y0, 0.0, 0.0, tint, MODE_TEXTURE)
+    vb.push(x1, y0, 1.0, 0.0, tint, MODE_TEXTURE)
+    vb.push(x1, y1, 1.0, 1.0, tint, MODE_TEXTURE)
+    vb.push(x0, y0, 0.0, 0.0, tint, MODE_TEXTURE)
+    vb.push(x1, y1, 1.0, 1.0, tint, MODE_TEXTURE)
+    vb.push(x0, y1, 0.0, 1.0, tint, MODE_TEXTURE)

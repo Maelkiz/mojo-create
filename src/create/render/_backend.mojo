@@ -23,6 +23,7 @@ from ._raster import (
     line_pixels,
 )
 from ._gl_backend import GLRenderer
+from ._image import _Image
 from ._style import Style
 from ._transform import pixel_scale, stroke_width_px, uniform
 from .surface import Surface
@@ -57,24 +58,6 @@ def device_bounds(
     var y_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
     var y_max = min(Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1, height)
     return (x_min, y_min, x_max, y_max)
-
-
-struct _Image(Movable):
-    """A sprite's pixels, owned by the backend.
-
-    Interned on the first draw of a given sprite and kept until the cache is
-    dropped, so the command buffer carries an id rather than a borrow of
-    program-owned memory. The GL backend will key a texture the same way.
-    """
-
-    var pixels: List[UInt8]
-    var width: Int
-    var height: Int
-
-    def __init__(out self, var pixels: List[UInt8], width: Int, height: Int):
-        self.pixels = pixels^
-        self.width = width
-        self.height = height
 
 
 struct Backend(Movable):
@@ -159,7 +142,7 @@ struct Backend(Movable):
             )
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
-        self.gl.value().draw(cmds, width, height, scale)
+        self.gl.value().draw(cmds, self.images, width, height, scale)
         cmds.clear()
         self.commands = cmds^
 
