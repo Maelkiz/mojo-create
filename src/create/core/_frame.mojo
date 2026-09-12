@@ -23,8 +23,13 @@ def step[
     headless path must not pull in the window.
 
     `state` travels in and out because a `Canvas` is a per-frame view: it is
-    built over this frame's surface and dropped before the frame is presented,
-    so anything longer-lived than a frame rides in `PersistentCanvasState`.
+    built for this frame and dropped before the frame is presented, so anything
+    longer-lived than a frame rides in `PersistentCanvasState`.
+
+    `surf` reaches the backend, never the `Canvas` — a `Canvas` holds no
+    framebuffer. It is still taken as an argument rather than built here
+    because only the caller knows where the pixels are, and in the windowed
+    loop it is only valid once events have been pumped.
 
     A frame is two halves: `render` records draw commands and touches no
     pixels, then the backend replays the whole recording onto `surf`. Both
@@ -32,7 +37,7 @@ def step[
     present a frame the other would not.
     """
     program.update(ctx, input)
-    var canvas = Canvas(surf, ctx.view, state^)
+    var canvas = Canvas(ctx.view, state^)
     program.render(canvas)
     # Recorded last, so it doubles as the clip for anything drawn out of
     # bounds — the replay honours the buffer's order.
