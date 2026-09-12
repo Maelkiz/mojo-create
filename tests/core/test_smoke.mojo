@@ -47,6 +47,16 @@ def _windowed_entry_point() raises:
     run[Smoke]("Smoke Test", 320, 240)
 
 
+def _gpu_entry_point() raises:
+    """The GPU branch of `run`, likewise type-checked and never called.
+
+    It reaches an entirely separate loop and renderer, so the windowed gate
+    above says nothing about it. Compiling costs nothing at runtime, which
+    matters here: the pre-commit hook builds this file.
+    """
+    run[Smoke]("Smoke Test", 320, 240, backend=BACKEND_GPU)
+
+
 def test_smoke_renders_through_the_public_api() raises -> None:
     var m = run_headless[Smoke](320, 240)
     assert_equal(m.pixel(160, 120), Color.RED)
