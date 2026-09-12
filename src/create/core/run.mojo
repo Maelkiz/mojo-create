@@ -1,23 +1,12 @@
 from window.window import Window
-from window.event import (
-    Event,
-    Quit,
-    Resized,
-    KeyDown,
-    KeyUp,
-    MouseMoved,
-    MouseButtonDown,
-    MouseButtonUp,
-    MouseWheel,
-)
 from create.render.canvas import PersistentCanvasState
+from ._events import apply_events
 from ._frame import step
 from create.render.surface import Surface
 from .input import Input
 from .context import Context
 from create.render.autoscale import AutoScale
 from .program import Program
-from create.math.vector2 import Vector2
 
 
 def _update_dimensions(mut win: Window, mut ctx: Context) raises:
@@ -34,48 +23,8 @@ def _wait_for_dimensions(mut win: Window, mut ctx: Context) raises:
 
 
 def _process_events(mut win: Window, mut ctx: Context, mut input: Input) raises:
-    input._new_frame()
-    var events = win.events()
-    for event in events:
-        if event.isa[Quit]():
-            win.close()
-        elif event.isa[KeyDown]():
-            var keycode = event[KeyDown].keycode
-            if keycode == 27 and ctx.exit_on_escape:
-                win.close()
-            if not input.is_key_down(keycode):
-                input._held_keys.set(keycode)
-                input._just_pressed.set(keycode)
-        elif event.isa[KeyUp]():
-            var keycode = event[KeyUp].keycode
-            input._held_keys.clear(keycode)
-            input._just_released.set(keycode)
-        elif event.isa[MouseMoved]():
-            var e = event[MouseMoved]
-            # Pointer positions reach the program in the same space it draws in.
-            var p = ctx.to_world(Float64(e.x), Float64(e.y))
-            input._set_mouse(p[0], p[1])
-        elif event.isa[MouseButtonDown]():
-            var e = event[MouseButtonDown]
-            var p = ctx.to_world(Float64(e.x), Float64(e.y))
-            input.mouse_pressed = True
-            input.mouse_button = e.button
-            input._set_mouse(p[0], p[1])
-            input.mouse_press_pos = Vector2(p[0], p[1])
-            input._held_buttons |= 1 << e.button
-            input._pressed_buttons |= 1 << e.button
-        elif event.isa[MouseButtonUp]():
-            var e = event[MouseButtonUp]
-            var p = ctx.to_world(Float64(e.x), Float64(e.y))
-            input.mouse_pressed = False
-            input._set_mouse(p[0], p[1])
-            input._held_buttons &= ~(1 << e.button)
-            input._released_buttons |= 1 << e.button
-        elif event.isa[MouseWheel]():
-            var e = event[MouseWheel]
-            input.wheel = Vector2(Float64(e.x), Float64(e.y))
-        elif event.isa[Resized]():
-            pass  # ctx.width/height are refreshed every frame regardless.
+    if apply_events(win.events(), ctx, input):
+        win.close()
 
 
 def _run_loop[

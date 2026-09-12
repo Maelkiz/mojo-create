@@ -13,7 +13,7 @@ from create.math.matrix import (
 )
 from create.sprite.sprite import Sprite
 from create.sprite.animator import SpriteAnimator
-from ._backend import Backend
+from ._backend import BACKEND_CPU, Backend
 from ._command import (
     circle_command,
     clear_command,
@@ -41,8 +41,10 @@ struct PersistentCanvasState(Movable):
     var backend: Backend
     var letterbox: Color
 
-    def __init__(out self):
-        self.backend = Backend()
+    def __init__(out self, kind: Int = BACKEND_CPU) raises:
+        """`kind` picks the backend that will present the frames — a GPU one
+        builds its GL resources now, so a context must already be current."""
+        self.backend = Backend(kind)
         self.letterbox = Color(0x22)
 
 
