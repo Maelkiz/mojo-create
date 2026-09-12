@@ -1,4 +1,6 @@
 from std.math import max, min, abs
+from std.sys import is_big_endian
+
 from .color import Color
 from .font import _GlyphInfo
 from .surface import Surface
@@ -33,29 +35,60 @@ def blend[o: Origin[mut=True]](s: Surface[o], off: Int, c: Color):
     px[unsafe_offset=off + 3] = out.a
 
 
+def _packed(c: Color) -> UInt32:
+    """`c` as one word whose bytes land in the framebuffer's r, g, b, a order.
+
+    Composed by endianness rather than assumed: a 32-bit store writes the low
+    byte to the lowest address on a little-endian target and to the highest on
+    a big-endian one, while the framebuffer is r, g, b, a ascending either way.
+    """
+
+    comptime if is_big_endian():
+        return (
+            (UInt32(c.r) << 24)
+            | (UInt32(c.g) << 16)
+            | (UInt32(c.b) << 8)
+            | UInt32(c.a)
+        )
+    return (
+        UInt32(c.r)
+        | (UInt32(c.g) << 8)
+        | (UInt32(c.b) << 16)
+        | (UInt32(c.a) << 24)
+    )
+
+
+def _word_aligned[o: Origin[mut=True]](s: Surface[o]) -> Bool:
+    """Whether whole pixels can be stored a word at a time.
+
+    Every pixel sits at a multiple of four bytes from the base, so the base
+    settles it for the entire buffer. Both framebuffers in the repo satisfy
+    this — a `List[UInt8]` and an SDL window buffer are each malloc-aligned —
+    but neither guarantees it by contract, and a 32-bit store through a
+    misaligned pointer is undefined, not merely slow.
+    """
+    return Int(s.px) % 4 == 0
+
+
 def fill_all[o: Origin[mut=True]](s: Surface[o], c: Color):
     """Composite `c` over every pixel — the whole frame, no clipping needed.
 
-    The alpha test is hoisted out of the loop rather than left to `blend`,
-    which is worth a 3x on a full-frame clear: with it inside, every one of
-    ~10^6 iterations re-tests an invariant and the body stays a call the
-    optimiser will not always inline. Whether it did used to depend on the
-    caller — the direct-raster `Canvas` got it, a replay loop one call deeper
-    did not — so the hoist lives here, where no caller can lose it.
+    An opaque fill is one word per pixel, not four bytes, and the alpha test
+    is hoisted out of the loop rather than left to `blend`. Together those are
+    worth ~4x on a full-frame clear. Both matter because of where this is
+    called from: with the test inside `blend`, every one of ~10^6 iterations
+    re-tests an invariant through a call the optimiser inlines only sometimes —
+    the direct-raster `Canvas` used to get that inlining, a replay loop one
+    call deeper does not. Neither trick may live at a call site again.
     """
     if c.a == 0:
         return
     var n = s.width * s.height
-    if c.a == 255:
-        # Written out rather than delegated: the pointer is loaded once and
-        # the body stays a straight run of stores.
-        var px = s.px
+    if c.a == 255 and _word_aligned(s):
+        var w = s.px.unsafe_bitcast[UInt32]()
+        var v = _packed(c)
         for i in range(n):
-            var off = i * 4
-            px[unsafe_offset=off] = c.r
-            px[unsafe_offset=off + 1] = c.g
-            px[unsafe_offset=off + 2] = c.b
-            px[unsafe_offset=off + 3] = 255
+            w[unsafe_offset=i] = v
         return
     for i in range(n):
         blend(s, i * 4, c)
@@ -66,8 +99,8 @@ def fill_pixels[
 ](s: Surface[o], x0: Int, y0: Int, x1: Int, y1: Int, c: Color):
     """Fill the half-open device-space rect `[x0, x1) x [y0, y1)`, clipped.
 
-    Alpha is tested once for the whole rect, not once per pixel — see
-    `fill_all` for why that hoist belongs here and not in `blend`.
+    Clipped once for the whole rect and, when opaque, written a word per
+    pixel — see `fill_all` for why both belong here rather than at a call site.
     """
     if c.a == 0:
         return
@@ -76,15 +109,13 @@ def fill_pixels[
     var r1 = min(y1, s.height)
     var c0 = max(x0, 0)
     var c1 = min(x1, W)
-    if c.a == 255:
-        var px = s.px
+    if c.a == 255 and _word_aligned(s):
+        var w = s.px.unsafe_bitcast[UInt32]()
+        var v = _packed(c)
         for row in range(r0, r1):
+            var base = row * W
             for col in range(c0, c1):
-                var off = (row * W + col) * 4
-                px[unsafe_offset=off] = c.r
-                px[unsafe_offset=off + 1] = c.g
-                px[unsafe_offset=off + 2] = c.b
-                px[unsafe_offset=off + 3] = 255
+                w[unsafe_offset=base + col] = v
         return
     for row in range(r0, r1):
         for col in range(c0, c1):

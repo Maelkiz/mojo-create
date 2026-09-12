@@ -198,8 +198,8 @@ struct Backend(Movable):
         commands whose transform is not uniform. It is constant for a frame, so
         it travels here rather than on every command.
         """
-        for i in range(len(cmds)):
-            self._one(s, cmds[i], scale)
+        for ref c in cmds:
+            self._one(s, c, scale)
 
     def _one[
         o: Origin[mut=True]
