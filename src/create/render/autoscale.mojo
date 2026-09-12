@@ -23,6 +23,14 @@ struct AutoScale:
     write a program: coordinates laid out against the size the author had,
     silently rearranged on any other display. `create` can set `ctx.autoscale`
     to either other mode.
+
+    `FIT` pins `ctx.width`/`height` to the design size, so a rectangle at a
+    fixed x is always inside the world by the same margin. `EXTEND` and `OFF`
+    let a resize move `right()`/`left()`/`top()`/`bottom()` themselves, which
+    can carry them past an entity between frames — code that reacts to a
+    boundary under either mode must set an entity's state (position, sign of
+    velocity) from the boundary, not toggle it, or a window shrunk past the
+    entity toggles it every frame forever instead of correcting it.
     """
 
     comptime OFF    = 0  # canvas is the window; resizing changes ctx.width/height
