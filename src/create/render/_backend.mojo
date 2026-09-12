@@ -1,4 +1,4 @@
-from std.collections import Dict
+from std.collections import Dict, Optional
 from std.math import max, min, abs
 
 from create.math.matrix import Matrix, inverse, apply as mat_apply
@@ -22,6 +22,7 @@ from ._raster import (
     fill_triangle,
     line_pixels,
 )
+from ._gl_backend import GLRenderer
 from ._style import Style
 from ._transform import pixel_scale, stroke_width_px, uniform
 from .surface import Surface
@@ -92,6 +93,14 @@ struct Backend(Movable):
     var kind: Int
     var text: TextRenderer
     var images: Dict[Int, _Image]
+    var gl: Optional[GLRenderer]
+    """The GPU resources, present exactly when `kind == BACKEND_GPU`.
+
+    They live on `Backend` rather than beside it so that the fonts, the image
+    cache and the command buffer stay in one place whichever path presents
+    them — `kind` then means what it says, and a sprite interned for the CPU
+    replay is the same entry the GL path will key a texture from.
+    """
     var commands: List[DrawCommand]
     """The frame being recorded.
 
@@ -101,11 +110,17 @@ struct Backend(Movable):
     allocation is reused frame to frame instead of being rebuilt per frame.
     """
 
-    def __init__(out self, kind: Int = BACKEND_CPU):
+    def __init__(out self, kind: Int = BACKEND_CPU) raises:
+        """A GPU backend builds its GL resources here, so a current context
+        is a precondition of `BACKEND_GPU` — the GL run loop opens its window
+        first for exactly that reason."""
         self.kind = kind
         self.text = TextRenderer()
         self.images = Dict[Int, _Image]()
         self.commands = List[DrawCommand]()
+        self.gl = Optional[GLRenderer]()
+        if kind == BACKEND_GPU:
+            self.gl = Optional(GLRenderer())
 
     def record(mut self, var c: DrawCommand):
         """Append one draw to the frame being recorded."""
@@ -124,6 +139,27 @@ struct Backend(Movable):
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
         self.replay(s, cmds, scale)
+        cmds.clear()
+        self.commands = cmds^
+
+    def present_gpu(
+        mut self, width: Int, height: Int, scale: Float64
+    ) raises:
+        """The GPU counterpart of `present`, onto the current drawable.
+
+        Same contract: the frame is consumed and the recording left empty with
+        its capacity intact. There is no `Surface` because there is no host
+        pixel buffer — `width` and `height` are the drawable's, which is what
+        the letterbox bars and `glViewport` are sized from.
+        """
+        if not self.gl:
+            raise Error(
+                "present_gpu called on a backend that has no GL renderer —"
+                " construct it with kind=BACKEND_GPU"
+            )
+        var cmds = self.commands^
+        self.commands = List[DrawCommand]()
+        self.gl.value().draw(cmds, width, height, scale)
         cmds.clear()
         self.commands = cmds^
 

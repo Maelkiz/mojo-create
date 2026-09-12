@@ -36,8 +36,8 @@ comptime _VERTEX_FLOATS = 9
 """`x, y, u, v, r, g, b, a, mode` — one interleaved vertex."""
 
 comptime MODE_SOLID: Float32 = 0.0
-"""Colour only. Samples the atlas's white texel, so solids and glyphs share a
-texture and therefore a batch."""
+"""Colour only — the fragment shader takes this branch without sampling, so a
+solid's UVs are never read and solids batch with anything."""
 comptime MODE_MASK: Float32 = 1.0
 """Glyph: the sampled red channel scales the vertex colour's alpha."""
 comptime MODE_TEXTURE: Float32 = 2.0
@@ -111,8 +111,8 @@ struct VertexBuffer(Movable):
         cy: Float64,
         color: Color,
     ):
-        """A solid triangle. UVs are the atlas's white texel, filled in by the
-        renderer, so they stay at the origin here."""
+        """A solid triangle. `MODE_SOLID` never samples, so the UVs are
+        unread and left at the origin."""
         self.push(ax, ay, 0.0, 0.0, color, MODE_SOLID)
         self.push(bx, by, 0.0, 0.0, color, MODE_SOLID)
         self.push(cx, cy, 0.0, 0.0, color, MODE_SOLID)

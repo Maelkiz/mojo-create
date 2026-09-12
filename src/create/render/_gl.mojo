@@ -95,6 +95,15 @@ comptime _UInts = Pointer[UInt32, MutUntrackedOrigin]
 comptime _Strings = Pointer[_Bytes, MutUntrackedOrigin]
 """`const GLchar * const *` — `glShaderSource`'s array of source strings."""
 
+comptime _Address = Int
+"""A C pointer argument GL is allowed to pass nothing for.
+
+Mojo's `Pointer` is non-nullable by construction, so a parameter that GL
+documents as nullable — `glBufferData`'s data, `glShaderSource`'s lengths —
+or as a byte offset into the bound buffer rather than an address at all —
+`glVertexAttribPointer`'s pointer — travels as a pointer-width integer. Same
+ABI, and `0` means what C means by `NULL`."""
+
 
 # ---------------------------------------------------- entry-point signatures
 
@@ -112,23 +121,27 @@ comptime _BlendFunc = def (UInt32, UInt32) thin abi("C") -> None
 comptime _GenObjects = def (Int32, _UInts) thin abi("C") -> None
 comptime _DeleteObjects = def (Int32, _UInts) thin abi("C") -> None
 comptime _BindBuffer = def (UInt32, UInt32) thin abi("C") -> None
-comptime _BufferData = def (UInt32, Int64, _Bytes, UInt32) thin abi("C") -> None
+comptime _BufferData = def (
+    UInt32, Int64, _Address, UInt32
+) thin abi("C") -> None
 comptime _BufferSubData = def (
     UInt32, Int64, Int64, _Bytes
 ) thin abi("C") -> None
 comptime _BindVertexArray = def (UInt32) thin abi("C") -> None
 comptime _VertexAttribPointer = def (
-    UInt32, Int32, UInt32, UInt8, Int32, _Bytes
+    UInt32, Int32, UInt32, UInt8, Int32, _Address
 ) thin abi("C") -> None
 comptime _EnableVertexAttribArray = def (UInt32) thin abi("C") -> None
 
 comptime _CreateShader = def (UInt32) thin abi("C") -> UInt32
 comptime _ShaderSource = def (
-    UInt32, Int32, _Strings, _Ints
+    UInt32, Int32, _Strings, _Address
 ) thin abi("C") -> None
 comptime _CompileShader = def (UInt32) thin abi("C") -> None
 comptime _GetShaderiv = def (UInt32, UInt32, _Ints) thin abi("C") -> None
-comptime _GetInfoLog = def (UInt32, Int32, _Ints, _Bytes) thin abi("C") -> None
+comptime _GetInfoLog = def (
+    UInt32, Int32, _Address, _Bytes
+) thin abi("C") -> None
 comptime _CreateProgram = def () thin abi("C") -> UInt32
 comptime _AttachShader = def (UInt32, UInt32) thin abi("C") -> None
 comptime _LinkProgram = def (UInt32) thin abi("C") -> None
@@ -143,7 +156,7 @@ comptime _Uniform1i = def (Int32, Int32) thin abi("C") -> None
 
 comptime _BindTexture = def (UInt32, UInt32) thin abi("C") -> None
 comptime _TexImage2D = def (
-    UInt32, Int32, Int32, Int32, Int32, Int32, UInt32, UInt32, _Bytes
+    UInt32, Int32, Int32, Int32, Int32, Int32, UInt32, UInt32, _Address
 ) thin abi("C") -> None
 comptime _TexSubImage2D = def (
     UInt32, Int32, Int32, Int32, Int32, Int32, UInt32, UInt32, _Bytes
