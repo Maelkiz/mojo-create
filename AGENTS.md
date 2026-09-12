@@ -243,6 +243,22 @@ resolved at replay, in the backend that owns the fonts. Add a new shape by exten
 `_command.mojo`'s kind constants and `_backend.mojo`'s replay, not by having `Canvas` call
 `_raster.mojo` directly — `Canvas` has no `Surface` to call it against.
 
+**The command buffer exists for a GPU backend that doesn't exist yet.** `Backend` only ever runs
+`kind = BACKEND_CPU` today. A first attempt at a GL backend stalled, and this file previously
+recorded the cause as a Mojo 1.0 codegen bug in calling through a bitcast `thin abi("C")` function
+pointer. **That diagnosis was wrong and has been retracted** — there is no Mojo bug, nothing was
+filed upstream, and the toolchain does not block a GPU backend. GL 3.3 works through a bitcast
+function pointer under both `mojo run` and `mojo build`, 64-bit pointer out-parameters included;
+all three original symptoms were ordinary lifetime and aliasing mistakes in the probe code.
+
+The evidence, the three FFI rules that come out of it, and the phased plan for the backend itself
+live in [docs/gpu-backend-plan.md](docs/gpu-backend-plan.md). **Read that before touching GL or any
+runtime-resolved function pointer here** — the rules (keep a `String` handed to C alive across the
+call, read C out-parameters from heap memory rather than a local `InlineArray`, keep the GL context
+owner alive past the last GL call) are the real constraint, not argument width. That document also
+records the one architectural obstacle a GPU backend has to clear: `step` presents through a
+`Surface`, which a GPU has no equivalent of.
+
 **`Canvas` is a per-frame recorder, not a persistent object, and it holds no `Surface`.** The run
 loop builds a fresh one each frame from that frame's `Viewport` and drops it before presenting. A
 draw call appends a `DrawCommand` — local geometry, the current transform, the resolved `Style` —
