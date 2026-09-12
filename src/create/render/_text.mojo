@@ -17,6 +17,36 @@ fills costs one repopulating frame and needs no recency bookkeeping.
 """
 
 
+struct PlacedGlyph(Copyable, Movable):
+    """One glyph of a laid-out string, positioned in device pixels.
+
+    What `layout` returns and both backends consume: the CPU replay blits the
+    cached mask at `(x, y)`, the GL one packs that same mask into its atlas and
+    emits a quad there. Neither re-derives a pen position, so alignment cannot
+    drift between them.
+
+    `key` indexes `TextRenderer`'s cache rather than carrying the mask, because
+    a mask is a `List[UInt8]` and copying one per character per frame is the
+    cost the cache exists to avoid.
+    """
+
+    var key: Int
+    """`_ensure_glyph`'s key — already cached by the time this is returned."""
+    var x: Int
+    """Device x of the mask's left edge."""
+    var y: Int
+    """Device y of the mask's top edge."""
+    var width: Int
+    var height: Int
+
+    def __init__(out self, key: Int, x: Int, y: Int, width: Int, height: Int):
+        self.key = key
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+
 struct TextRenderer(Movable):
     """Font ownership and glyph layout, kept out of the drawing surface.
 
@@ -29,12 +59,21 @@ struct TextRenderer(Movable):
     var _fallback_font: List[Font]
     var _fallback_attempted: Bool
     var _glyphs: Dict[Int, _GlyphInfo]
+    var font_generation: Int
+    """Bumped whenever a cache key starts meaning a different bitmap.
+
+    A key packs codepoint, pixel size and weight, so the eviction in
+    `_ensure_glyph` re-renders identical masks and changes nothing — but
+    `set_font` makes the same key a different face. A backend that caches
+    glyphs of its own (the GL atlas does) watches this and drops them.
+    """
 
     def __init__(out self):
         self._font = List[Font]()
         self._fallback_font = List[Font]()
         self._fallback_attempted = False
         self._glyphs = Dict[Int, _GlyphInfo]()
+        self.font_generation = 0
 
     def set_font(mut self, var f: Font):
         self._font = List[Font]()
@@ -42,6 +81,7 @@ struct TextRenderer(Movable):
         # Cached masks belong to the face that drew them, and the key says
         # nothing about which face that was — a swap has to drop them.
         self._glyphs.clear()
+        self.font_generation += 1
 
     def _ensure_font(mut self, size: Int) raises:
         """Lazily load the packaged default/fallback fonts on first use.
@@ -100,30 +140,39 @@ struct TextRenderer(Movable):
             self._glyphs[key] = self._font[0].render(codepoint, size)
         return key
 
-    def draw[
-        o: Origin[mut=True]
-    ](
+    def glyph_mask(self, key: Int) raises -> List[UInt8]:
+        """A copy of a cached glyph's coverage mask, row-major, 8-bit.
+
+        A copy because nothing in this Mojo version can hand back a reference
+        to a `Dict` value across a function boundary (Gotcha 4). That is
+        affordable only because the one caller — the GL atlas — reads a glyph
+        exactly once, on upload; the CPU blit still reads it by reference from
+        inside `draw`.
+        """
+        return self._glyphs[key].pixels.copy()
+
+    def layout(
         mut self,
-        surf: Surface[o],
         s: String,
         tx: Float64,
         ty: Float64,
         style: Style,
         pixel_scale: Float64,
-    ) raises:
-        """Lay `s` out around the already-mapped anchor `(tx, ty)` and draw it.
+    ) raises -> List[PlacedGlyph]:
+        """Place `s` around the already-mapped anchor `(tx, ty)`.
 
-        The caller maps the anchor; glyphs rasterise upright in pixel space, so
-        `VerticalAlignment.TOP`/`BOTTOM` keep meaning the top and bottom of the text box
-        however the world axes are oriented.
+        The caller maps the anchor; glyphs lay out upright in pixel space, so
+        `VerticalAlignment.TOP`/`BOTTOM` keep meaning the top and bottom of the
+        text box however the world axes are oriented.
+
+        Every glyph is in the cache when this returns, so a caller can read
+        each one's mask by key without another FreeType call.
         """
         var size = max(Int(Float64(style.font_size) * pixel_scale + 0.5), 1)
         self._ensure_font(size)
         var weight = style.font_weight
-        var c = style.fill
 
-        # Two-pass: measure total advance for alignment, then render.
-        # First pass: measure (iterate codepoints for correct Unicode handling)
+        # Two passes: measure the total advance for alignment, then place.
         var tw = 0
         for cp in s.codepoints():
             var key = self._ensure_glyph(Int(cp), size, weight)
@@ -146,14 +195,39 @@ struct TextRenderer(Movable):
         elif style.text_vertical_alignment == VerticalAlignment.BOTTOM:
             baseline_y += desc
 
-        # Second pass: render
+        var placed = List[PlacedGlyph]()
         var cx = draw_x
         for cp in s.codepoints():
-            # Bound by reference: the mask stays in the cache rather than being
-            # copied out of it once per character.
+            # Bound by reference: the mask stays in the cache rather than
+            # being copied out of it once per character.
             ref g = self._glyphs[self._ensure_glyph(Int(cp), size, weight)]
             if g.width > 0 and g.height > 0:
-                blit_glyph(
-                    surf, g, cx + g.bearing_x, baseline_y - g.bearing_y, c
+                placed.append(
+                    PlacedGlyph(
+                        self._glyph_key(Int(cp), size, weight),
+                        cx + g.bearing_x,
+                        baseline_y - g.bearing_y,
+                        g.width,
+                        g.height,
+                    )
                 )
             cx += g.advance_x
+        return placed^
+
+    def draw[
+        o: Origin[mut=True]
+    ](
+        mut self,
+        surf: Surface[o],
+        s: String,
+        tx: Float64,
+        ty: Float64,
+        style: Style,
+        pixel_scale: Float64,
+    ) raises:
+        """Blit `s` through `layout`, so the CPU and GL paths place a glyph
+        with one function rather than two that have to agree."""
+        var c = style.fill
+        for ref p in self.layout(s, tx, ty, style, pixel_scale):
+            ref g = self._glyphs[p.key]
+            blit_glyph(surf, g, p.x, p.y, c)

@@ -99,6 +99,37 @@ struct App(Program):
 
         # The same image at two sizes: one texture, one upload, and — since
         # the two draws are adjacent — one extra batch for the pair.
+        # Text before the sprites: solids and glyphs share the atlas binding
+        # and so share one batch, which the sprite texture then breaks.
+        with canvas.style():
+            canvas.no_stroke()
+            canvas.fill(Color.WHITE)
+            canvas.font_size(28)
+            canvas.text_align(
+                HorizontalAlignment.CENTER, VerticalAlignment.MIDDLE
+            )
+            canvas.text("centre / middle", 0, 0)
+
+        with canvas.style():
+            canvas.no_stroke()
+            canvas.fill(Color(0x9C, 0xE8, 0x6E))
+            canvas.font_size(20)
+            canvas.text_align(HorizontalAlignment.LEFT, VerticalAlignment.TOP)
+            canvas.text("left / top", canvas.left() + 12, canvas.top() - 12)
+
+        with canvas.style():
+            canvas.no_stroke()
+            canvas.fill(Color(0xFF, 0xD5, 0x4F, 0xA0))
+            canvas.font_size(20)
+            canvas.text_align(
+                HorizontalAlignment.RIGHT, VerticalAlignment.BOTTOM
+            )
+            canvas.text(
+                "right / bottom — translucent",
+                canvas.right() - 12,
+                canvas.bottom() + 12,
+            )
+
         canvas.sprite(self.logo, 250, -170, 140, 140)
         canvas.sprite(self.logo, 90, -230, 70, 70)
 

@@ -142,7 +142,7 @@ struct Backend(Movable):
             )
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
-        self.gl.value().draw(cmds, self.images, width, height, scale)
+        self.gl.value().draw(cmds, self.images, self.text, width, height, scale)
         cmds.clear()
         self.commands = cmds^
 
