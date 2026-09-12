@@ -29,7 +29,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 |---|---|---|
 | root | `src/create/__init__.mojo` | The preamble — `from create import *`, the union of every subpackage below |
 | `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
-| `render` | `src/create/render/` | Canvas, DrawCommand, Backend, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
+| `render` | `src/create/render/` | Canvas, DrawCommand, Backend, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives, the GL renderer |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util, easing curves and tweens |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
@@ -40,7 +40,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | File | Purpose |
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
-| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen)` — the windowed entry point |
+| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen, backend)` — the windowed entry point; dispatches to the GPU loop when `backend == BACKEND_GPU` |
 | `src/create/core/_frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/context.mojo` | `Context` — width/height/time/autoscale passed to every frame |
@@ -50,9 +50,13 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/path.mojo` | `script_dir()` — the directory of the running program, for asset paths |
 | `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers. Records `DrawCommand`s; touches no pixels |
 | `src/create/render/_command.mojo` | `DrawCommand` — one recorded draw, local geometry + transform + resolved `Style`; the per-kind constructor helpers |
-| `src/create/render/_backend.mojo` | `Backend` — owns the fonts, glyph cache and interned sprite images; replays a frame's `DrawCommand`s onto a `Surface` |
-| `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory. The backend's replay target, not `Canvas`'s |
+| `src/create/render/_backend.mojo` | `Backend` — owns the fonts, glyph cache and interned sprite images; replays a frame's `DrawCommand`s onto a `Surface` (`present`) or through GL (`present_gpu`) |
+| `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory. The CPU backend's replay target, not `Canvas`'s |
 | `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits. Called only from `_backend.mojo` |
+| `src/create/render/_gl.mojo` | The GL 3.3 entry points, resolved at runtime through SDL's loader and held as bitcast function pointers. The only file that talks to the driver |
+| `src/create/render/_tessellate.mojo` | `DrawCommand` to triangles: the CPU-side geometry the GPU replays, transform baked per-vertex |
+| `src/create/render/_gl_backend.mojo` | `GLRenderer` — the shader, the vertex buffer, the glyph atlas and sprite textures, and the batching that replays a frame in one draw call where it can |
+| `src/create/core/_run_gl.mojo` | `run_gl[T]` — the GPU run loop: a `GLWindow`, the same `step`, `present_gpu` plus a buffer swap |
 | `src/create/render/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
 | `src/create/render/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
 | `src/create/render/_style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
@@ -136,6 +140,14 @@ orientation, alpha compositing, stroke scaling, letterbox bars and sprite blits 
 them, and [tests/core/test_frame.mojo](tests/core/test_frame.mojo) scripts an `Input` and calls `step`
 directly to drive click- and key-driven behaviour with no window.
 
+[tests/render/test_gl_parity.mojo](tests/render/test_gl_parity.mojo) is what keeps the two backends
+honest: one frame drawn through `run_headless` and the same frame drawn through a GL framebuffer
+object, compared pixel by pixel. The threshold is a one-pixel dilation of each ink mask rather than
+an exact match, because that is exactly the disagreement two rasterisers are entitled to — the CPU's
+`device_bounds` scans a row the GPU's pixel-centre rule excludes, so a shape's bottom edge is
+routinely one row wider on the CPU. Anything further out is a shape in the wrong place, the wrong
+size, or missing. The test skips itself with no display, since it needs a real GL context.
+
 `tests/core/test_smoke.mojo` is both: the pre-commit hook builds it, and `pixi run test` runs it
 through `run_headless`. Its `_windowed_entry_point` is never called — `run[T]` opens a window and
 blocks — but an uncalled `def` body is still type-checked, so the windowed path stays gated. Keep the
@@ -151,7 +163,7 @@ line. Every example and every test uses it.
 Each subpackage exports the names it owns and nothing from a layer below:
 
 - `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `script_dir`.
-- `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`.
+- `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`, `BACKEND_CPU`/`BACKEND_GPU`.
 - `from create.math import *` — `Vector2`/`Vector3`, `Matrix` and its constructors, the geometry shapes and `overlaps`, `Random`, `Easing`/`ease`/`Tween`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.sprite import *` — `Sprite`, `SpriteAnimation`, `SpriteAnimator`.
 - `from create.audio import *` — `Sound`, `Audio`.
@@ -243,21 +255,55 @@ resolved at replay, in the backend that owns the fonts. Add a new shape by exten
 `_command.mojo`'s kind constants and `_backend.mojo`'s replay, not by having `Canvas` call
 `_raster.mojo` directly — `Canvas` has no `Surface` to call it against.
 
-**The command buffer exists for a GPU backend that doesn't exist yet.** `Backend` only ever runs
-`kind = BACKEND_CPU` today. A first attempt at a GL backend stalled, and this file previously
-recorded the cause as a Mojo 1.0 codegen bug in calling through a bitcast `thin abi("C")` function
-pointer. **That diagnosis was wrong and has been retracted** — there is no Mojo bug, nothing was
-filed upstream, and the toolchain does not block a GPU backend. GL 3.3 works through a bitcast
-function pointer under both `mojo run` and `mojo build`, 64-bit pointer out-parameters included;
-all three original symptoms were ordinary lifetime and aliasing mistakes in the probe code.
+**The command buffer exists so a frame can be replayed by either backend, and both now exist.**
+`Backend` carries a `kind` — `BACKEND_CPU` replays onto a `Surface` through `_raster.mojo`,
+`BACKEND_GPU` replays through `GLRenderer` in [_gl_backend.mojo](src/create/render/_gl_backend.mojo)
+— and a `kind` rather than a trait object because Mojo 1.0 has no dynamic trait dispatch. Users
+select one with `run[T](..., backend=BACKEND_GPU)`; the default is unchanged.
 
-The evidence, the three FFI rules that come out of it, and the phased plan for the backend itself
-live in [docs/gpu-backend-plan.md](docs/gpu-backend-plan.md). **Read that before touching GL or any
-runtime-resolved function pointer here** — the rules (keep a `String` handed to C alive across the
-call, read C out-parameters from heap memory rather than a local `InlineArray`, keep the GL context
-owner alive past the last GL call) are the real constraint, not argument width. That document also
-records the one architectural obstacle a GPU backend has to clear: `step` presents through a
-`Surface`, which a GPU has no equivalent of.
+The GPU path is OpenGL 3.3 and works like this. `_tessellate.mojo` turns each `DrawCommand` into
+triangles on the CPU, baking that command's transform into every vertex, so the shader needs no
+per-draw uniform and consecutive commands can share one buffer. A vertex is nine `Float32` — `x, y,
+u, v, r, g, b, a, mode` — and `mode` picks solid, glyph-mask or texture sampling in the fragment
+shader. Everything accumulates into one vertex `List` and flushes as a single `glBufferData` plus
+`glDrawArrays`. A batch breaks on only three things: an opaque `CMD_CLEAR` (a `glClear` resets the
+framebuffer, so whatever was queued before it must have landed first), a *second* distinct sprite texture,
+and the end of the frame. Solids, glyphs and one sprite coexist in a batch because the glyph atlas
+lives permanently on texture unit 0 and sprites go on unit 1, so neither displaces the other. Per
+frame the only GL state written is the viewport pair, and only when the drawable resized — the
+program, the VAO and the sampler uniforms are set once at construction.
+
+Measured on `examples/gl_bench.mojo` (2000 animated shapes, 2 sprites, one text line) at 1920x1080
+on a Ryzen 5 2600X / RTX 2070: **71 ms per frame on the CPU backend, 1.1 ms on the GPU backend**,
+rolling mean over 120 frames with vsync off. Both draw the identical frame. Two things to know
+before optimising further: the vertex `List` reaches its capacity in the first frame and never
+reallocates again, and orphan-then-`glBufferSubData` measured identical to the single
+`glBufferData` now in use — respecifying the store *is* the orphan, so the pair was doing the same
+work twice.
+
+**Three FFI ground rules, and they are the real constraint on `_gl.mojo`.** GL entry points are
+resolved at runtime through SDL's loader and called through a bitcast `thin abi("C")` pointer. That
+works — under `mojo run` and `mojo build`, 64-bit pointer out-parameters included. (An earlier
+version of this file blamed a Mojo codegen bug for a stalled first attempt. **That was wrong and is
+retracted**; all three symptoms were the mistakes below.)
+
+1. **A `String` whose pointer is handed to C must outlive the call.** `Int(s.unsafe_ptr())` erases
+   the origin, so the optimizer may destroy `s` first; `dlsym` then reads garbage and returns NULL,
+   and calling address 0 segfaults. Put `_ = s` after the call, and test every resolved address
+   against 0.
+2. **Read a C out-parameter back from heap memory, not a local `InlineArray`.** The write lands, but
+   `MutUntrackedOrigin` gives the optimizer no aliasing information, so a following `buf[0]` on a
+   local array can be served stale from a register. A `List` buffer reads back correctly.
+3. **Keep the GL context owner alive past the last GL call.** Destroying a `GLWindow` tears down the
+   context and every call after that segfaults. In a run loop the window is alive by construction;
+   this bites in tests and spikes, where `_ = win^` at the end is the fix.
+
+**`render` reaches GL without importing `window`.** The layering rule is unchanged, so `_gl.mojo`
+cannot take a `GLWindow` or use its `get_proc_address`: it `dlopen`s SDL itself and resolves through
+`SDL_GL_GetProcAddress` (refcounted, so a second handle alongside `mojo-window`'s is harmless, and
+SDL's loader is used rather than plain `dlsym` because extension entry points need not be in the
+process's symbol table). A context must already be current when `GL()` is constructed — `run_gl`
+guarantees that by creating its `GLWindow` first.
 
 **`Canvas` is a per-frame recorder, not a persistent object, and it holds no `Surface`.** The run
 loop builds a fresh one each frame from that frame's `Viewport` and drops it before presenting. A
@@ -399,6 +445,12 @@ it. The biggest trap in the animation API is documented on
    `canvas.sprite`'s animator overloads for this reason — extend it when adding another. This is
    the general reason the repo gates on consumer programs as well as on `mojo precompile`.
 
+6. **`glViewport` is sized from `drawable_size()`, never `width()`/`height()`.** Those are SDL's
+   *logical* size and differ from the backing pixels under HiDPI or fractional scaling, so sizing
+   the GL viewport from them stretches or clips the frame. `_run_gl.mojo` re-reads the drawable
+   every frame, and again after event processing, for the same reason the CPU loop re-takes its
+   `Surface`: a resize landed in between.
+
 ## Terminology
 
 Concepts that span files. Every type's own surface — methods, constants, factories — is in its
@@ -410,8 +462,8 @@ docstring; this table is not an API reference and must not grow into one.
 | World space | The coordinate space programs draw in — origin centred, y up (see Coordinate system above). `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the space a program is authored in, and the factor `ctx.autoscale` scales by. See Autoscale above |
 | `DrawCommand` | One recorded draw: local-space geometry, the transform at record time, and the resolved `Style`. What `Canvas` appends instead of touching pixels — see [_command.mojo](src/create/render/_command.mojo) |
-| `Backend` | Owns the fonts, glyph cache and interned sprite images, and replays a frame's `DrawCommand`s onto a `Surface` at `present`. The one thing that actually calls into `_raster.mojo` |
-| `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait. `Canvas` never holds one — it is `Backend.present`'s replay target, taken after event processing so a resize is never missed |
+| `Backend` | Owns the fonts, glyph cache and interned sprite images, and replays a frame's `DrawCommand`s — onto a `Surface` at `present` (CPU, the one caller of `_raster.mojo`) or through `GLRenderer` at `present_gpu` (GPU). Which one is a `kind` field, not a trait object |
+| `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait. The **CPU** backend's replay target specifically — the GPU path has none, and `Canvas` never holds one either way. Taken after event processing so a resize is never missed |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
 | `PersistentCanvasState` | What survives the frame boundary — the `Backend` (hence fonts, glyph cache, sprite images) and the letterbox colour — moved into each frame's `Canvas` and back out again by `_release`. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
