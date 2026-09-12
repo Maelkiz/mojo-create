@@ -23,7 +23,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 |---|---|---|
 | root | `src/create/__init__.mojo` | The preamble — `from create import *`, the union of every subpackage below |
 | `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
-| `render` | `src/create/render/` | Canvas, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
+| `render` | `src/create/render/` | Canvas, DrawCommand, Backend, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives |
 | `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util, easing curves and tweens |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
@@ -42,9 +42,11 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/input.mojo` | `Input` — keyboard state, mouse position/buttons |
 | `src/create/core/key.mojo` | `Key` — named keycodes for the `Int` overloads |
 | `src/create/core/path.mojo` | `script_dir()` — the directory of the running program, for asset paths |
-| `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers |
-| `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory |
-| `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits |
+| `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers. Records `DrawCommand`s; touches no pixels |
+| `src/create/render/_command.mojo` | `DrawCommand` — one recorded draw, local geometry + transform + resolved `Style`; the per-kind constructor helpers |
+| `src/create/render/_backend.mojo` | `Backend` — owns the fonts, glyph cache and interned sprite images; replays a frame's `DrawCommand`s onto a `Surface` |
+| `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory. The backend's replay target, not `Canvas`'s |
+| `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits. Called only from `_backend.mojo` |
 | `src/create/render/viewport.mojo` | `Viewport` — the design-space-to-pixel mapping, autoscale arithmetic, base matrix |
 | `src/create/render/autoscale.mojo` | `AutoScale` — the `FIT`/`EXTEND`/`OFF` mode constants |
 | `src/create/render/_style.mojo` | `Style` — fill, stroke, font settings; rebuilt fresh each frame, scoped by `canvas.style()` |
@@ -224,10 +226,24 @@ give heterogeneous storage, so a scene *stack* (pause over game, modal dialogs) 
 is ever needed. It buys storage only: dispatch is still a branch at each use site, `s.isa[Menu]()`
 in place of `self.scene == MENU`. One active scene needs no stack, so the fields stay plain.
 
-**`Canvas` is a per-frame view, not a persistent object.** The run loop builds a fresh one each frame
-over that frame's `Surface` and drops it before presenting — it owns no window and caches no pixel
-pointer, which is what makes `run_headless` possible at all. Anything that must survive the frame
-boundary lives in `PersistentCanvasState` (loaded fonts, letterbox colour), moved in at
+**A draw call records; it never paints.** `canvas.rectangle(...)`, `.circle(...)`, `.sprite(...)`,
+`.text(...)` and the rest each build a [`DrawCommand`](src/create/render/_command.mojo) — local
+geometry, the transform in effect, and the style resolved *now* — and append it to the `Backend`'s
+recording. Nothing is rasterised until `Backend.present` replays the whole buffer at the end of the
+frame, so a later `canvas.fill()` can never reach back and change what an earlier command paints. A
+sprite is interned into the backend's image cache at record time (so the command carries an id, not
+a borrow of caller-owned pixels); text is deferred whole, as an owned `String` — its layout is
+resolved at replay, in the backend that owns the fonts. Add a new shape by extending
+`_command.mojo`'s kind constants and `_backend.mojo`'s replay, not by having `Canvas` call
+`_raster.mojo` directly — `Canvas` has no `Surface` to call it against.
+
+**`Canvas` is a per-frame recorder, not a persistent object, and it holds no `Surface`.** The run
+loop builds a fresh one each frame from that frame's `Viewport` and drops it before presenting. A
+draw call appends a `DrawCommand` — local geometry, the current transform, the resolved `Style` —
+to the `Backend`'s recording; `Canvas` never touches a pixel, which is what makes `run_headless`
+possible at all and is also why `Canvas` needs no framebuffer parameter. Anything that must survive
+the frame boundary lives in `PersistentCanvasState`, which holds the `Backend` (and, through it, the
+loaded fonts, glyph cache and interned sprite images) and the letterbox colour, moved in at
 construction and back out by `_release`. The transform stack and the style deliberately do **not**:
 every frame starts unrotated, untranslated and at the default style, so a missing pop or a forgotten
 `no_stroke` cannot leak into the next one. Nothing may hold a `Canvas` across frames; hold the
@@ -235,11 +251,13 @@ every frame starts unrotated, untranslated and at the default style, so a missin
 
 Both loops share [_frame.mojo](src/create/core/_frame.mojo)'s `step` for the frame body, so the windowed
 and headless paths cannot drift in what a frame *is*; they differ only in how one gets started (SDL
-events and a clock, versus a counter).
+events and a clock, versus a counter) and in where the `Surface` they hand to `Backend.present` comes
+from.
 
-**A `Canvas` takes its geometry from the `Viewport` and its extent from the `Surface`**, and the two
-can legitimately disagree for one frame. `Window._resize` reallocates the pixel buffer inside
-`win.events()`, after the viewport was measured — so a `Surface` must be taken *after* event
+**A `Canvas` takes its geometry from the `Viewport` alone — it never sees a `Surface`.** The
+`Surface` a frame renders onto is taken later, at `Backend.present`, after `Canvas` has already
+recorded and been released. That is later than it used to be: `Window._resize` reallocates the pixel
+buffer inside `win.events()`, so the `Surface` passed to `present` must still be taken *after* event
 processing, and its width and height must come from the window, never from the viewport. A lagging
 mapping is one crooked frame; a lying extent is memory corruption, because the extent is baked into
 the `Surface` and so defeats the clipping every raster loop otherwise does.
@@ -341,19 +359,17 @@ it. The biggest trap in the animation API is documented on
 
 3. **A window does not report its real size immediately.** In fullscreen SDL fires a bogus `(1, 1)` `Resized` before reporting real dimensions, so `_wait_for_dimensions` pumps events until width > 1 and height > 1. On Wayland the fullscreen transition is asynchronous on top of that: `run[T]("t", 1000, 1000, fullscreen=True)` reports the requested 1000x1000 for frame 1 and the display size from frame 2 on. The run loop refreshes dimensions every frame, so this self-corrects — but don't cache pixel dimensions from `create` or the first frame.
 
-4. **Two origin limits in this Mojo version shape the API.** Neither `MutableAnyOrigin` nor
-   `ImmutableOrigin` is a known declaration, and `ref [o["element"]]` fails with `'ImmOrigin' is not
-   subscriptable`. Consequences, each documented where it bites:
+4. **One origin limit in this Mojo version shapes the API.** Nothing can return a reference to a
+   `List` element, so `SpriteAnimation` has **no `frame()` accessor** — see its
+   [docstring](src/create/sprite/animation.mojo) and [`canvas.sprite`](src/create/render/canvas.mojo).
+   Index inline at the use site instead. Don't retry it.
 
-   - `Canvas` must keep exactly one parameter, and a framebuffer is swapped by rebuilding the
-     `Canvas`, never by handing the existing one a new `Surface` — see the
-     [`Canvas` docstring](src/create/render/canvas.mojo) for the aliasing error that shape produces.
-     Adding a second parameter breaks every program in the repo at once.
-   - Nothing can return a reference to a `List` element, so `SpriteAnimation` has **no `frame()`
-     accessor** — see its [docstring](src/create/sprite/animation.mojo) and
-     [`canvas.sprite`](src/create/render/canvas.mojo). Index inline at the use site.
-
-   Don't retry either shape.
+   (`Canvas` used to take one parameter — the `Surface` it drew onto — for the same class of
+   reason: a second parameter would have broken every `Program.render` signature at once, and
+   pointing an existing `Canvas` at a new framebuffer could not compile. The command-buffer split
+   (`Canvas` records, `Backend` replays onto a `Surface` it never sees) removed the need for a
+   `Surface` on `Canvas` at all, so `Canvas` now takes **no** parameters. Don't reintroduce a
+   `Surface` field or parameter on it — see its [docstring](src/create/render/canvas.mojo).)
 
 5. **An uncalled overload is compiled by nothing.** A library build only type-checks the `def`
    bodies it reaches, so an overload nothing calls is checked by no build. The program in
@@ -371,9 +387,11 @@ docstring; this table is not an API reference and must not grow into one.
 | `Program` | Full interactive program: `create` + `update` + `render`. No event callbacks — input arrives as `update`'s `Input` parameter |
 | World space | The coordinate space programs draw in — origin centred, y up (see Coordinate system above). `Canvas` maps it to framebuffer pixels through a single base matrix built by `Viewport.base_matrix()` |
 | Design resolution | The size passed to `run` (default 1280x720, or pinned by `ctx.design()`) — the space a program is authored in, and the factor `ctx.autoscale` scales by. See Autoscale above |
-| `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait — it is the seam between the raster loops and wherever the memory came from, an SDL window or a `MemorySurface` |
+| `DrawCommand` | One recorded draw: local-space geometry, the transform at record time, and the resolved `Style`. What `Canvas` appends instead of touching pixels — see [_command.mojo](src/create/render/_command.mojo) |
+| `Backend` | Owns the fonts, glyph cache and interned sprite images, and replays a frame's `DrawCommand`s onto a `Surface` at `present`. The one thing that actually calls into `_raster.mojo` |
+| `Surface` | A borrowed RGBA framebuffer: pixel pointer plus width and height. Deliberately a plain value, not a trait. `Canvas` never holds one — it is `Backend.present`'s replay target, taken after event processing so a resize is never missed |
 | `Viewport` | The design-space-to-pixel mapping: design size, autoscale mode, scale factor, offsets, base matrix. Owns no window and no pixels, so it is pure arithmetic; `Context` forwards to it |
-| `PersistentCanvasState` | What survives the frame boundary — loaded fonts, letterbox colour — moved into each frame's `Canvas` and back out again. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
+| `PersistentCanvasState` | What survives the frame boundary — the `Backend` (hence fonts, glyph cache, sprite images) and the letterbox colour — moved into each frame's `Canvas` and back out again by `_release`. Style is *not* in it: `Canvas` is reachable only from `render`, so nothing could seed a style outside a frame, and carrying one forward would preserve only a forgotten setting |
 | `TransformGuard` / `StyleGuard` | RAII wrappers from `canvas.transform(m)` and `canvas.style()` — pop the matrix, restore the style, on scope exit |
 | Asset vs. playhead | `SpriteAnimation` and `Sound` are immutable artwork, shared by `ArcPointer`; `SpriteAnimator` and an `Audio` voice are one entity's position in it. The rate (`fps`) belongs to the asset, not the playhead |
 | `Easing` / `Tween` | An `Easing` is the *shape* of a motion — a pure function of a 0-to-1 fraction, so `ease(curve, t)` needs no state. A `Tween` is a playhead that walks that fraction over a duration and reads out a value. A tween has no shared asset to split off the way an animation does: its whole definition is four numbers, so each entity owns its own |
@@ -394,4 +412,4 @@ docstring; this table is not an API reference and must not grow into one.
 - Don't use `fn` it has been removed — `error: 'fn' has been removed; use 'def' instead`
 - Don't hold a raw `Pointer` to `Canvas` outside `TransformGuard`/`StyleGuard` — use origin-tracked references.
 - Don't name new test files without the `test_` prefix — the test runner won't pick them up.
-- Don't add a second parameter to `Canvas`, and don't import `window` from `canvas.mojo` — see Gotcha 4.
+- Don't add a `Surface` field or parameter to `Canvas`, and don't import `window` from `canvas.mojo` — see Gotcha 4.
