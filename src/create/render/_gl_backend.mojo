@@ -9,7 +9,7 @@ here decides geometry.
 across commands and is flushed only when something makes a shared draw call
 impossible — today an opaque `CMD_CLEAR` (which resets the framebuffer, so
 earlier vertices must already have landed) and the end of the frame; a texture
-switch joins them once sprites arrive. That is the whole point of baking the
+switch. That is the whole point of baking the
 transform per vertex rather than passing it as a uniform: a per-command
 uniform would force a draw call per command and there would be no batching to
 speak of.
@@ -21,7 +21,7 @@ translucent one is a full-drawable quad in the batch, which blends, and an
 `a == 0` one draws nothing at all.
 """
 
-from std.collections import Optional
+from std.collections import Dict, Optional
 
 from ._command import (
     CMD_CIRCLE,
@@ -29,6 +29,7 @@ from ._command import (
     CMD_LETTERBOX,
     CMD_LINE,
     CMD_RECT,
+    CMD_SPRITE,
     CMD_TRIANGLE,
     DrawCommand,
 )
@@ -48,6 +49,8 @@ from ._gl import (
     GL_MULTISAMPLE,
     GL_ONE_MINUS_SRC_ALPHA,
     GL_R8,
+    GL_RGBA,
+    GL_RGBA8,
     GL_RED,
     GL_SRC_ALPHA,
     GL_STREAM_DRAW,
@@ -67,6 +70,7 @@ from ._gl import (
     _Strings,
     _UInts,
 )
+from ._image import _Image
 from ._tessellate import (
     MODE_SOLID,
     VertexBuffer,
@@ -74,6 +78,7 @@ from ._tessellate import (
     emit_letterbox,
     emit_line,
     emit_rect,
+    emit_sprite,
     emit_triangle,
 )
 from .color import Color
@@ -262,6 +267,14 @@ struct GLRenderer(Movable):
     var u_viewport: Int32
     var u_texture: Int32
     var atlas: UInt32
+    var textures: Dict[Int, UInt32]
+    """Backend image id to GL texture name. The id is already the interning
+    key on `Backend.images`, so a sprite drawn a thousand times is one entry
+    and one upload; the pixels are read from the `_Image` only the first
+    time."""
+    var bound: UInt32
+    """What is on texture unit 0 right now. A batch is one `glDrawArrays`
+    against one sampler, so changing this has to flush first."""
     var vertices: VertexBuffer
     var draw_calls: Int
     """Batches flushed by the last `draw`. Read by the bench example and the
@@ -274,6 +287,8 @@ struct GLRenderer(Movable):
         self.vbo = _gen_object(self.gl.gen_buffers)
         self.vbo_bytes = 0
         self.atlas = _gen_object(self.gl.gen_textures)
+        self.textures = Dict[Int, UInt32]()
+        self.bound = 0
         self.vertices = VertexBuffer()
         self.draw_calls = 0
 
@@ -303,6 +318,8 @@ struct GLRenderer(Movable):
         _delete_object(self.gl.delete_buffers, self.vbo)
         _delete_object(self.gl.delete_vertex_arrays, self.vao)
         _delete_object(self.gl.delete_textures, self.atlas)
+        for ref entry in self.textures.items():
+            _delete_object(self.gl.delete_textures, entry.value)
 
     def _setup_vertex_array(mut self):
         """Bind the VAO once and record the interleaved attribute layout.
@@ -360,6 +377,7 @@ struct GLRenderer(Movable):
     def draw(
         mut self,
         cmds: List[DrawCommand],
+        images: Dict[Int, _Image],
         width: Int,
         height: Int,
         scale: Float64,
@@ -378,7 +396,8 @@ struct GLRenderer(Movable):
         )
         self.gl.uniform_1i(self.u_texture, 0)
         self.gl.active_texture(GL_TEXTURE0)
-        self.gl.bind_texture(GL_TEXTURE_2D, self.atlas)
+        self.bound = 0
+        self._bind(self.atlas)
 
         self.vertices.clear()
         self.draw_calls = 0
@@ -393,9 +412,63 @@ struct GLRenderer(Movable):
                 emit_line(self.vertices, c, scale)
             elif c.kind == CMD_TRIANGLE:
                 emit_triangle(self.vertices, c, scale)
+            elif c.kind == CMD_SPRITE:
+                self._sprite(c, images, scale)
             elif c.kind == CMD_LETTERBOX:
+                # Bars are solid, but they must land over whatever texture is
+                # bound, so no rebind here — `MODE_SOLID` never samples.
                 emit_letterbox(self.vertices, c, width, height)
         self._flush()
+
+    def _bind(mut self, name: UInt32) raises:
+        """Put `name` on unit 0, flushing first if that changes the sampler."""
+        if name == self.bound:
+            return
+        self._flush()
+        self.gl.bind_texture(GL_TEXTURE_2D, name)
+        self.bound = name
+
+    def _sprite(
+        mut self, c: DrawCommand, images: Dict[Int, _Image], scale: Float64
+    ) raises:
+        if c.image not in images:
+            return
+        self._bind(self._texture(c.image, images))
+        emit_sprite(self.vertices, c, scale)
+
+    def _texture(
+        mut self, id: Int, images: Dict[Int, _Image]
+    ) raises -> UInt32:
+        """The GL texture for a backend image id, uploaded on first use."""
+        if id in self.textures:
+            return self.textures[id]
+        ref img = images[id]
+        var name = _gen_object(self.gl.gen_textures)
+        self.gl.bind_texture(GL_TEXTURE_2D, name)
+        self.gl.pixel_storei(GL_UNPACK_ALIGNMENT, 1)
+        self.gl.tex_image_2d(
+            GL_TEXTURE_2D,
+            0,
+            GL_RGBA8,
+            Int32(img.width),
+            Int32(img.height),
+            0,
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            Int(img.pixels.unsafe_ptr()),
+        )
+        self.gl.tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        self.gl.tex_parameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        self.gl.tex_parameteri(
+            GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE
+        )
+        self.gl.tex_parameteri(
+            GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE
+        )
+        # The bind above went behind `_bind`'s back; tell it what is current.
+        self.bound = name
+        self.textures[id] = name
+        return name
 
     def _clear(mut self, color: Color, width: Int, height: Int) raises:
         """`CMD_CLEAR`, composited the way the CPU replay composites it."""

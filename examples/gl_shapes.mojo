@@ -21,6 +21,7 @@ from create.core._run_gl import run_gl
 @fieldwise_init
 struct App(Program):
     var angle: Float64
+    var logo: Sprite
 
     @staticmethod
     def create(mut ctx: Context) raises -> App:
@@ -28,7 +29,9 @@ struct App(Program):
         # on screen from the first frame.
         ctx.autoscale = AutoScale.FIT
         ctx.design(800, 600)
-        return App(0.0)
+        # Twice, below, from one interned image and so one GL upload.
+        var logo = Sprite.load(script_dir() + "/sprite/assets/sprite.png")
+        return App(0.0, logo^)
 
     def update(mut self, mut ctx: Context, input: Input) raises:
         self.angle += ctx.time.delta
@@ -93,6 +96,11 @@ struct App(Program):
             canvas.stroke(Color.WHITE)
             canvas.stroke_width(3)
             canvas.triangle((-140, -180), (40, -180), (-50, -30))
+
+        # The same image at two sizes: one texture, one upload, and — since
+        # the two draws are adjacent — one extra batch for the pair.
+        canvas.sprite(self.logo, 250, -170, 140, 140)
+        canvas.sprite(self.logo, 90, -230, 70, 70)
 
 
 def main() raises:
