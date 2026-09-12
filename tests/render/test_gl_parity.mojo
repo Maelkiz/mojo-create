@@ -41,7 +41,7 @@ from std.testing import TestSuite, assert_true
 from create import *
 from create.core._frame import step
 from create.core.headless import run_headless
-from create.render._backend import BACKEND_GPU
+from create.render.render_backend import RenderBackend
 from create.render._gl import (
     GL,
     GL_COLOR_ATTACHMENT0,
@@ -235,7 +235,7 @@ def _gpu_frame(mut win: GLWindow) raises -> List[UInt8]:
     var program = _Parity.create(ctx)
     ctx._set_viewport(_PIXEL_W, _PIXEL_H)
     var input = Input()
-    var state = PersistentCanvasState(BACKEND_GPU)
+    var state = PersistentCanvasState(RenderBackend.GPU)
     ctx.time._start(0)
     ctx.time._tick(16)
     state = step(program, ctx, input, state^)

@@ -1,7 +1,7 @@
 """The five solid command kinds, drawn on the GPU backend.
 
 The visual comparison target for the CPU path: run this, then drop the
-`backend=BACKEND_GPU` argument, and the two frames should be indistinguishable
+`backend=RenderBackend.GPU` argument, and the two frames should be indistinguishable
 apart from the GPU's multisampled edges. Everything on screen is deliberately
 a case the two backends could disagree about — a translucent fill under a
 stroke, a stroke wider than its shape, a rotated rect, a diagonal line, a
@@ -138,4 +138,4 @@ struct App(Program):
 
 
 def main() raises:
-    run[App]("GL Shapes", 1280, 720, fullscreen=True, backend=BACKEND_GPU)
+    run[App]("GL Shapes", 1280, 720, fullscreen=True, backend=RenderBackend.GPU)

@@ -17,7 +17,7 @@ two loops cannot drift in what a frame is.
 
 from window import GLWindow
 
-from create.render._backend import BACKEND_GPU
+from create.render.render_backend import RenderBackend
 from create.render.autoscale import AutoScale
 from create.render.canvas import PersistentCanvasState
 
@@ -76,7 +76,7 @@ def _run_loop[
     P: Program
 ](mut program: P, mut win: GLWindow, mut ctx: Context, mut input: Input) raises:
     # Built after the window because its GL resources need a current context.
-    var state = PersistentCanvasState(BACKEND_GPU)
+    var state = PersistentCanvasState(RenderBackend.GPU)
     ctx.time._start(win.ticks())
     while win.is_open() and not ctx._quit:
         var px_per_point = _update_dimensions(win, ctx)

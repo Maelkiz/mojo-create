@@ -1,5 +1,5 @@
 from window.window import Window
-from create.render._backend import BACKEND_CPU, BACKEND_GPU
+from create.render.render_backend import RenderBackend
 from create.render.canvas import PersistentCanvasState
 from ._events import apply_events
 from ._frame import step
@@ -67,7 +67,7 @@ def run[
     width: Int = 1280,
     height: Int = 720,
     fullscreen: Bool = False,
-    backend: Int = BACKEND_CPU,
+    backend: Int = RenderBackend.CPU,
 ) raises:
     """Open a window and run `P` in it until it quits.
 
@@ -90,12 +90,12 @@ def run[
     is the other half of why `FIT` is the default: it keeps the numbers passed
     here meaningful in every launch mode.
 
-    `backend=BACKEND_GPU` runs the same program through the GL backend
+    `backend=RenderBackend.GPU` runs the same program through the GL backend
     instead — a different window, a different loop, and the same frame. It is
     a branch rather than a value the loop holds because Mojo 1.0 has no
     dynamic trait dispatch, which is also why `Backend` switches on a `kind`.
     """
-    if backend == BACKEND_GPU:
+    if backend == RenderBackend.GPU:
         run_gl[P](title, width, height, fullscreen)
         return
     var win = Window(title, width, height, fullscreen)

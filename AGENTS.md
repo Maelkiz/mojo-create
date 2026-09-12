@@ -40,7 +40,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | File | Purpose |
 |---|---|
 | `src/create/core/program.mojo` | Defines the `Program` trait |
-| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen, backend)` — the windowed entry point; dispatches to the GPU loop when `backend == BACKEND_GPU` |
+| `src/create/core/run.mojo` | `run[T](title, width, height, fullscreen, backend)` — the windowed entry point; dispatches to the GPU loop when `backend == RenderBackend.GPU` |
 | `src/create/core/_frame.mojo` | `step[P]` — one frame: update, render, letterbox, release. The one copy, shared by both loops |
 | `src/create/core/headless.mojo` | `run_headless[T](width, height, frames, pixel_width, pixel_height)` — same loop, owned buffer, no window |
 | `src/create/core/context.mojo` | `Context` — width/height/time/autoscale passed to every frame |
@@ -50,6 +50,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/core/path.mojo` | `script_dir()` — the directory of the running program, for asset paths |
 | `src/create/render/canvas.mojo` | Drawing API: shapes, text, transforms, coordinate helpers. Records `DrawCommand`s; touches no pixels |
 | `src/create/render/_command.mojo` | `DrawCommand` — one recorded draw, local geometry + transform + resolved `Style`; the per-kind constructor helpers |
+| `src/create/render/render_backend.mojo` | `RenderBackend` — the `CPU`/`GPU` backend-selector constants |
 | `src/create/render/_backend.mojo` | `Backend` — owns the fonts, glyph cache and interned sprite images; replays a frame's `DrawCommand`s onto a `Surface` (`present`) or through GL (`present_gpu`) |
 | `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory. The CPU backend's replay target, not `Canvas`'s |
 | `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits. Called only from `_backend.mojo` |
@@ -163,7 +164,7 @@ line. Every example and every test uses it.
 Each subpackage exports the names it owns and nothing from a layer below:
 
 - `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `script_dir`.
-- `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`, `BACKEND_CPU`/`BACKEND_GPU`.
+- `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`, `RenderBackend`.
 - `from create.math import *` — `Vector2`/`Vector3`, `Matrix` and its constructors, the geometry shapes and `overlaps`, `Random`, `Easing`/`ease`/`Tween`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.sprite import *` — `Sprite`, `SpriteAnimation`, `SpriteAnimator`.
 - `from create.audio import *` — `Sound`, `Audio`.
@@ -256,10 +257,10 @@ resolved at replay, in the backend that owns the fonts. Add a new shape by exten
 `_raster.mojo` directly — `Canvas` has no `Surface` to call it against.
 
 **The command buffer exists so a frame can be replayed by either backend, and both now exist.**
-`Backend` carries a `kind` — `BACKEND_CPU` replays onto a `Surface` through `_raster.mojo`,
-`BACKEND_GPU` replays through `GLRenderer` in [_gl_backend.mojo](src/create/render/_gl_backend.mojo)
+`Backend` carries a `kind` — `RenderBackend.CPU` replays onto a `Surface` through `_raster.mojo`,
+`RenderBackend.GPU` replays through `GLRenderer` in [_gl_backend.mojo](src/create/render/_gl_backend.mojo)
 — and a `kind` rather than a trait object because Mojo 1.0 has no dynamic trait dispatch. Users
-select one with `run[T](..., backend=BACKEND_GPU)`; the default is unchanged.
+select one with `run[T](..., backend=RenderBackend.GPU)`; the default is unchanged.
 
 The GPU path is OpenGL 3.3 and works like this. `_tessellate.mojo` turns each `DrawCommand` into
 triangles on the CPU, baking that command's transform into every vertex, so the shader needs no
