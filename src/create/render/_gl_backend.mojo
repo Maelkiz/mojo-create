@@ -7,9 +7,10 @@ here decides geometry.
 
 **One batch spans as many commands as it can.** The vertex buffer accumulates
 across commands and is flushed only when something makes a shared draw call
-impossible — today an opaque `CMD_CLEAR` (which resets the framebuffer, so
-earlier vertices must already have landed) and the end of the frame; a texture
-switch. That is the whole point of baking the
+impossible — an opaque `CMD_CLEAR` (which resets the framebuffer, so earlier
+vertices must already have landed), a texture switch, and the end of the
+frame. Solids and text share one batch because solids never sample: the glyph
+atlas stays bound through both. That is the whole point of baking the
 transform per vertex rather than passing it as a uniform: a per-command
 uniform would force a draw call per command and there would be no batching to
 speak of.
@@ -23,6 +24,8 @@ translucent one is a full-drawable quad in the batch, which blends, and an
 
 from std.collections import Dict, Optional
 
+from create.math.matrix import apply as mat_apply
+
 from ._command import (
     CMD_CIRCLE,
     CMD_CLEAR,
@@ -30,6 +33,7 @@ from ._command import (
     CMD_LINE,
     CMD_RECT,
     CMD_SPRITE,
+    CMD_TEXT,
     CMD_TRIANGLE,
     DrawCommand,
 )
@@ -75,12 +79,15 @@ from ._tessellate import (
     MODE_SOLID,
     VertexBuffer,
     emit_circle,
+    emit_glyph,
     emit_letterbox,
     emit_line,
     emit_rect,
     emit_sprite,
     emit_triangle,
 )
+from ._text import PlacedGlyph, TextRenderer
+from ._transform import pixel_scale
 from .color import Color
 
 comptime _VERTEX_FLOATS = 9
@@ -91,6 +98,13 @@ comptime ATLAS_SIZE = 1024
 """The glyph atlas is square and fixed: a resize would have to re-pack and
 re-upload every glyph mid-frame, and a face large enough to overflow a
 megatexel of coverage is past what this backend is for."""
+
+comptime _ATLAS_PAD = 1
+"""Texels of blank left between packed glyphs, and before the first one.
+
+`GL_LINEAR` samples a neighbourhood, so without a gutter a glyph's edge would
+pick up the one packed beside it. The leading pad is also what keeps texel
+(0, 0) — the white texel — out of the allocator's reach."""
 
 
 comptime _VERTEX_SHADER = String(
@@ -249,6 +263,21 @@ def _link(gl: GL) raises -> UInt32:
     return program
 
 
+struct _AtlasRect(ImplicitlyCopyable, Movable):
+    """Where one glyph's mask sits in the atlas, in texels."""
+
+    var x: Int
+    var y: Int
+    var w: Int
+    var h: Int
+
+    def __init__(out self, x: Int, y: Int, w: Int, h: Int):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+
+
 struct GLRenderer(Movable):
     """Everything the GPU path owns: the entry points, one VAO/VBO, the shader
     program, the glyph atlas, and the vertex buffer they are fed from.
@@ -267,6 +296,18 @@ struct GLRenderer(Movable):
     var u_viewport: Int32
     var u_texture: Int32
     var atlas: UInt32
+    var glyphs: Dict[Int, _AtlasRect]
+    """Glyph cache key to its rect in the atlas. Keyed by `TextRenderer`'s own
+    key, so a size or weight that misses there misses here too and the two
+    caches cannot disagree about what a key means."""
+    var shelf_x: Int
+    var shelf_y: Int
+    var shelf_h: Int
+    """The shelf allocator's cursor: glyphs fill a row left to right, then a
+    new row starts below the tallest glyph of the last one. Nothing is ever
+    freed — the atlas is reset whole or not at all."""
+    var font_generation: Int
+    """The `TextRenderer.font_generation` these rects were packed against."""
     var textures: Dict[Int, UInt32]
     """Backend image id to GL texture name. The id is already the interning
     key on `Backend.images`, so a sprite drawn a thousand times is one entry
@@ -287,6 +328,11 @@ struct GLRenderer(Movable):
         self.vbo = _gen_object(self.gl.gen_buffers)
         self.vbo_bytes = 0
         self.atlas = _gen_object(self.gl.gen_textures)
+        self.glyphs = Dict[Int, _AtlasRect]()
+        self.shelf_x = _ATLAS_PAD
+        self.shelf_y = 0
+        self.shelf_h = 1
+        self.font_generation = 0
         self.textures = Dict[Int, UInt32]()
         self.bound = 0
         self.vertices = VertexBuffer()
@@ -340,11 +386,13 @@ struct GLRenderer(Movable):
         self.gl.enable_vertex_attrib_array(3)
 
     def _setup_atlas(mut self) raises:
-        """A single-channel coverage atlas, blank but for its white texel.
+        """A single-channel coverage atlas, allocated blank.
 
-        Glyphs are packed into it in a later phase; what it has to provide
-        now is a sampler the `MODE_MASK` branch can read without undefined
-        behaviour, and texel (0, 0) opaque so that branch means "no mask".
+        `_pack` fills it a glyph at a time with `glTexSubImage2D`; allocating
+        it whole up front is what lets those uploads be sub-images and what
+        makes a sampler safe to read before any text is drawn. Texel (0, 0) is
+        left opaque and outside the allocator's reach, so a `MODE_MASK` quad
+        can sample "full coverage" without a glyph.
         """
         self.gl.active_texture(GL_TEXTURE0)
         self.gl.bind_texture(GL_TEXTURE_2D, self.atlas)
@@ -378,6 +426,7 @@ struct GLRenderer(Movable):
         mut self,
         cmds: List[DrawCommand],
         images: Dict[Int, _Image],
+        mut text: TextRenderer,
         width: Int,
         height: Int,
         scale: Float64,
@@ -414,11 +463,92 @@ struct GLRenderer(Movable):
                 emit_triangle(self.vertices, c, scale)
             elif c.kind == CMD_SPRITE:
                 self._sprite(c, images, scale)
+            elif c.kind == CMD_TEXT:
+                self._text(c, text, scale)
             elif c.kind == CMD_LETTERBOX:
                 # Bars are solid, but they must land over whatever texture is
                 # bound, so no rebind here — `MODE_SOLID` never samples.
                 emit_letterbox(self.vertices, c, width, height)
         self._flush()
+
+    def _text(
+        mut self, c: DrawCommand, mut text: TextRenderer, scale: Float64
+    ) raises:
+        """`CMD_TEXT`, laid out by the same function the CPU replay uses."""
+        if not c.style.fill_enabled:
+            return
+        if text.font_generation != self.font_generation:
+            # A different face behind the same keys: the packed masks are the
+            # old face's, so the shelves start over.
+            self.glyphs.clear()
+            self.shelf_x = _ATLAS_PAD
+            self.shelf_y = 0
+            self.shelf_h = 1
+            self.font_generation = text.font_generation
+        var m = c.transform
+        # Only the anchor is mapped — the layout happens in pixel space.
+        var p = mat_apply(m, c.geom[0], c.geom[1])
+        var placed = text.layout(
+            c.text, p[0], p[1], c.style, pixel_scale(m, scale)
+        )
+        if len(placed) == 0:
+            return
+        self._bind(self.atlas)
+        comptime inv = 1.0 / Float64(ATLAS_SIZE)
+        for ref g in placed:
+            var r = self._pack(g, text)
+            emit_glyph(
+                self.vertices,
+                Float64(g.x),
+                Float64(g.y),
+                Float64(g.width),
+                Float64(g.height),
+                Float64(r.x) * inv,
+                Float64(r.y) * inv,
+                Float64(r.x + r.w) * inv,
+                Float64(r.y + r.h) * inv,
+                c.style.fill,
+            )
+
+    def _pack(mut self, g: PlacedGlyph, mut text: TextRenderer) raises -> _AtlasRect:
+        """The glyph's rect in the atlas, uploading its mask on first sight."""
+        if g.key in self.glyphs:
+            return self.glyphs[g.key]
+        if self.shelf_x + g.width + _ATLAS_PAD > ATLAS_SIZE:
+            self.shelf_x = _ATLAS_PAD
+            self.shelf_y += self.shelf_h + _ATLAS_PAD
+            self.shelf_h = 1
+        if self.shelf_y + g.height > ATLAS_SIZE:
+            raise Error(
+                "the GL glyph atlas is full — "
+                + String(len(self.glyphs))
+                + " glyphs packed into "
+                + String(ATLAS_SIZE)
+                + "x"
+                + String(ATLAS_SIZE)
+            )
+        var rect = _AtlasRect(self.shelf_x, self.shelf_y, g.width, g.height)
+        self.shelf_x += g.width + _ATLAS_PAD
+        self.shelf_h = max(self.shelf_h, g.height)
+
+        # An upload targets the atlas, so it has to be the bound texture —
+        # `_text` binds it before the first `_pack` of the string.
+        var mask = text.glyph_mask(g.key)
+        self.gl.pixel_storei(GL_UNPACK_ALIGNMENT, 1)
+        self.gl.tex_sub_image_2d(
+            GL_TEXTURE_2D,
+            0,
+            Int32(rect.x),
+            Int32(rect.y),
+            Int32(rect.w),
+            Int32(rect.h),
+            GL_RED,
+            GL_UNSIGNED_BYTE,
+            _Bytes(unsafe_from_address=Int(mask.unsafe_ptr())),
+        )
+        _ = mask^
+        self.glyphs[g.key] = rect
+        return rect
 
     def _bind(mut self, name: UInt32) raises:
         """Put `name` on unit 0, flushing first if that changes the sampler."""

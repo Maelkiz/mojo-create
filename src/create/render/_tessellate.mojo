@@ -384,3 +384,29 @@ def emit_sprite(mut vb: VertexBuffer, c: DrawCommand, scale: Float64):
     vb.push(x0, y0, 0.0, 0.0, tint, MODE_TEXTURE)
     vb.push(x1, y1, 1.0, 1.0, tint, MODE_TEXTURE)
     vb.push(x0, y1, 0.0, 1.0, tint, MODE_TEXTURE)
+
+
+def emit_glyph(
+    mut vb: VertexBuffer,
+    x: Float64,
+    y: Float64,
+    w: Float64,
+    h: Float64,
+    u0: Float64,
+    v0: Float64,
+    u1: Float64,
+    v1: Float64,
+    color: Color,
+):
+    """One glyph quad in device pixels, sampling `[u0, u1] x [v0, v1]`.
+
+    The rect is already placed — `TextRenderer.layout` decided where, which is
+    why nothing about alignment or pen advance appears here. `MODE_MASK` makes
+    the sampled coverage scale the colour's alpha, matching `blit_glyph`.
+    """
+    vb.push(x, y, u0, v0, color, MODE_MASK)
+    vb.push(x + w, y, u1, v0, color, MODE_MASK)
+    vb.push(x + w, y + h, u1, v1, color, MODE_MASK)
+    vb.push(x, y, u0, v0, color, MODE_MASK)
+    vb.push(x + w, y + h, u1, v1, color, MODE_MASK)
+    vb.push(x, y + h, u0, v1, color, MODE_MASK)
