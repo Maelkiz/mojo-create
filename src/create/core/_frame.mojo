@@ -2,19 +2,17 @@ from create.render.canvas import Canvas, PersistentCanvasState
 from .context import Context
 from .input import Input
 from .program import Program
-from create.render.surface import Surface
 
 
 def step[
-    P: Program, o: Origin[mut=True]
+    P: Program
 ](
     mut program: P,
     mut ctx: Context,
     input: Input,
-    surf: Surface[o],
     var state: PersistentCanvasState,
 ) raises -> PersistentCanvasState:
-    """Advance `program` by one frame onto `surf` and hand its state back.
+    """Advance `program` by one frame and hand its recorded state back.
 
     The windowed and headless loops differ in how they get a frame started —
     one pumps SDL events and reads a clock, the other counts — but from here
@@ -26,15 +24,14 @@ def step[
     built for this frame and dropped before the frame is presented, so anything
     longer-lived than a frame rides in `PersistentCanvasState`.
 
-    `surf` reaches the backend, never the `Canvas` — a `Canvas` holds no
-    framebuffer. It is still taken as an argument rather than built here
-    because only the caller knows where the pixels are, and in the windowed
-    loop it is only valid once events have been pumped.
-
-    A frame is two halves: `render` records draw commands and touches no
-    pixels, then the backend replays the whole recording onto `surf`. Both
-    halves are here rather than split across the two loops, so neither loop can
-    present a frame the other would not.
+    **The caller presents.** A frame ends with the recording complete and the
+    state handed back; `state.backend.present(surface, scale)` is the caller's
+    call, not this one's. That keeps the frame body target-agnostic — a GPU
+    backend has no `Surface` to name — and it is why `step` grows no second
+    target parameter, which is the failure mode Gotcha 4 describes. The
+    windowed and headless loops both present through a `Surface` they alone
+    know how to build; in the windowed case that is only valid after events
+    have been pumped.
     """
     program.update(ctx, input)
     var canvas = Canvas(ctx.view, state^)
@@ -42,6 +39,4 @@ def step[
     # Recorded last, so it doubles as the clip for anything drawn out of
     # bounds — the replay honours the buffer's order.
     canvas._draw_letterbox()
-    var out = canvas^._release()
-    out.backend.present(surf, ctx.view.scale)
-    return out^
+    return canvas^._release()

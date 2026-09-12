@@ -102,12 +102,9 @@ def _run_loop[
         # buffer.
         var pixel_w = win.width()
         var pixel_h = win.height()
-        state = step(
-            program,
-            ctx,
-            input,
-            Surface(win.pixels(), pixel_w, pixel_h),
-            state^,
+        state = step(program, ctx, input, state^)
+        state.backend.present(
+            Surface(win.pixels(), pixel_w, pixel_h), ctx.view.scale
         )
         win.present()
 
