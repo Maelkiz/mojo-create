@@ -2,7 +2,7 @@
 # hand-build the list — no Canvas involved — so they check the replay itself,
 # and the last one pins it against the Canvas output it has to reproduce.
 
-from std.math import pi
+from std.math import pi, max, min
 from std.testing import TestSuite, assert_equal, assert_true
 
 from create import *
@@ -11,6 +11,8 @@ from create.render.surface import MemorySurface
 from create.render.viewport import Viewport
 from create.render._style import Style
 from create.render._backend import Backend
+from create.render._raster import blend
+from create.render._transform import pixel_scale, stroke_width_px
 from create.render._command import (
     DrawCommand,
     clear_command,
@@ -108,6 +110,107 @@ def test_circle_replays_round() raises -> None:
     assert_equal(m.pixel(50, 35), Color.GREEN)
     # The corner of the bounding box is outside the disc.
     assert_equal(m.pixel(35, 35), Color.BLACK)
+
+
+def _brute_circle(
+    mut mem: MemorySurface,
+    m: Matrix[3, 3],
+    style: Style,
+    cx: Float64,
+    cy: Float64,
+    r: Float64,
+    scale: Float64,
+) raises -> None:
+    """The pixel-by-pixel distance test `_circle`'s uniform branch used
+    before it was rewritten to per-row analytic spans — kept here as the
+    ground truth the span rewrite must reproduce byte-for-byte."""
+    var s = mem.surface()
+    var W = s.width
+    var H = s.height
+    var p = apply(m, cx, cy)
+    var pcx = p[0]
+    var pcy = p[1]
+    var pr = r * pixel_scale(m, scale)
+    var pr2 = pr * pr
+    var pr_inner = pr - Float64(stroke_width_px(style, m, scale))
+    var pr_inner2 = pr_inner * pr_inner
+    var x0 = max(Int(pcx - pr), 0)
+    var y0 = max(Int(pcy - pr), 0)
+    var x1 = min(Int(pcx + pr) + 1, W)
+    var y1 = min(Int(pcy + pr) + 1, H)
+    for row in range(y0, y1):
+        var dy = Float64(row) - pcy
+        for col in range(x0, x1):
+            var dx = Float64(col) - pcx
+            var d2 = dx * dx + dy * dy
+            if d2 <= pr2:
+                var off = (row * W + col) * 4
+                if style.fill_enabled and (
+                    not style.stroke_enabled
+                    or pr_inner <= 0.0
+                    or d2 <= pr_inner2
+                ):
+                    blend(s, off, style.fill)
+                elif style.stroke_enabled and d2 > pr_inner2:
+                    blend(s, off, style.stroke)
+
+
+def _check_circle_matches_brute_force(
+    cx: Float64,
+    cy: Float64,
+    r: Float64,
+    fill_enabled: Bool,
+    stroke_enabled: Bool,
+    stroke_width: Int,
+) raises -> None:
+    var m = _base()
+    var st = Style()
+    st.fill = Color.RED
+    st.fill_enabled = fill_enabled
+    st.stroke = Color.BLUE
+    st.stroke_enabled = stroke_enabled
+    st.stroke_width = stroke_width
+
+    var want = MemorySurface(_W, _H)
+    _brute_circle(want, m, st, cx, cy, r, 1.0)
+
+    var cmds = List[DrawCommand]()
+    cmds.append(circle_command(m, st, cx, cy, r))
+    var got = _replay(cmds)
+
+    for y in range(_H):
+        for x in range(_W):
+            assert_equal(
+                got.pixel(x, y),
+                want.pixel(x, y),
+                "pixel " + String(x) + "," + String(y),
+            )
+
+
+def test_circle_span_matches_brute_force_fill_only() raises -> None:
+    _check_circle_matches_brute_force(0.0, 0.0, 20.0, True, False, 1)
+
+
+def test_circle_span_matches_brute_force_stroke_only() raises -> None:
+    _check_circle_matches_brute_force(0.0, 0.0, 20.0, False, True, 3)
+
+
+def test_circle_span_matches_brute_force_fill_and_stroke() raises -> None:
+    _check_circle_matches_brute_force(0.0, 0.0, 20.0, True, True, 3)
+
+
+def test_circle_span_matches_brute_force_radius_under_one_pixel() raises -> None:
+    _check_circle_matches_brute_force(10.0, -8.0, 0.6, True, True, 1)
+    _check_circle_matches_brute_force(10.0, -8.0, 0.6, True, False, 1)
+
+
+def test_circle_span_matches_brute_force_stroke_wider_than_radius() raises -> None:
+    _check_circle_matches_brute_force(-15.0, 5.0, 12.0, True, True, 40)
+    _check_circle_matches_brute_force(-15.0, 5.0, 12.0, False, True, 40)
+
+
+def test_circle_span_matches_brute_force_pr_inner_exactly_zero() raises -> None:
+    _check_circle_matches_brute_force(5.0, 5.0, 12.0, True, True, 12)
 
 
 def test_line_replays_between_its_endpoints() raises -> None:

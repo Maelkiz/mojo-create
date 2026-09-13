@@ -1,5 +1,5 @@
 from std.collections import Dict, Optional
-from std.math import max, min, abs
+from std.math import max, min, abs, sqrt
 
 from create.math.matrix import Matrix, inverse, apply as mat_apply
 
@@ -19,6 +19,7 @@ from ._raster import (
     blit_sprite,
     fill_all,
     fill_pixels,
+    fill_span,
     fill_triangle,
     line_pixels,
 )
@@ -56,6 +57,54 @@ def device_bounds(
     var y_min = max(Int(min(min(p0[1], p1[1]), min(p2[1], p3[1]))), 0)
     var y_max = min(Int(max(max(p0[1], p1[1]), max(p2[1], p3[1]))) + 1, height)
     return (x_min, y_min, x_max, y_max)
+
+
+def _circle_row_span(
+    pcx: Float64, dy: Float64, rad2: Float64, lo_bound: Int, hi_bound: Int
+) -> Tuple[Int, Int]:
+    """Integer columns in `[lo_bound, hi_bound)` where `(col - pcx)**2 + dy**2
+    <= rad2` — the same per-column test `_circle`'s uniform branch used to
+    make one column at a time. `sqrt` only seeds the bounds; each side is
+    then walked outward while the exact same expression still passes and
+    inward while it fails, which is what keeps this bit-exact with the
+    per-pixel loop it replaces despite `sqrt` rounding differently than
+    repeated multiplication. Returns an empty range (`lo > hi`) rather than
+    raising when no column qualifies.
+    """
+    if lo_bound >= hi_bound:
+        return (lo_bound, lo_bound - 1)
+    var rem = rad2 - dy * dy
+    if rem < 0.0:
+        return (lo_bound, lo_bound - 1)
+    var half = sqrt(rem)
+
+    var lo = Int(pcx - half)
+    while lo - 1 >= lo_bound:
+        var dx = Float64(lo - 1) - pcx
+        if dx * dx + dy * dy <= rad2:
+            lo -= 1
+        else:
+            break
+    while lo < hi_bound:
+        var dx = Float64(lo) - pcx
+        if dx * dx + dy * dy <= rad2:
+            break
+        lo += 1
+
+    var hi = Int(pcx + half)
+    while hi + 1 < hi_bound:
+        var dx = Float64(hi + 1) - pcx
+        if dx * dx + dy * dy <= rad2:
+            hi += 1
+        else:
+            break
+    while hi >= lo_bound:
+        var dx = Float64(hi) - pcx
+        if dx * dx + dy * dy <= rad2:
+            break
+        hi -= 1
+
+    return (max(lo, lo_bound), min(hi, hi_bound - 1))
 
 
 struct Backend(Movable):
@@ -284,21 +333,47 @@ struct Backend(Movable):
             var y0 = max(Int(pcy - pr), 0)
             var x1 = min(Int(pcx + pr) + 1, W)
             var y1 = min(Int(pcy + pr) + 1, H)
+            # Whether a row's *entire* outer span is fill, with no stroke ever
+            # drawn — matches the per-pixel `if`'s "or pr_inner <= 0.0" arm,
+            # which shortcuts to true regardless of `d2` and so never leaves
+            # the `elif` reachable.
+            var full_fill = c.style.fill_enabled and (
+                not c.style.stroke_enabled or pr_inner <= 0.0
+            )
             for row in range(y0, y1):
                 var dy = Float64(row) - pcy
-                for col in range(x0, x1):
-                    var dx = Float64(col) - pcx
-                    var d2 = dx * dx + dy * dy
-                    if d2 <= pr2:
-                        var off = (row * W + col) * 4
-                        if c.style.fill_enabled and (
-                            not c.style.stroke_enabled
-                            or pr_inner <= 0.0
-                            or d2 <= pr_inner2
-                        ):
-                            blend(s, off, c.style.fill)
-                        elif c.style.stroke_enabled and d2 > pr_inner2:
-                            blend(s, off, c.style.stroke)
+                var outer = _circle_row_span(pcx, dy, pr2, x0, x1)
+                var ol = outer[0]
+                var oh = outer[1]
+                if ol > oh:
+                    continue
+                var row_off = row * W
+                if full_fill:
+                    fill_span(s, (row_off + ol) * 4, oh - ol + 1, c.style.fill)
+                elif c.style.stroke_enabled:
+                    var inner = _circle_row_span(pcx, dy, pr_inner2, ol, oh + 1)
+                    var il = inner[0]
+                    var ih = inner[1]
+                    if il <= ih:
+                        if c.style.fill_enabled:
+                            fill_span(
+                                s, (row_off + il) * 4, ih - il + 1, c.style.fill
+                            )
+                        if il > ol:
+                            fill_span(
+                                s, (row_off + ol) * 4, il - ol, c.style.stroke
+                            )
+                        if ih < oh:
+                            fill_span(
+                                s,
+                                (row_off + ih + 1) * 4,
+                                oh - ih,
+                                c.style.stroke,
+                            )
+                    else:
+                        fill_span(
+                            s, (row_off + ol) * 4, oh - ol + 1, c.style.stroke
+                        )
         else:
             var minv = inverse(m)
             var b = device_bounds(m, cx - r, cy - r, cx + r, cy + r, W, H)
