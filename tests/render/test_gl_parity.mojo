@@ -107,7 +107,8 @@ comptime _SHAPE_LINE = 3
 comptime _SHAPE_TRIANGLE = 4
 comptime _SHAPE_SPRITE = 5
 comptime _SHAPE_TEXT = 6
-comptime _SHAPE_COUNT = 7
+comptime _SHAPE_ROTATED_RECT = 7
+comptime _SHAPE_COUNT = 8
 
 
 def _shape_name(shape: Int) -> String:
@@ -123,8 +124,10 @@ def _shape_name(shape: Int) -> String:
         return "triangle"
     elif shape == _SHAPE_SPRITE:
         return "sprite"
-    else:
+    elif shape == _SHAPE_TEXT:
         return "text"
+    else:
+        return "rotated rect"
 
 
 @fieldwise_init
@@ -177,7 +180,7 @@ struct _Parity(Program):
             # Native size: at a scale of 1 neither backend resamples, so this
             # is testing the blit, not the filter.
             canvas.sprite(self.logo, 70, 50, 2, 2)
-        else:
+        elif self.shape == _SHAPE_TEXT:
             with canvas.style():
                 canvas.no_stroke()
                 canvas.fill(Color.WHITE)
@@ -186,6 +189,16 @@ struct _Parity(Program):
                     HorizontalAlignment.CENTER, VerticalAlignment.MIDDLE
                 )
                 canvas.text("parity", 0, 0)
+        else:
+            # Rotation defeats the axis-aligned fast path on both backends,
+            # so this exercises the CPU's non-uniform inverse-mapping branch
+            # against the GL tessellator's per-vertex transform — the one
+            # shape kind the parity set otherwise never touches.
+            with canvas.style():
+                canvas.no_stroke()
+                canvas.fill(Color(0x60, 0xE0, 0x90))
+                with canvas.transform(rotate(0.5)):
+                    canvas.rectangle((30, -70), 40, 20)
 
 
 def _mask(pixels: List[UInt8]) -> List[Bool]:

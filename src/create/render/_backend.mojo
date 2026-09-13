@@ -1,5 +1,5 @@
 from std.collections import Dict, Optional
-from std.math import max, min, abs, sqrt
+from std.math import max, min, abs, sqrt, ceil, floor
 
 from create.math.matrix import Matrix, inverse, apply as mat_apply
 
@@ -105,6 +105,113 @@ def _circle_row_span(
         hi -= 1
 
     return (max(lo, lo_bound), min(hi, hi_bound - 1))
+
+
+def _affine_row_span(
+    v0: Float64,
+    step: Float64,
+    inv_step: Float64,
+    col0: Int,
+    lo: Float64,
+    hi: Float64,
+    col_lo: Int,
+    col_hi: Int,
+) -> Tuple[Int, Int]:
+    """Integer columns in `[col_lo, col_hi)` where `lo <= v0 + (col -
+    col0)*step <= hi` — one axis of the rotated rect's containment test,
+    solved directly instead of walked pixel by pixel. `step` is one of the
+    inverse matrix's two affine coefficients (`minv[0,0]` or `minv[1,0]`),
+    constant for the whole shape (not just one row), so the caller passes
+    its reciprocal `inv_step` precomputed once rather than paying a
+    division on every row — `step` itself is still needed for the exact
+    `== 0.0` test, since multiplying by an `inv_step` of `inf` would not
+    reproduce it. `v0` is the local coordinate at column `col0` — a fixed
+    reference column, independent of the `[col_lo, col_hi)` clip range,
+    since a caller solving an inner span clips to the outer span's columns
+    while `v0` still comes from the row's start. Returns an empty range
+    (`lo > hi`) rather than raising when no column qualifies. Not required
+    to be bit-exact with a per-pixel walk — see the non-uniform branches
+    this feeds, whose exactness policy already accepts a rounded-endpoint
+    edge.
+
+    `step` is treated as zero below a small threshold, not just at exactly
+    `0.0`: a composed matrix that is mathematically axis-aligned (e.g. a
+    rotate/counter-rotate pair meant to cancel) still leaves a residual on
+    the order of 1e-16 in `minv[0,0]`/`minv[1,0]` after floating-point matrix
+    multiplication, which `uniform()` rejects. Dividing by that residual
+    turns it into an inv_step of ~1e15, which amplifies the last bit of
+    rounding noise in `step` into a huge, unstable `t0`/`t1` — different
+    enough frame to frame under a continuously varying transform to make the
+    solved span flicker between "whole row" and "nothing". A real rotation
+    or shear is many orders of magnitude above this threshold, so treating
+    smaller values as zero costs no legitimate case.
+    """
+    if col_lo >= col_hi:
+        return (col_lo, col_lo - 1)
+    if abs(step) < 1e-9:
+        if v0 < lo or v0 > hi:
+            return (col_lo, col_lo - 1)
+        return (col_lo, col_hi - 1)
+    var t0 = (lo - v0) * inv_step
+    var t1 = (hi - v0) * inv_step
+    var c_lo = min(t0, t1)
+    var c_hi = max(t0, t1)
+    var start = max(Int(ceil(c_lo)) + col0, col_lo)
+    var end = min(Int(floor(c_hi)) + col0, col_hi - 1)
+    return (start, end)
+
+
+def _ellipse_row_span(
+    a: Float64,
+    b: Float64,
+    c: Float64,
+    inv_2a: Float64,
+    col0: Int,
+    col_lo: Int,
+    col_hi: Int,
+) -> Tuple[Int, Int]:
+    """Integer columns in `[col_lo, col_hi)` where `a*t^2 + b*t + c <= 0`,
+    `t = col - col0` — the rotated/sheared circle's per-row containment
+    test, solved directly instead of walked pixel by pixel. Substituting the
+    row's affine local-space coordinates (taken at reference column `col0`)
+    into `dx^2 + dy^2 <= radius^2` turns it into this quadratic in `t`; `a`
+    is `step_x^2 + step_y^2`, always positive for a non-degenerate
+    transform and constant for the whole shape, so the caller passes
+    `inv_2a = 1/(2a)` precomputed once instead of dividing by it on every
+    row. The qualifying columns (if any) are the single interval between
+    its two roots, offset back to absolute columns by `col0`. `col0` is
+    independent of `[col_lo, col_hi)`, since a caller solving an inner span
+    clips to the outer span's columns while the quadratic's coefficients
+    still come from the row's start. Returns an empty range (`lo > hi`)
+    when the row misses the shape entirely.
+
+    `a` is treated as zero below a small threshold, mirroring
+    `_affine_row_span`'s `step` guard — a composed matrix that is
+    mathematically axis-aligned can still leave `step_x`/`step_y` as ~1e-16
+    residuals rather than exact zero, and squaring them into `a` does not
+    make them any less capable of sending `inv_2a` (computed by the caller
+    as `1/(2a)`) to a huge, sign-unstable value. When `a` degenerates this
+    way, `b` (built from the same tiny steps) degenerates with it, so
+    solving the linear fallback would hit the identical blow-up — instead,
+    since `c` is the implicit function's value already evaluated at the row's
+    reference column `col0`, a negligible `a` means the row barely varies
+    across its clip range at all, so `c`'s sign alone decides the whole run.
+    """
+    if col_lo >= col_hi:
+        return (col_lo, col_lo - 1)
+    if abs(a) < 1e-18:
+        if c > 0.0:
+            return (col_lo, col_lo - 1)
+        return (col_lo, col_hi - 1)
+    var disc = b * b - 4.0 * a * c
+    if disc < 0.0:
+        return (col_lo, col_lo - 1)
+    var sq = sqrt(disc)
+    var r0 = (-b - sq) * inv_2a
+    var r1 = (-b + sq) * inv_2a
+    var start = max(Int(ceil(r0)) + col0, col_lo)
+    var end = min(Int(floor(r1)) + col0, col_hi - 1)
+    return (start, end)
 
 
 struct Backend(Movable):
@@ -282,29 +389,106 @@ struct Backend(Movable):
                 fill_pixels(s, x0, y0 + sw, x0 + sw, y0 + ih - sw, sc)
                 fill_pixels(s, x0 + iw - sw, y0 + sw, x0 + iw, y0 + ih - sw, sc)
         else:
+            # Rotated/sheared: the inverse mapping is still affine (no
+            # perspective row), so a device column maps to local space by
+            # `local0 + col * (minv[0,0], minv[1,0])` — linear in `col`. The
+            # rect's containment test is two independent range checks (`lx`
+            # inside `[lx0,lx1]`, `ly` inside `[ly0,ly1]`), and each is linear
+            # in `col`, so `_affine_row_span` solves the qualifying column
+            # range directly per axis instead of walking pixels; the row's
+            # covered run is their intersection. A stroke splits that run
+            # into an inner fill span (same solve, shrunk by the stroke
+            # width) and up to two stroke spans flanking it, mirroring the
+            # uniform circle branch below. Not bit-exact with the old
+            # per-pixel test — an edge pixel may land one column off — which
+            # this phase's exactness policy accepts and `test_gl_parity.mojo`
+            # gates.
             var minv = inverse(m)
             var b = device_bounds(m, lx0, ly0, lx1, ly1, s.width, s.height)
             var sw_f = Float64(c.style.stroke_width)
+            var step_x = minv[0, 0]
+            var step_y = minv[1, 0]
+            var inv_step_x = 1.0 / step_x if step_x != 0.0 else 0.0
+            var inv_step_y = 1.0 / step_y if step_y != 0.0 else 0.0
+            var fill_enabled = c.style.fill_enabled
+            var stroke_enabled = c.style.stroke_enabled
+            var fill_col = c.style.fill
+            var stroke_col = c.style.stroke
             for row in range(b[1], b[3]):
-                for col in range(b[0], b[2]):
-                    var local = mat_apply(minv, Float64(col), Float64(row))
-                    var lx = local[0]
-                    var ly = local[1]
-                    if lx < lx0 or lx > lx1 or ly < ly0 or ly > ly1:
-                        continue
-                    var off = (row * W + col) * 4
-                    var in_inner = (
-                        lx >= lx0 + sw_f
-                        and lx <= lx1 - sw_f
-                        and ly >= ly0 + sw_f
-                        and ly <= ly1 - sw_f
+                var local0 = mat_apply(minv, Float64(b[0]), Float64(row))
+                var A = local0[0]
+                var B = local0[1]
+                var row_off = row * W
+                var xr = _affine_row_span(
+                    A, step_x, inv_step_x, b[0], lx0, lx1, b[0], b[2]
+                )
+                var yr = _affine_row_span(
+                    B, step_y, inv_step_y, b[0], ly0, ly1, b[0], b[2]
+                )
+                var outer_lo = max(xr[0], yr[0])
+                var outer_hi = min(xr[1], yr[1])
+                if outer_lo > outer_hi:
+                    continue
+                if not stroke_enabled:
+                    if fill_enabled:
+                        fill_span(
+                            s,
+                            (row_off + outer_lo) * 4,
+                            outer_hi - outer_lo + 1,
+                            fill_col,
+                        )
+                    continue
+                var xi = _affine_row_span(
+                    A,
+                    step_x,
+                    inv_step_x,
+                    b[0],
+                    lx0 + sw_f,
+                    lx1 - sw_f,
+                    outer_lo,
+                    outer_hi + 1,
+                )
+                var yi = _affine_row_span(
+                    B,
+                    step_y,
+                    inv_step_y,
+                    b[0],
+                    ly0 + sw_f,
+                    ly1 - sw_f,
+                    outer_lo,
+                    outer_hi + 1
+                )
+                var inner_lo = max(xi[0], yi[0])
+                var inner_hi = min(xi[1], yi[1])
+                if inner_lo <= inner_hi:
+                    if fill_enabled:
+                        fill_span(
+                            s,
+                            (row_off + inner_lo) * 4,
+                            inner_hi - inner_lo + 1,
+                            fill_col,
+                        )
+                    if inner_lo > outer_lo:
+                        fill_span(
+                            s,
+                            (row_off + outer_lo) * 4,
+                            inner_lo - outer_lo,
+                            stroke_col,
+                        )
+                    if inner_hi < outer_hi:
+                        fill_span(
+                            s,
+                            (row_off + inner_hi + 1) * 4,
+                            outer_hi - inner_hi,
+                            stroke_col,
+                        )
+                else:
+                    fill_span(
+                        s,
+                        (row_off + outer_lo) * 4,
+                        outer_hi - outer_lo + 1,
+                        stroke_col,
                     )
-                    if c.style.fill_enabled and (
-                        not c.style.stroke_enabled or in_inner
-                    ):
-                        blend(s, off, c.style.fill)
-                    elif c.style.stroke_enabled and not in_inner:
-                        blend(s, off, c.style.stroke)
 
     def _circle[
         o: Origin[mut=True]
@@ -375,24 +559,62 @@ struct Backend(Movable):
                             s, (row_off + ol) * 4, oh - ol + 1, c.style.stroke
                         )
         else:
+            # Same trick as the rotated rect branch above, adapted to a
+            # quadratic: a device column maps to local space by `local0 +
+            # col * (step_x, step_y)`, so substituting into `dx^2 + dy^2 <=
+            # r^2` turns the row's containment test into `a*col^2 + b*col +
+            # c <= 0` with `a = step_x^2 + step_y^2` constant across the
+            # whole shape. `_ellipse_row_span` solves that directly instead
+            # of walking pixels; stroke handling mirrors the uniform branch
+            # above (outer span, then a shrunk inner span for the fill,
+            # flanked by up to two stroke spans). Not bit-exact with the old
+            # per-pixel walk, which this phase's exactness policy accepts.
             var minv = inverse(m)
             var b = device_bounds(m, cx - r, cy - r, cx + r, cy + r, W, H)
+            var step_x = minv[0, 0]
+            var step_y = minv[1, 0]
+            var fill_enabled = c.style.fill_enabled
+            var stroke_enabled = c.style.stroke_enabled
+            var fill_col = c.style.fill
+            var stroke_col = c.style.stroke
+            var full_fill = not stroke_enabled or r_inner <= 0.0
+            var a = step_x * step_x + step_y * step_y
+            var inv_2a = 1.0 / (2.0 * a)
             for row in range(b[1], b[3]):
-                for col in range(b[0], b[2]):
-                    var local = mat_apply(minv, Float64(col), Float64(row))
-                    var dx = local[0] - cx
-                    var dy = local[1] - cy
-                    var d2 = dx * dx + dy * dy
-                    if d2 <= r2:
-                        var off = (row * W + col) * 4
-                        if c.style.fill_enabled and (
-                            not c.style.stroke_enabled
-                            or r_inner <= 0.0
-                            or d2 <= r_inner2
-                        ):
-                            blend(s, off, c.style.fill)
-                        elif c.style.stroke_enabled and d2 > r_inner2:
-                            blend(s, off, c.style.stroke)
+                var local0 = mat_apply(minv, Float64(b[0]), Float64(row))
+                var dx0 = local0[0] - cx
+                var dy0 = local0[1] - cy
+                var row_off = row * W
+                var bcoef = 2.0 * (dx0 * step_x + dy0 * step_y)
+                var c_outer = dx0 * dx0 + dy0 * dy0 - r2
+                var outer = _ellipse_row_span(
+                    a, bcoef, c_outer, inv_2a, b[0], b[0], b[2]
+                )
+                var ol = outer[0]
+                var oh = outer[1]
+                if ol > oh:
+                    continue
+                if full_fill:
+                    if fill_enabled:
+                        fill_span(s, (row_off + ol) * 4, oh - ol + 1, fill_col)
+                    continue
+                var c_inner = dx0 * dx0 + dy0 * dy0 - r_inner2
+                var inner = _ellipse_row_span(
+                    a, bcoef, c_inner, inv_2a, b[0], ol, oh + 1
+                )
+                var il = inner[0]
+                var ih = inner[1]
+                if il <= ih:
+                    if fill_enabled:
+                        fill_span(s, (row_off + il) * 4, ih - il + 1, fill_col)
+                    if il > ol:
+                        fill_span(s, (row_off + ol) * 4, il - ol, stroke_col)
+                    if ih < oh:
+                        fill_span(
+                            s, (row_off + ih + 1) * 4, oh - ih, stroke_col
+                        )
+                else:
+                    fill_span(s, (row_off + ol) * 4, oh - ol + 1, stroke_col)
 
     def _line[
         o: Origin[mut=True]
