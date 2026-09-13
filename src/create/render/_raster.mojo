@@ -77,42 +77,71 @@ def fill_span[o: Origin[mut=True]](s: Surface[o], off: Int, count: Int, c: Color
     run; this does no bounds checking of its own. An opaque fill is one word
     per pixel, not four bytes, and the alpha test is hoisted out of the loop
     rather than left to `blend` — together worth ~4x on a run of any length.
-    Both matter because of where this is called from: with the test inside
-    `blend`, every iteration re-tests an invariant through a call the
-    optimiser inlines only sometimes. Every rasteriser that produces a
-    horizontal run of pixels goes through this one loop; neither trick may be
-    re-open-coded at a call site.
+    Both branches then process four pixels (16 bytes) at a time through
+    `SIMD`, for another ~4x: the opaque path is a vector splat of the packed
+    word, and the alpha path widens both source and destination to `uint32`
+    lanes, computes `(src*a + dst*ia) // 255` across all sixteen bytes at
+    once, and narrows back. The source vector's alpha lane carries `255`
+    rather than `c.a`, which is what makes one blend formula correct for
+    both the colour lanes and the alpha lane — see
+    `test_fill_span_alpha_matches_over_exhaustively`. A tail of fewer than
+    four pixels falls back to the scalar loop. Every rasteriser that
+    produces a horizontal run of pixels goes through this one loop; none of
+    this may be re-open-coded at a call site.
     """
     if c.a == 0:
         return
+    var px = s.px
     if c.a == 255 and _word_aligned(s):
-        var w = s.px.unsafe_bitcast[UInt32]()
+        var w = px.unsafe_bitcast[UInt32]()
         var v = _packed(c)
         var i0 = off // 4
-        for i in range(count):
+        var vv = SIMD[DType.uint32, 4](v, v, v, v)
+        var i = 0
+        while i + 4 <= count:
+            w.unsafe_store[width=4](offset=i0 + i, val=vv)
+            i += 4
+        while i < count:
             w[unsafe_offset=i0 + i] = v
+            i += 1
         return
-    var px = s.px
-    for i in range(count):
-        var o2 = off + i * 4
-        if c.a == 255:
+    if c.a == 255:
+        for i in range(count):
+            var o2 = off + i * 4
             px[unsafe_offset=o2] = c.r
             px[unsafe_offset=o2 + 1] = c.g
             px[unsafe_offset=o2 + 2] = c.b
             px[unsafe_offset=o2 + 3] = 255
-        else:
-            var out = c.over(
-                Color(
-                    px[unsafe_offset=o2],
-                    px[unsafe_offset=o2 + 1],
-                    px[unsafe_offset=o2 + 2],
-                    px[unsafe_offset=o2 + 3],
-                )
+        return
+    var a = UInt32(c.a)
+    var ia = UInt32(255 - Int(c.a))
+    var a4 = SIMD[DType.uint32, 16](a)
+    var ia4 = SIMD[DType.uint32, 16](ia)
+    var one_px = SIMD[DType.uint8, 4](c.r, c.g, c.b, 255)
+    var two_px = one_px.join(one_px)
+    var src4 = two_px.join(two_px).cast[DType.uint32]()
+    var i = 0
+    while i + 4 <= count:
+        var o2 = off + i * 4
+        var dst = px.unsafe_load[width=16](offset=o2).cast[DType.uint32]()
+        var out = ((src4 * a4 + dst * ia4) // 255).cast[DType.uint8]()
+        px.unsafe_store[width=16](offset=o2, val=out)
+        i += 4
+    while i < count:
+        var o2 = off + i * 4
+        var out = c.over(
+            Color(
+                px[unsafe_offset=o2],
+                px[unsafe_offset=o2 + 1],
+                px[unsafe_offset=o2 + 2],
+                px[unsafe_offset=o2 + 3],
             )
-            px[unsafe_offset=o2] = out.r
-            px[unsafe_offset=o2 + 1] = out.g
-            px[unsafe_offset=o2 + 2] = out.b
-            px[unsafe_offset=o2 + 3] = out.a
+        )
+        px[unsafe_offset=o2] = out.r
+        px[unsafe_offset=o2 + 1] = out.g
+        px[unsafe_offset=o2 + 2] = out.b
+        px[unsafe_offset=o2 + 3] = out.a
+        i += 1
 
 
 def fill_all[o: Origin[mut=True]](s: Surface[o], c: Color):

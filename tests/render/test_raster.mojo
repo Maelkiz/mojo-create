@@ -262,6 +262,26 @@ def test_fill_span_with_zero_alpha_is_a_no_op() raises -> None:
         assert_equal(mem.pixel(x, 0), Color(1, 2, 3, 255))
 
 
+def test_fill_span_alpha_matches_over_exhaustively() raises -> None:
+    """Every 8-bit alpha value must blend identically through the SIMD span
+    path and through `Color.over` — not just the handful of values the other
+    tests happen to exercise. `fill_span` widens to `uint32` lanes with the
+    source alpha lane set to 255 rather than `c.a`; this is the test that
+    the resulting `(src*a + dst*ia) // 255` agrees with `Color.over`'s
+    scalar formula at every value, including the a=0 and a=255 edges routed
+    through different branches entirely.
+    """
+    var dst = Color(200, 150, 50, 255)
+    var src_rgb = Color(10, 90, 180, 0)
+    for a in range(256):
+        var c = Color(src_rgb.r, src_rgb.g, src_rgb.b, UInt8(a))
+        var expected = c.over(dst)
+        var mem = _filled(4, 1, dst)
+        fill_span(mem.surface(), 0, 4, c)
+        for x in range(4):
+            assert_equal(mem.pixel(x, 0), expected, "alpha " + String(a))
+
+
 def test_fill_all_matches_the_reference_blend_loop() raises -> None:
     var opaque = _filled(5, 5, Color(9, 8, 7, 255))
     var ref_opaque = MemorySurface(5, 5)
