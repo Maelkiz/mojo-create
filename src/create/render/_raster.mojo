@@ -180,7 +180,20 @@ def line_pixels[
     c: Color,
     stroke_width: Int,
 ):
-    """Bresenham line in device space, `stroke_width` pixels thick."""
+    """Bresenham line in device space, `stroke_width` pixels thick.
+
+    One Bresenham step per column (dx >= dy) or per row (dy > dx), each
+    covering the stroke's perpendicular extent exactly once — not the box
+    the naive version stamps at every step, which re-blends most pixels
+    along the line once per neighbouring step and so darkens them further
+    each time under alpha, on top of the wasted work. A mostly-vertical
+    line's extent per row is contiguous in memory and goes through
+    `fill_span`; a mostly-horizontal line's extent per column is a strided
+    column of pixels, so it composites one pixel at a time with `blend`, but
+    each pixel is still touched exactly once.
+    """
+    if c.a == 0:
+        return
     var W = s.width
     var H = s.height
     var sw = stroke_width
@@ -190,32 +203,38 @@ def line_pixels[
     var ix1 = Int(x1)
     var iy1 = Int(y1)
     var dx = abs(ix1 - ix0)
-    var dy = -abs(iy1 - iy0)
+    var dy = abs(iy1 - iy0)
     var sx = 1 if ix0 < ix1 else -1
     var sy = 1 if iy0 < iy1 else -1
-    var err = dx + dy
-    var x = ix0
-    var y = iy0
-    while True:
-        for ry in range(-half, sw - half):
-            for rx in range(-half, sw - half):
-                var nx = x + rx
-                var ny = y + ry
-                if 0 <= nx < W and 0 <= ny < H:
-                    blend(s, (ny * W + nx) * 4, c)
-        if x == ix1 and y == iy1:
-            break
-        var e2 = 2 * err
-        if e2 >= dy:
-            if x == ix1:
-                break
-            err += dy
-            x += sx
-        if e2 <= dx:
-            if y == iy1:
-                break
-            err += dx
-            y += sy
+
+    if dx >= dy:
+        var y = iy0
+        var err = dx // 2
+        for step in range(dx + 1):
+            var x = ix0 + step * sx
+            if 0 <= x < W:
+                var r0 = max(y - half, 0)
+                var r1 = min(y + sw - half, H)
+                for row in range(r0, r1):
+                    blend(s, (row * W + x) * 4, c)
+            err -= dy
+            if err < 0:
+                y += sy
+                err += dx
+    else:
+        var x = ix0
+        var err = dy // 2
+        for step in range(dy + 1):
+            var y = iy0 + step * sy
+            if 0 <= y < H:
+                var c0 = max(x - half, 0)
+                var c1 = min(x + sw - half, W)
+                if c1 > c0:
+                    fill_span(s, (y * W + c0) * 4, c1 - c0, c)
+            err -= dx
+            if err < 0:
+                x += sx
+                err += dy
 
 
 def fill_triangle[

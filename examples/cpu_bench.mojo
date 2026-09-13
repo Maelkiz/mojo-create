@@ -41,7 +41,7 @@ from create.render._command import (
     triangle_command,
     text_command,
 )
-from create.render._raster import fill_all, fill_pixels, blit_sprite
+from create.render._raster import fill_all, fill_pixels, blit_sprite, line_pixels
 from create.render._style import Style
 from create.math.matrix import identity
 
@@ -202,6 +202,25 @@ def _sprite_bench():
     _report("sprite blit, downscaled 4x    ", t0, t1)
 
 
+def _line_bench():
+    var mem = MemorySurface(_W, _H)
+    var c = Color(200, 60, 60, 192)
+
+    var t0 = perf_counter_ns()
+    for _ in range(_REPS):
+        var s = mem.surface()
+        var rng = Random(1234)
+        for _i in range(_SHAPES):
+            var x = rng.float(-900.0, 900.0)
+            var y = rng.float(-500.0, 500.0)
+            var len = rng.float(20.0, 80.0)
+            line_pixels(
+                s, x, y, x + len, y + len * 0.3, c, 6
+            )
+    var t1 = perf_counter_ns()
+    _report("2000 thick alpha lines        ", t0, t1)
+
+
 def _text_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
     var st = _shape_style(False)
     var t0 = perf_counter_ns()
@@ -260,5 +279,6 @@ def main() raises:
     _shapes_bench(m, be, mem)
     _rotated_bench(rot, be, mem)
     _sprite_bench()
+    _line_bench()
     _text_bench(m, be, mem)
     _frame_bench(m, be, mem)

@@ -112,6 +112,20 @@ def test_line_pixels_clips_outside_the_surface() raises -> None:
     assert_equal(mem.pixel(0, 0).a, 0)
 
 
+def test_line_pixels_composites_each_covered_pixel_exactly_once() raises -> None:
+    # A thick alpha line must match one `over` per pixel, not several stacked
+    # up from overlapping per-step stamps (which would read darker here).
+    var src = Color(255, 255, 255, 128)
+    var dst = Color(0, 0, 0, 255)
+    var mem = _filled(8, 8, dst)
+    line_pixels(mem.surface(), 1.0, 4.0, 6.0, 4.0, src, 3)
+    assert_equal(mem.pixel(3, 4), src.over(dst))
+
+    var vmem = _filled(8, 8, dst)
+    line_pixels(vmem.surface(), 4.0, 1.0, 4.0, 6.0, src, 3)
+    assert_equal(vmem.pixel(4, 3), src.over(dst))
+
+
 def test_fill_triangle_covers_its_interior_not_its_outside() raises -> None:
     var mem = MemorySurface(8, 8)
     fill_triangle(mem.surface(), 0.0, 0.0, 6.0, 0.0, 0.0, 6.0, Color.WHITE)
