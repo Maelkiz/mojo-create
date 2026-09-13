@@ -336,35 +336,71 @@ def blit_sprite[
     Nearest-neighbour: rotation and shear are not resampled, so the caller
     maps the anchor and hands over an axis-aligned destination. A 1:1 blit
     skips the source-index division rather than relying on it cancelling.
+
+    Destination rows and columns are clipped once against the surface up
+    front, the way `fill_pixels` already clips, instead of testing `dx`/`dy`
+    against the bounds on every pixel. The resampled path (`dw != sw` or
+    `dh != sh`) also drops the per-column `col * sw // dw` division: `src_col`
+    and `err` are a fixed-point walk of that same division — `err` holds
+    `(col * sw) mod dw` and advances by `sw` each column, folding a `dw` back
+    out (and bumping `src_col`) whenever it would overflow — so `src_col`
+    equals `col * sw // dw` at every step without dividing there. One
+    division seeds `src_col`/`err` at `col_lo`, since the clipped loop may not
+    start at column 0.
     """
     var W = s.width
     var H = s.height
     var sp = src
     var one_to_one = dw == sw and dh == sh
-    for row in range(dh):
-        var dy = y0 + row
-        if dy < 0 or dy >= H:
-            continue
-        var src_row = row if one_to_one else row * sh // dh
-        for col in range(dw):
-            var dx = x0 + col
-            if dx < 0 or dx >= W:
-                continue
-            var src_col = col if one_to_one else col * sw // dw
-            var src_off = (src_row * sw + src_col) * 4
-            var sa = sp[unsafe_offset=src_off + 3]
-            if sa == 0:
-                continue
-            blend(
-                s,
-                (dy * W + dx) * 4,
-                Color(
-                    sp[unsafe_offset=src_off],
-                    sp[unsafe_offset=src_off + 1],
-                    sp[unsafe_offset=src_off + 2],
-                    sa,
-                ),
-            )
+
+    var row_lo = max(0, -y0)
+    var row_hi = min(dh, H - y0)
+    var col_lo = max(0, -x0)
+    var col_hi = min(dw, W - x0)
+    if row_lo >= row_hi or col_lo >= col_hi:
+        return
+
+    for row in range(row_lo, row_hi):
+        var dst_row_off = (y0 + row) * W * 4
+        if one_to_one:
+            var src_row_off = row * sw * 4
+            for col in range(col_lo, col_hi):
+                var src_off = src_row_off + col * 4
+                var sa = sp[unsafe_offset=src_off + 3]
+                if sa == 0:
+                    continue
+                blend(
+                    s,
+                    dst_row_off + (x0 + col) * 4,
+                    Color(
+                        sp[unsafe_offset=src_off],
+                        sp[unsafe_offset=src_off + 1],
+                        sp[unsafe_offset=src_off + 2],
+                        sa,
+                    ),
+                )
+        else:
+            var src_row_off = (row * sh // dh) * sw * 4
+            var src_col = col_lo * sw // dw
+            var err = (col_lo * sw) % dw
+            for col in range(col_lo, col_hi):
+                var src_off = src_row_off + src_col * 4
+                var sa = sp[unsafe_offset=src_off + 3]
+                if sa != 0:
+                    blend(
+                        s,
+                        dst_row_off + (x0 + col) * 4,
+                        Color(
+                            sp[unsafe_offset=src_off],
+                            sp[unsafe_offset=src_off + 1],
+                            sp[unsafe_offset=src_off + 2],
+                            sa,
+                        ),
+                    )
+                err += sw
+                while err >= dw:
+                    err -= dw
+                    src_col += 1
 
 
 def blit_glyph[
@@ -374,24 +410,34 @@ def blit_glyph[
 
     Coverage scales the fill's alpha, so antialiasing and a translucent fill
     compose rather than one overriding the other.
+
+    Rows and columns are clipped once against the surface up front, as
+    `blit_sprite` now does, instead of testing `px_x` against the bounds on
+    every pixel. Coverage is still tested per pixel — a glyph mask is
+    genuinely scattered, not a run — so it keeps `blend` rather than moving
+    to `fill_span`.
     """
     var W = s.width
     var H = s.height
     var ca = Int(c.a)
     var gp = g.pixels.unsafe_ptr()
-    for row in range(g.height):
-        var py = y0 + row
-        if py < 0 or py >= H:
-            continue
-        for col in range(g.width):
-            var cov = Int(gp[unsafe_offset=row * g.width + col])
+
+    var row_lo = max(0, -y0)
+    var row_hi = min(g.height, H - y0)
+    var col_lo = max(0, -x0)
+    var col_hi = min(g.width, W - x0)
+    if row_lo >= row_hi or col_lo >= col_hi:
+        return
+
+    for row in range(row_lo, row_hi):
+        var dst_row_off = (y0 + row) * W * 4
+        var src_row_off = row * g.width
+        for col in range(col_lo, col_hi):
+            var cov = Int(gp[unsafe_offset=src_row_off + col])
             if cov == 0:
-                continue
-            var px_x = x0 + col
-            if px_x < 0 or px_x >= W:
                 continue
             blend(
                 s,
-                (py * W + px_x) * 4,
+                dst_row_off + (x0 + col) * 4,
                 Color(c.r, c.g, c.b, UInt8(cov * ca // 255)),
             )

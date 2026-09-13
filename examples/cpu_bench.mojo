@@ -41,7 +41,7 @@ from create.render._command import (
     triangle_command,
     text_command,
 )
-from create.render._raster import fill_all, fill_pixels
+from create.render._raster import fill_all, fill_pixels, blit_sprite
 from create.render._style import Style
 from create.math.matrix import identity
 
@@ -170,6 +170,38 @@ def _rotated_bench(rot: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) r
     _report("2000 rects, rotated, alpha    ", t0, t1)
 
 
+def _sprite_bench():
+    comptime SW = 64
+    comptime SH = 64
+    var src = List[UInt8](length=SW * SH * 4, fill=0)
+    var sp = src.unsafe_ptr()
+    for i in range(SW * SH):
+        sp[unsafe_offset=i * 4] = 200
+        sp[unsafe_offset=i * 4 + 1] = 80
+        sp[unsafe_offset=i * 4 + 2] = 80
+        sp[unsafe_offset=i * 4 + 3] = 255
+
+    var mem = MemorySurface(_W, _H)
+
+    var t0 = perf_counter_ns()
+    for _ in range(_REPS):
+        var s = mem.surface()
+        for row in range(0, _H, 260):
+            for col in range(0, _W, 260):
+                blit_sprite(s, sp, SW, SH, col, row, 256, 256)
+    var t1 = perf_counter_ns()
+    _report("sprite blit, upscaled 4x      ", t0, t1)
+
+    t0 = perf_counter_ns()
+    for _ in range(_REPS):
+        var s = mem.surface()
+        for row in range(0, _H, 20):
+            for col in range(0, _W, 20):
+                blit_sprite(s, sp, SW, SH, col, row, 16, 16)
+    t1 = perf_counter_ns()
+    _report("sprite blit, downscaled 4x    ", t0, t1)
+
+
 def _text_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
     var st = _shape_style(False)
     var t0 = perf_counter_ns()
@@ -227,5 +259,6 @@ def main() raises:
 
     _shapes_bench(m, be, mem)
     _rotated_bench(rot, be, mem)
+    _sprite_bench()
     _text_bench(m, be, mem)
     _frame_bench(m, be, mem)
