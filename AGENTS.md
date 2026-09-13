@@ -53,7 +53,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | `src/create/render/render_backend.mojo` | `RenderBackend` — the `CPU`/`GPU` backend-selector constants |
 | `src/create/render/_backend.mojo` | `Backend` — owns the fonts, glyph cache and interned sprite images; replays a frame's `DrawCommand`s onto a `Surface` (`present`) or through GL (`present_gpu`) |
 | `src/create/render/surface.mojo` | `Surface` — a borrowed RGBA framebuffer; `MemorySurface` — one backed by owned memory. The CPU backend's replay target, not `Canvas`'s |
-| `src/create/render/_raster.mojo` | Free functions over a `Surface`: blend, fills, lines, triangles, raw-pixel and glyph blits. Called only from `_backend.mojo` |
+| `src/create/render/_raster.mojo` | Free functions over a `Surface`: `blend`, `fill_span` and every fill/line/triangle/blit built on it. Called only from `_backend.mojo` |
 | `src/create/render/_gl.mojo` | The GL 3.3 entry points, resolved at runtime through SDL's loader and held as bitcast function pointers. The only file that talks to the driver |
 | `src/create/render/_tessellate.mojo` | `DrawCommand` to triangles: the CPU-side geometry the GPU replays, transform baked per-vertex |
 | `src/create/render/_gl_backend.mojo` | `GLRenderer` — the shader, the vertex buffer, the glyph atlas and sprite textures, and the batching that replays a frame in one draw call where it can |
@@ -142,12 +142,13 @@ them, and [tests/core/test_frame.mojo](tests/core/test_frame.mojo) scripts an `I
 directly to drive click- and key-driven behaviour with no window.
 
 [tests/render/test_gl_parity.mojo](tests/render/test_gl_parity.mojo) is what keeps the two backends
-honest: one frame drawn through `run_headless` and the same frame drawn through a GL framebuffer
-object, compared pixel by pixel. The threshold is a one-pixel dilation of each ink mask rather than
-an exact match, because that is exactly the disagreement two rasterisers are entitled to — the CPU's
-`device_bounds` scans a row the GPU's pixel-centre rule excludes, so a shape's bottom edge is
-routinely one row wider on the CPU. Anything further out is a shape in the wrong place, the wrong
-size, or missing. The test skips itself with no display, since it needs a real GL context.
+honest: one shape kind per frame, drawn through `run_headless` and through a GL framebuffer object,
+compared structurally rather than pixel by pixel — bounding box, centroid and ink coverage, each
+within a tolerance sized for rasteriser disagreement, plus the interior colour away from every edge.
+Structural rather than exact because two rasterisers are entitled to disagree at the edges (integer
+vs. float coverage, different fill rules) without either being wrong, and because a pixel-exact
+comparison would forever forbid antialiasing the GPU path. A failure names the shape kind rather than
+a pixel count. The test skips itself with no display, since it needs a real GL context.
 
 `tests/core/test_smoke.mojo` is both: the pre-commit hook builds it, and `pixi run test` runs it
 through `run_headless`. Its `_windowed_entry_point` is never called — `run[T]` opens a window and
@@ -262,6 +263,18 @@ resolved at replay, in the backend that owns the fonts. Add a new shape by exten
 — and a `kind` rather than a trait object because Mojo 1.0 has no dynamic trait dispatch. Users
 select one with `run[T](..., backend=RenderBackend.GPU)`; the default is unchanged.
 
+**A CPU rasteriser computes the covered run per row and hands it to `fill_span`; `blend` is only
+for genuinely scattered pixels.** `fill_span` ([_raster.mojo](src/create/render/_raster.mojo)) is
+the one place a horizontal run of pixels gets composited — it hoists the opaque-word-store and
+alpha-hoisted-test tricks out of the loop and vectorises four pixels at a time, so a call site
+never re-open-codes either trick. Every fill, the triangle rasteriser, the rotated/sheared
+rect and circle paths, and the vertical-dominant case of `line_pixels` all resolve a row (or
+column, for a mostly-horizontal thick line) to a `(start, count)` pair first and then call
+`fill_span` once — never per pixel. `blend` stays for pixels that genuinely aren't a run: glyph
+coverage and sprite texels, where each pixel's alpha differs from its neighbour's. A new shape
+follows the same shape: solve the row's covered interval analytically or by clipping, not by
+testing every pixel in a bounding box.
+
 The GPU path is OpenGL 3.3 and works like this. `_tessellate.mojo` turns each `DrawCommand` into
 triangles on the CPU, baking that command's transform into every vertex, so the shader needs no
 per-draw uniform and consecutive commands can share one buffer. A vertex is nine `Float32` — `x, y,
@@ -275,12 +288,22 @@ frame the only GL state written is the viewport pair, and only when the drawable
 program, the VAO and the sampler uniforms are set once at construction.
 
 Measured on `examples/gl_bench.mojo` (2000 animated shapes, 2 sprites, one text line) at 1920x1080
-on a Ryzen 5 2600X / RTX 2070: **71 ms per frame on the CPU backend, 1.1 ms on the GPU backend**,
-rolling mean over 120 frames with vsync off. Both draw the identical frame. Two things to know
-before optimising further: the vertex `List` reaches its capacity in the first frame and never
-reallocates again, and orphan-then-`glBufferSubData` measured identical to the single
-`glBufferData` now in use — respecifying the store *is* the orphan, so the pair was doing the same
-work twice.
+on a Ryzen 5 2600X / RTX 2070, rolling mean over 120 frames with vsync off, GPU backend: **~1.1 ms
+per frame**. Both draw the identical frame. Two things to know before optimising the GPU path
+further: the vertex `List` reaches its capacity in the first frame and never reallocates again,
+and orphan-then-`glBufferSubData` measured identical to the single `glBufferData` now in use —
+respecifying the store *is* the orphan, so the pair was doing the same work twice.
+
+The CPU backend went through a dedicated pass (see `examples/cpu_bench.mojo`, which measures
+rasterisation alone, headless, with no window present) after an early draft of this file recorded
+its per-frame cost as "71 ms" — that number was actually the *fps* reading (71.6 fps, i.e. ~13.9
+ms/frame) transcribed as if it were milliseconds. The real starting point was **~12.5 ms** of raster
+work for that same 2000-shape frame; after replacing every "test every pixel in a bounding box"
+rasteriser with one that computes the covered run per row and hands it to `fill_span` (rects,
+circles, triangles, the rotated/sheared path, sprite and glyph blits, and thick lines), the
+identical frame now rasterises in **~3.5 ms** headless. The CPU backend's real windowed frame time
+also includes SDL's blit of the finished surface to the screen, which this work does not touch and
+which is not reflected in that number.
 
 **Three FFI ground rules, and they are the real constraint on `_gl.mojo`.** GL entry points are
 resolved at runtime through SDL's loader and called through a bitcast `thin abi("C")` pointer. That

@@ -11,23 +11,32 @@ Every case reseeds `Random(1234)` per repetition, so every run — and every
 future run, after a change to `_raster.mojo` or `_backend.mojo` — measures the
 identical geometry. Times are ms/frame, mean over `_REPS` repetitions.
 
-Baseline recorded 2026-09-13 on a Ryzen 5 2600X, before the `fill_span`
-rewrite (see AGENTS.md for the current numbers this should be compared
-against):
+Baseline recorded 2026-09-13 on a Ryzen 5 2600X, before the CPU render backend
+performance work (span-based rasterisation, incremental affine mapping, SIMD
+blend) landed, next to the same cases after every phase of that work was
+committed:
 
-    fill_all opaque              ~1.1 ms
-    fill_all alpha                ~1.8 ms   (2.07M px)
-    fill_pixels opaque           ~1.0 ms
-    fill_pixels alpha             ~7.3 ms   (same 2.07M px as fill_all)
-    2000 rects, alpha             ~3.4 ms
-    2000 rects, opaque            ~1.2 ms
-    2000 rects, rotated, alpha   ~19.7 ms
-    2000 circles, alpha           ~7.2 ms
-    2000 circles, opaque          ~4.1 ms
-    2000 triangles, alpha        ~22.8 ms
-    2000 triangles, opaque       ~14.8 ms
-    20 text lines                 ~0.3 ms
-    gl_bench frame (record+present) ~12.5 ms
+    case                              before    after
+    fill_all opaque                   ~1.1 ms   ~0.4 ms
+    fill_all alpha                     ~1.8 ms   ~0.8 ms   (2.07M px)
+    fill_pixels opaque                ~1.0 ms   ~0.3 ms
+    fill_pixels alpha                  ~7.3 ms   ~0.8 ms   (same 2.07M px as fill_all)
+    2000 rects, alpha                  ~3.4 ms   ~3.1 ms
+    2000 rects, opaque                ~1.2 ms   ~0.5 ms
+    2000 rects, rotated, alpha        ~19.7 ms   ~9.3 ms
+    2000 circles, alpha                ~7.2 ms   ~4.2 ms
+    2000 circles, opaque              ~4.1 ms   ~1.5 ms
+    2000 triangles, alpha             ~22.8 ms   ~8.5 ms
+    2000 triangles, opaque            ~14.8 ms   ~3.2 ms
+    2000 thick alpha lines            (n/a — new case)   ~0.9 ms
+    20 text lines                      ~0.3 ms   ~0.2 ms
+    gl_bench frame (record+present)   ~12.5 ms   ~3.5 ms
+
+The rects/alpha case improved least: `fill_span`'s own per-call overhead and
+`Backend`'s per-shape bookkeeping dominate at that shape count and size, not
+the inner loop the other phases targeted. Sprite and glyph blits (added in a
+later phase, not part of the original baseline table) aren't listed above for
+that reason; see the phase's own commit for their before/after.
 """
 
 from std.time import perf_counter_ns
