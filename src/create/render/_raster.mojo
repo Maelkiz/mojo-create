@@ -1,4 +1,4 @@
-from std.math import max, min, abs
+from std.math import max, min, abs, ceil, floor
 from std.sys import is_big_endian
 
 from .color import Color
@@ -230,28 +230,88 @@ def fill_triangle[
     y3: Float64,
     c: Color,
 ):
-    """Fill a device-space triangle by the half-plane sign test."""
+    """Fill a device-space triangle by scanline span.
+
+    Vertices are sorted by y into a top-to-bottom chain; each integer row
+    between them intersects the long edge (top to bottom vertex) and
+    whichever short edge is active for that row (top-to-mid, then
+    mid-to-bottom), giving one `fill_span` per row instead of a per-pixel
+    three-edge sign test. The split at the mid vertex is exact — each row
+    is produced by exactly one of the two sub-loops — so a horizontal top
+    or bottom edge (mid vertex level with an end) degenerates cleanly by
+    skipping the sub-loop whose edge has zero height, rather than dividing
+    by zero. This is not bit-exact with the old per-pixel test: an edge
+    pixel may land in a different column, which is why the gate for this
+    change is `test_gl_parity.mojo` and a dilation-bound comparison against
+    the retired algorithm, not byte equality.
+    """
     var W = s.width
     var H = s.height
-    var min_x = max(Int(min(x1, min(x2, x3))), 0)
-    var max_x = min(Int(max(x1, max(x2, x3))), W - 1)
-    var min_y = max(Int(min(y1, min(y2, y3))), 0)
-    var max_y = min(Int(max(y1, max(y2, y3))), H - 1)
-    for row in range(min_y, max_y + 1):
-        for col in range(min_x, max_x + 1):
-            var d1 = (x2 - x1) * (Float64(row) - y1) - (y2 - y1) * (
-                Float64(col) - x1
-            )
-            var d2 = (x3 - x2) * (Float64(row) - y2) - (y3 - y2) * (
-                Float64(col) - x2
-            )
-            var d3 = (x1 - x3) * (Float64(row) - y3) - (y1 - y3) * (
-                Float64(col) - x3
-            )
-            var has_neg = (d1 < 0.0) or (d2 < 0.0) or (d3 < 0.0)
-            var has_pos = (d1 > 0.0) or (d2 > 0.0) or (d3 > 0.0)
-            if not (has_neg and has_pos):
-                blend(s, (row * W + col) * 4, c)
+
+    var ax = x1
+    var ay = y1
+    var bx = x2
+    var by = y2
+    var cx = x3
+    var cy = y3
+    if ay > by:
+        var tx = ax
+        var ty = ay
+        ax = bx
+        ay = by
+        bx = tx
+        by = ty
+    if by > cy:
+        var tx = bx
+        var ty = by
+        bx = cx
+        by = cy
+        cx = tx
+        cy = ty
+    if ay > by:
+        var tx = ax
+        var ty = ay
+        ax = bx
+        ay = by
+        bx = tx
+        by = ty
+
+    if cy == ay:
+        return  # Zero-height triangle: nothing to paint.
+
+    var long_dy = cy - ay
+
+    if by > ay:
+        var r0 = max(Int(ceil(ay)), 0)
+        var r1 = min(Int(floor(by)), H - 1)
+        var short_dy = by - ay
+        for row in range(r0, r1 + 1):
+            var t_long = (Float64(row) - ay) / long_dy
+            var x_long = ax + (cx - ax) * t_long
+            var t_short = (Float64(row) - ay) / short_dy
+            var x_short = ax + (bx - ax) * t_short
+            var lo_x = min(x_long, x_short)
+            var hi_x = max(x_long, x_short)
+            var col_lo = max(Int(ceil(lo_x)), 0)
+            var col_hi = min(Int(floor(hi_x)), W - 1)
+            if col_hi >= col_lo:
+                fill_span(s, (row * W + col_lo) * 4, col_hi - col_lo + 1, c)
+
+    if cy > by:
+        var r0 = max(Int(floor(by)) + 1 if by > ay else Int(ceil(ay)), 0)
+        var r1 = min(Int(floor(cy)), H - 1)
+        var short_dy = cy - by
+        for row in range(r0, r1 + 1):
+            var t_long = (Float64(row) - ay) / long_dy
+            var x_long = ax + (cx - ax) * t_long
+            var t_short = (Float64(row) - by) / short_dy
+            var x_short = bx + (cx - bx) * t_short
+            var lo_x = min(x_long, x_short)
+            var hi_x = max(x_long, x_short)
+            var col_lo = max(Int(ceil(lo_x)), 0)
+            var col_hi = min(Int(floor(hi_x)), W - 1)
+            if col_hi >= col_lo:
+                fill_span(s, (row * W + col_lo) * 4, col_hi - col_lo + 1, c)
 
 
 def blit_sprite[

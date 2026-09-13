@@ -1,3 +1,4 @@
+from std.math import max, min
 from std.testing import TestSuite, assert_equal, assert_true
 from create.render.color import Color
 from create.render._raster import (
@@ -11,7 +12,7 @@ from create.render._raster import (
     line_pixels,
 )
 from create.render.font import _GlyphInfo
-from create.render.surface import MemorySurface
+from create.render.surface import MemorySurface, Surface
 from create.sprite.sprite import Sprite
 
 
@@ -119,6 +120,128 @@ def test_fill_triangle_covers_its_interior_not_its_outside() raises -> None:
     # Beyond the hypotenuse.
     assert_equal(mem.pixel(5, 5).a, 0)
     assert_equal(mem.pixel(7, 7).a, 0)
+
+
+def test_fill_triangle_zero_height_paints_nothing() raises -> None:
+    var mem = MemorySurface(8, 8)
+    fill_triangle(mem.surface(), 1.0, 3.0, 6.0, 3.0, 2.0, 3.0, Color.WHITE)
+    for row in range(8):
+        for col in range(8):
+            assert_equal(mem.pixel(col, row).a, 0)
+
+
+def test_fill_triangle_zero_width_paints_a_thin_column() raises -> None:
+    var mem = MemorySurface(8, 8)
+    fill_triangle(mem.surface(), 3.0, 1.0, 3.0, 6.0, 3.0, 3.0, Color.WHITE)
+    for row in range(1, 7):
+        assert_equal(mem.pixel(3, row), Color.WHITE)
+    assert_equal(mem.pixel(2, 3).a, 0)
+    assert_equal(mem.pixel(4, 3).a, 0)
+
+
+def test_fill_triangle_collinear_vertices_do_not_crash() raises -> None:
+    var mem = MemorySurface(8, 8)
+    fill_triangle(mem.surface(), 0.0, 0.0, 3.0, 3.0, 6.0, 6.0, Color.WHITE)
+    # A zero-area triangle: whatever it paints, it must not touch pixels far
+    # off the line it degenerates to.
+    assert_equal(mem.pixel(0, 7).a, 0)
+    assert_equal(mem.pixel(7, 0).a, 0)
+
+
+def test_fill_triangle_off_surface_vertices_clip_instead_of_crashing() raises -> None:
+    var mem = MemorySurface(8, 8)
+    # Left edge sits far off-surface at x = -20; the apex at (20, 4) is the
+    # only row (y = 4) wide enough to reach all the way across the surface.
+    fill_triangle(
+        mem.surface(), -20.0, 2.0, 20.0, 4.0, -20.0, 6.0, Color.WHITE
+    )
+    assert_equal(mem.pixel(0, 4), Color.WHITE)
+    assert_equal(mem.pixel(7, 4), Color.WHITE)
+    assert_equal(mem.pixel(7, 7).a, 0)
+    assert_equal(mem.pixel(0, 0).a, 0)
+
+
+def _brute_triangle[
+    o: Origin[mut=True]
+](
+    s: Surface[o],
+    x1: Float64,
+    y1: Float64,
+    x2: Float64,
+    y2: Float64,
+    x3: Float64,
+    y3: Float64,
+    c: Color,
+):
+    """The retired per-pixel half-plane test, kept only as the reference
+    that `fill_triangle`'s scanline rewrite is bounded against."""
+    var W = s.width
+    var H = s.height
+    var min_x = max(Int(min(x1, min(x2, x3))), 0)
+    var max_x = min(Int(max(x1, max(x2, x3))), W - 1)
+    var min_y = max(Int(min(y1, min(y2, y3))), 0)
+    var max_y = min(Int(max(y1, max(y2, y3))), H - 1)
+    for row in range(min_y, max_y + 1):
+        for col in range(min_x, max_x + 1):
+            var d1 = (x2 - x1) * (Float64(row) - y1) - (y2 - y1) * (
+                Float64(col) - x1
+            )
+            var d2 = (x3 - x2) * (Float64(row) - y2) - (y3 - y2) * (
+                Float64(col) - x2
+            )
+            var d3 = (x1 - x3) * (Float64(row) - y3) - (y1 - y3) * (
+                Float64(col) - x3
+            )
+            var has_neg = (d1 < 0.0) or (d2 < 0.0) or (d3 < 0.0)
+            var has_pos = (d1 > 0.0) or (d2 > 0.0) or (d3 > 0.0)
+            if not (has_neg and has_pos):
+                blend(s, (row * W + col) * 4, c)
+
+
+def _assert_dilation_bound(a: MemorySurface, b: MemorySurface, bound: Int) raises:
+    """Every ink pixel in `a` has an ink pixel in `b` within `bound` in
+    Chebyshev distance, and vice versa — the same tolerance
+    `test_gl_parity.mojo` applies across backends, applied here across the
+    old and new triangle rasterisers."""
+    var W = a.width
+    var H = a.height
+    for row in range(H):
+        for col in range(W):
+            if a.pixel(col, row).a > 0:
+                var found = False
+                for dy in range(-bound, bound + 1):
+                    for dx in range(-bound, bound + 1):
+                        var nx = col + dx
+                        var ny = row + dy
+                        if 0 <= nx < W and 0 <= ny < H:
+                            if b.pixel(nx, ny).a > 0:
+                                found = True
+                assert_true(found)
+            if b.pixel(col, row).a > 0:
+                var found = False
+                for dy in range(-bound, bound + 1):
+                    for dx in range(-bound, bound + 1):
+                        var nx = col + dx
+                        var ny = row + dy
+                        if 0 <= nx < W and 0 <= ny < H:
+                            if a.pixel(nx, ny).a > 0:
+                                found = True
+                assert_true(found)
+
+
+def test_fill_triangle_matches_the_old_half_plane_test_within_one_pixel() raises -> None:
+    var triangles = List[Tuple[Float64, Float64, Float64, Float64, Float64, Float64]]()
+    triangles.append((2.0, 1.0, 15.0, 3.0, 5.0, 18.0))
+    triangles.append((0.0, 0.0, 6.0, 0.0, 0.0, 6.0))
+    triangles.append((3.0, 17.0, 19.0, 2.0, 1.0, 9.0))
+    triangles.append((10.0, 10.0, 10.5, 20.0, 25.0, 15.0))
+    triangles.append((-5.0, -5.0, 30.0, 4.0, -5.0, 30.0))
+    for t in triangles:
+        var got = MemorySurface(20, 20)
+        var want = MemorySurface(20, 20)
+        fill_triangle(got.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE)
+        _brute_triangle(want.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE)
+        _assert_dilation_bound(got, want, 1)
 
 
 def test_blit_sprite_one_to_one() raises -> None:
