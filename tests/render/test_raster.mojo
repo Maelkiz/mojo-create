@@ -6,6 +6,7 @@ from create.render._raster import (
     blit_sprite,
     fill_all,
     fill_pixels,
+    fill_span,
     fill_triangle,
     line_pixels,
 )
@@ -215,6 +216,83 @@ def test_blit_glyph_clips_against_the_surface() raises -> None:
     blit_glyph(far.surface(), g, 3, 3, Color.WHITE)
     assert_equal(far.pixel(3, 3), Color.WHITE)
     assert_equal(far.pixel(0, 3).a, 0)
+
+
+def _blend_span_reference(
+    mut mem: MemorySurface, x0: Int, count: Int, y: Int, c: Color
+) raises:
+    """The per-pixel loop `fill_span` replaces, kept here as the ground truth
+    its output must still match byte-for-byte."""
+    var s = mem.surface()
+    for i in range(count):
+        blend(s, (y * mem.width + x0 + i) * 4, c)
+
+
+def test_fill_span_is_half_open() raises -> None:
+    var mem = MemorySurface(4, 4)
+    fill_span(mem.surface(), (1 * 4 + 1) * 4, 2, Color.WHITE)
+    assert_equal(mem.pixel(1, 1), Color.WHITE)
+    assert_equal(mem.pixel(2, 1), Color.WHITE)
+    assert_equal(mem.pixel(3, 1).a, 0)
+    assert_equal(mem.pixel(0, 1).a, 0)
+
+
+def test_fill_span_opaque_matches_blend() raises -> None:
+    var mem = MemorySurface(6, 1)
+    var expected = MemorySurface(6, 1)
+    fill_span(mem.surface(), 4, 4, Color(10, 20, 30, 255))
+    _blend_span_reference(expected, 1, 4, 0, Color(10, 20, 30, 255))
+    for x in range(6):
+        assert_equal(mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x))
+
+
+def test_fill_span_alpha_matches_blend() raises -> None:
+    var mem = _filled(6, 1, Color(5, 6, 7, 255))
+    var expected = _filled(6, 1, Color(5, 6, 7, 255))
+    fill_span(mem.surface(), 4, 4, Color(200, 100, 0, 128))
+    _blend_span_reference(expected, 1, 4, 0, Color(200, 100, 0, 128))
+    for x in range(6):
+        assert_equal(mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x))
+
+
+def test_fill_span_with_zero_alpha_is_a_no_op() raises -> None:
+    var mem = _filled(3, 1, Color(1, 2, 3, 255))
+    fill_span(mem.surface(), 0, 3, Color(200, 200, 200, 0))
+    for x in range(3):
+        assert_equal(mem.pixel(x, 0), Color(1, 2, 3, 255))
+
+
+def test_fill_all_matches_the_reference_blend_loop() raises -> None:
+    var opaque = _filled(5, 5, Color(9, 8, 7, 255))
+    var ref_opaque = MemorySurface(5, 5)
+    _blend_span_reference(ref_opaque, 0, 25, 0, Color(9, 8, 7, 255))
+    for i in range(25):
+        assert_equal(
+            opaque.pixel(i % 5, i // 5), ref_opaque.pixel(i % 5, i // 5)
+        )
+
+    var alpha = _filled(5, 5, Color(9, 8, 7, 128))
+    var ref_alpha = MemorySurface(5, 5)
+    _blend_span_reference(ref_alpha, 0, 25, 0, Color(9, 8, 7, 128))
+    for i in range(25):
+        assert_equal(
+            alpha.pixel(i % 5, i // 5), ref_alpha.pixel(i % 5, i // 5)
+        )
+
+
+def test_fill_pixels_matches_the_reference_blend_loop() raises -> None:
+    var mem = MemorySurface(8, 8)
+    var expected = MemorySurface(8, 8)
+    var c = Color(50, 60, 70, 90)
+    fill_pixels(mem.surface(), 2, 2, 6, 6, c)
+    for y in range(2, 6):
+        _blend_span_reference(expected, 2, 4, y, c)
+    for y in range(8):
+        for x in range(8):
+            assert_equal(
+                mem.pixel(x, y), expected.pixel(x, y),
+                "pixel " + String(x) + "," + String(y),
+            )
 
 
 def main() raises:

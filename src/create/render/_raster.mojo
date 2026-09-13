@@ -70,28 +70,54 @@ def _word_aligned[o: Origin[mut=True]](s: Surface[o]) -> Bool:
     return Int(s.px) % 4 == 0
 
 
-def fill_all[o: Origin[mut=True]](s: Surface[o], c: Color):
-    """Composite `c` over every pixel — the whole frame, no clipping needed.
+def fill_span[o: Origin[mut=True]](s: Surface[o], off: Int, count: Int, c: Color):
+    """Composite `count` consecutive pixels starting at byte offset `off`.
 
-    An opaque fill is one word per pixel, not four bytes, and the alpha test
-    is hoisted out of the loop rather than left to `blend`. Together those are
-    worth ~4x on a full-frame clear. Both matter because of where this is
-    called from: with the test inside `blend`, every one of ~10^6 iterations
-    re-tests an invariant through a call the optimiser inlines only sometimes —
-    the direct-raster `Canvas` used to get that inlining, a replay loop one
-    call deeper does not. Neither trick may live at a call site again.
+    The caller has already clipped to the surface and worked out the covered
+    run; this does no bounds checking of its own. An opaque fill is one word
+    per pixel, not four bytes, and the alpha test is hoisted out of the loop
+    rather than left to `blend` — together worth ~4x on a run of any length.
+    Both matter because of where this is called from: with the test inside
+    `blend`, every iteration re-tests an invariant through a call the
+    optimiser inlines only sometimes. Every rasteriser that produces a
+    horizontal run of pixels goes through this one loop; neither trick may be
+    re-open-coded at a call site.
     """
     if c.a == 0:
         return
-    var n = s.width * s.height
     if c.a == 255 and _word_aligned(s):
         var w = s.px.unsafe_bitcast[UInt32]()
         var v = _packed(c)
-        for i in range(n):
-            w[unsafe_offset=i] = v
+        var i0 = off // 4
+        for i in range(count):
+            w[unsafe_offset=i0 + i] = v
         return
-    for i in range(n):
-        blend(s, i * 4, c)
+    var px = s.px
+    for i in range(count):
+        var o2 = off + i * 4
+        if c.a == 255:
+            px[unsafe_offset=o2] = c.r
+            px[unsafe_offset=o2 + 1] = c.g
+            px[unsafe_offset=o2 + 2] = c.b
+            px[unsafe_offset=o2 + 3] = 255
+        else:
+            var out = c.over(
+                Color(
+                    px[unsafe_offset=o2],
+                    px[unsafe_offset=o2 + 1],
+                    px[unsafe_offset=o2 + 2],
+                    px[unsafe_offset=o2 + 3],
+                )
+            )
+            px[unsafe_offset=o2] = out.r
+            px[unsafe_offset=o2 + 1] = out.g
+            px[unsafe_offset=o2 + 2] = out.b
+            px[unsafe_offset=o2 + 3] = out.a
+
+
+def fill_all[o: Origin[mut=True]](s: Surface[o], c: Color):
+    """Composite `c` over every pixel — the whole frame, no clipping needed."""
+    fill_span(s, 0, s.width * s.height, c)
 
 
 def fill_pixels[
@@ -99,8 +125,7 @@ def fill_pixels[
 ](s: Surface[o], x0: Int, y0: Int, x1: Int, y1: Int, c: Color):
     """Fill the half-open device-space rect `[x0, x1) x [y0, y1)`, clipped.
 
-    Clipped once for the whole rect and, when opaque, written a word per
-    pixel — see `fill_all` for why both belong here rather than at a call site.
+    Clipped once for the whole rect, then one `fill_span` per row.
     """
     if c.a == 0:
         return
@@ -109,17 +134,10 @@ def fill_pixels[
     var r1 = min(y1, s.height)
     var c0 = max(x0, 0)
     var c1 = min(x1, W)
-    if c.a == 255 and _word_aligned(s):
-        var w = s.px.unsafe_bitcast[UInt32]()
-        var v = _packed(c)
-        for row in range(r0, r1):
-            var base = row * W
-            for col in range(c0, c1):
-                w[unsafe_offset=base + col] = v
+    if c1 <= c0:
         return
     for row in range(r0, r1):
-        for col in range(c0, c1):
-            blend(s, (row * W + col) * 4, c)
+        fill_span(s, (row * W + c0) * 4, c1 - c0, c)
 
 
 def line_pixels[
