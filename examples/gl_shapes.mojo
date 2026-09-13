@@ -16,8 +16,6 @@ letterbox bars stay in the frame and just get wider — the GPU backend takes th
 flag exactly as the CPU one does. Escape quits.
 """
 
-from std.sys import argv
-
 from create import *
 
 
