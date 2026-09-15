@@ -99,7 +99,7 @@ pixi run precompile
 # Format every source file in place (80 columns, enforced by the pre-commit hook)
 pixi run format
 
-# One-time setup (points core.hooksPath at .githooks)
+# One-time setup (points core.hooksPath at .githooks, ignores reformats in blame)
 pixi run setup
 ```
 
@@ -110,7 +110,9 @@ Two git hooks gate the repo; there is no CI, so these are the only automated che
 | `.githooks/pre-commit` | Checks the staged `.mojo` files are formatted, then builds `tests/core/test_smoke.mojo` | Constant — does not grow with the repo |
 | `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | Grows with the example and test count |
 
-Neither runs until `pixi run setup` has been done in the clone. Both block on breakage — breaking
+Neither runs until `pixi run setup` has been done in the clone, which also points
+`blame.ignoreRevsFile` at `.git-blame-ignore-revs` so the bulk reformat listed there stays out of
+`git blame`. Both block on breakage — breaking
 the core API aborts commits; a library type error, a broken example, or a failing test aborts
 pushes. `--no-verify` skips them, and is for WIP checkpoints on a scratch branch that get squashed
 before landing, never on `main`.

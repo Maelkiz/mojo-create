@@ -1,0 +1,5 @@
+# Bulk reformats — noise in blame, never the origin of a line.
+# Applied automatically by `pixi run setup` (blame.ignoreRevsFile).
+
+# Format the repo with mojo format
+388b99fcca0593e1d8fd50ddc4c41653c21a0b18
