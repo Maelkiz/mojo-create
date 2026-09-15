@@ -1,5 +1,5 @@
 #!/bin/sh
-# Fast tier: build one consumer program.
+# Fast tier: check formatting, then build one consumer program.
 #
 # Constant cost (~1.5s) no matter how many examples exist. Catches consumer-side
 # API drift — trait changes, `run[T]` instantiation, Context/Input/Canvas
@@ -7,14 +7,39 @@
 # library type-check run on push.
 set -u
 
+out=$(mktemp -d)
+trap 'rm -rf "$out"' EXIT
+
+# `mojo format` has no --check mode, so format a copy of the staged content and
+# diff it back. The copy is the *index* version (git show :path), not the
+# worktree file, so an unstaged edit can neither mask nor cause a failure.
+staged=$(git diff --cached --name-only --diff-filter=ACM -- '*.mojo')
+if [ -n "$staged" ]; then
+    echo "Checking formatting..."
+    for f in $staged; do
+        mkdir -p "$out/copy/$(dirname "$f")"
+        git show ":$f" > "$out/copy/$f"
+    done
+    pixi run mojo format -q "$out/copy" \
+        || { echo "Formatter rejected a staged file — commit aborted."; exit 1; }
+    unformatted=""
+    for f in $staged; do
+        git show ":$f" | diff -q - "$out/copy/$f" >/dev/null 2>&1 \
+            || unformatted="$unformatted $f"
+    done
+    if [ -n "$unformatted" ]; then
+        echo "Not formatted —$unformatted"
+        echo "Run: pixi run mojo format$unformatted"
+        echo "Commit aborted."
+        exit 1
+    fi
+fi
+
 smoke=tests/core/test_smoke.mojo
 if [ ! -f "$smoke" ]; then
     echo "$smoke is missing — commit aborted."
     exit 1
 fi
-
-out=$(mktemp -d)
-trap 'rm -rf "$out"' EXIT
 
 echo "Compiling $smoke..."
 pixi run mojo build -I src "$smoke" -o "$out/smoke" \

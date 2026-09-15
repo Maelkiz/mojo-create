@@ -96,6 +96,9 @@ mojo run -I src tests/math/test_vector2.mojo
 # Type-check the whole library without running anything (output goes to build/, gitignored)
 pixi run precompile
 
+# Format every source file in place (80 columns, enforced by the pre-commit hook)
+pixi run format
+
 # One-time setup (points core.hooksPath at .githooks)
 pixi run setup
 ```
@@ -104,7 +107,7 @@ Two git hooks gate the repo; there is no CI, so these are the only automated che
 
 | Hook | Runs | Cost |
 |---|---|---|
-| `.githooks/pre-commit` | Builds `tests/core/test_smoke.mojo` | Constant — does not grow with the repo |
+| `.githooks/pre-commit` | Checks the staged `.mojo` files are formatted, then builds `tests/core/test_smoke.mojo` | Constant — does not grow with the repo |
 | `.githooks/pre-push` | `mojo precompile src/create`, all example entrypoints in parallel, then the test suite | Grows with the example and test count |
 
 Neither runs until `pixi run setup` has been done in the clone. Both block on breakage — breaking
@@ -115,6 +118,12 @@ before landing, never on `main`.
 The two tiers catch different things and neither subsumes the other: building a consumer program
 type-checks only the `def` bodies it reaches, so it catches API drift but not a broken library
 function nothing calls; `mojo precompile` is the reverse.
+
+`mojo format` has no `--check` mode, so the hook formats a copy of the *index* content (`git show
+:path`) and diffs it back — an unstaged edit can therefore neither mask nor cause a failure. The
+formatter's grammar is narrower than the compiler's in two ways that will abort a commit outright
+rather than reformat: `where` is reserved, so it cannot be a parameter or variable name, and `;` as
+a statement separator does not parse, so one declaration per line.
 
 ## Testing
 
