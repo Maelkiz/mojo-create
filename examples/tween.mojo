@@ -107,7 +107,9 @@ struct App(Program):
         # The hero: a point moved by lerping between two positions with the
         # tween's eased value. OUT_BACK and OUT_ELASTIC leave 0..1 mid-run, so
         # the box visibly overshoots both ends of its track.
-        var pos = Vector2(-420.0, 300.0).lerp(Vector2(420.0, 300.0), self.slide.value)
+        var pos = Vector2(-420.0, 300.0).lerp(
+            Vector2(420.0, 300.0), self.slide.value
+        )
         canvas.fill(Color(235, 120, 70))
         canvas.rectangle(pos, 44, 44)
 
@@ -122,7 +124,9 @@ struct App(Program):
         canvas.text_align(HorizontalAlignment.CENTER)
         canvas.text("Easing and Tweens", 0, 362)
         canvas.font_size(18)
-        canvas.text("space  cycles the hero curve: " + self.names[self.pick], 0, 238)
+        canvas.text(
+            "space  cycles the hero curve: " + self.names[self.pick], 0, 238
+        )
 
         canvas.font_size(18)
         canvas.text_align(HorizontalAlignment.LEFT, VerticalAlignment.MIDDLE)

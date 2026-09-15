@@ -45,7 +45,12 @@ def _jpeg_dimensions(data: List[UInt8]) raises -> Tuple[Int, Int]:
         if marker == 0xD9:  # EOI
             break
         # SOF markers encode image dimensions
-        if (marker >= 0xC0 and marker <= 0xC3) or (marker >= 0xC5 and marker <= 0xC7) or (marker >= 0xC9 and marker <= 0xCB) or (marker >= 0xCD and marker <= 0xCF):
+        if (
+            (marker >= 0xC0 and marker <= 0xC3)
+            or (marker >= 0xC5 and marker <= 0xC7)
+            or (marker >= 0xC9 and marker <= 0xCB)
+            or (marker >= 0xCD and marker <= 0xCF)
+        ):
             var h = (Int(data[i + 5]) << 8) | Int(data[i + 6])
             var w = (Int(data[i + 7]) << 8) | Int(data[i + 8])
             return (w, h)
@@ -111,10 +116,9 @@ struct Sprite(Movable):
         return s^
 
     @staticmethod
-    def from_rgba(
-        width: Int, height: Int, data: List[UInt8]
-    ) raises -> Sprite:
-        """Precondition: `data` holds at least `width * height * 4` bytes — not bounds-checked."""
+    def from_rgba(width: Int, height: Int, data: List[UInt8]) raises -> Sprite:
+        """Precondition: `data` holds at least `width * height * 4` bytes — not bounds-checked.
+        """
         var s = Sprite(width, height)
         var src = data.unsafe_ptr()
         var dst = s.pixels.unsafe_ptr()
@@ -236,9 +240,14 @@ struct Sprite(Movable):
 
         var s = Sprite(w, h)
         var result = lib.call["tjDecompress2", Int32](
-            handle, data.unsafe_ptr(), len(data),
-            s.pixels.unsafe_ptr(), Int32(w), Int32(0), Int32(h),
-            Int32(7),   # TJPF_RGBA
+            handle,
+            data.unsafe_ptr(),
+            len(data),
+            s.pixels.unsafe_ptr(),
+            Int32(w),
+            Int32(0),
+            Int32(h),
+            Int32(7),  # TJPF_RGBA
             Int32(0),
         )
         lib.call["tjDestroy"](handle)
@@ -297,9 +306,9 @@ struct Sprite(Movable):
                 for col in range(w):
                     var src = src_base + col * bytes_per_px
                     var d = (row * w + col) * 4
-                    dst[unsafe_offset=d] = data[src + 2]      # R
+                    dst[unsafe_offset=d] = data[src + 2]  # R
                     dst[unsafe_offset=d + 1] = data[src + 1]  # G
-                    dst[unsafe_offset=d + 2] = data[src]      # B
+                    dst[unsafe_offset=d + 2] = data[src]  # B
                     dst[unsafe_offset=d + 3] = (
                         data[src + 3] if bytes_per_px == 4 else 255
                     )

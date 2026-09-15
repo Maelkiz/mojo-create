@@ -186,7 +186,6 @@ def test_style_defaults() raises -> None:
     assert_true(s.text_vertical_alignment == VerticalAlignment.TOP)
 
 
-
 def test_repeating_a_draw_adds_no_cache_entries() raises -> None:
     # The point of the cache: a static line of text rasterises its glyphs on
     # the frame it first appears and on no frame after.

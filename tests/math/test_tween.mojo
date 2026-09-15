@@ -1,4 +1,10 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true, assert_false
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+    assert_false,
+)
 from create.math.easing import Easing, ease
 from create.math.tween import Tween
 
@@ -10,13 +16,27 @@ from create.math.tween import Tween
 def _all_curves() -> List[Easing]:
     return [
         Easing.LINEAR,
-        Easing.IN_QUAD, Easing.OUT_QUAD, Easing.IN_OUT_QUAD,
-        Easing.IN_CUBIC, Easing.OUT_CUBIC, Easing.IN_OUT_CUBIC,
-        Easing.IN_SINE, Easing.OUT_SINE, Easing.IN_OUT_SINE,
-        Easing.IN_EXPO, Easing.OUT_EXPO, Easing.IN_OUT_EXPO,
-        Easing.IN_BACK, Easing.OUT_BACK, Easing.IN_OUT_BACK,
-        Easing.IN_ELASTIC, Easing.OUT_ELASTIC, Easing.IN_OUT_ELASTIC,
-        Easing.IN_BOUNCE, Easing.OUT_BOUNCE, Easing.IN_OUT_BOUNCE,
+        Easing.IN_QUAD,
+        Easing.OUT_QUAD,
+        Easing.IN_OUT_QUAD,
+        Easing.IN_CUBIC,
+        Easing.OUT_CUBIC,
+        Easing.IN_OUT_CUBIC,
+        Easing.IN_SINE,
+        Easing.OUT_SINE,
+        Easing.IN_OUT_SINE,
+        Easing.IN_EXPO,
+        Easing.OUT_EXPO,
+        Easing.IN_OUT_EXPO,
+        Easing.IN_BACK,
+        Easing.OUT_BACK,
+        Easing.IN_OUT_BACK,
+        Easing.IN_ELASTIC,
+        Easing.OUT_ELASTIC,
+        Easing.IN_OUT_ELASTIC,
+        Easing.IN_BOUNCE,
+        Easing.OUT_BOUNCE,
+        Easing.IN_OUT_BOUNCE,
     ]
 
 
@@ -62,8 +82,12 @@ def test_ease_out_curves_start_fast() raises -> None:
 
 def test_ease_in_out_curves_are_symmetric_about_the_midpoint() raises -> None:
     for curve in [
-        Easing.IN_OUT_QUAD, Easing.IN_OUT_CUBIC, Easing.IN_OUT_SINE,
-        Easing.IN_OUT_EXPO, Easing.IN_OUT_BACK, Easing.IN_OUT_BOUNCE,
+        Easing.IN_OUT_QUAD,
+        Easing.IN_OUT_CUBIC,
+        Easing.IN_OUT_SINE,
+        Easing.IN_OUT_EXPO,
+        Easing.IN_OUT_BACK,
+        Easing.IN_OUT_BOUNCE,
     ]:
         assert_almost_equal(ease(curve, 0.5), 0.5, atol=1e-9)
         assert_almost_equal(
@@ -312,8 +336,8 @@ def test_tween_ping_pong_reverses_at_the_end() raises -> None:
 def test_tween_ping_pong_reverses_again_at_the_start() raises -> None:
     var t = Tween(0.0, 100.0, 1.0)
     t.ping_pong()
-    t.update(1.5)   # to 1.0, reflected back to 0.5
-    t.update(0.7)   # down past 0 to -0.2, reflected up to 0.2
+    t.update(1.5)  # to 1.0, reflected back to 0.5
+    t.update(0.7)  # down past 0 to -0.2, reflected up to 0.2
     assert_almost_equal(t.progress, 0.2)
     assert_true(t.is_playing())
 
@@ -327,7 +351,9 @@ def test_tween_ping_pong_never_finishes() raises -> None:
         assert_true(t.progress >= 0.0 and t.progress <= 1.0)
 
 
-def test_tween_ping_pong_survives_a_frame_longer_than_its_duration() raises -> None:
+def test_tween_ping_pong_survives_a_frame_longer_than_its_duration() raises -> (
+    None
+):
     """A dt past the far end must clamp rather than leave progress outside
     0..1 -- the value would otherwise stop tracking the curve."""
     var t = Tween(0.0, 100.0, 0.1)

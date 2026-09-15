@@ -15,8 +15,12 @@ struct AudioDemo(Program):
     def create(mut ctx: Context) raises -> AudioDemo:
         ctx.exit_on_escape = True
         var audio = Audio()
-        var chime = ArcPointer(Sound.load(script_dir() + "/../assets/chime.wav"))
-        var ambience = ArcPointer(Sound.load(script_dir() + "/../assets/ambience.wav"))
+        var chime = ArcPointer(
+            Sound.load(script_dir() + "/../assets/chime.wav")
+        )
+        var ambience = ArcPointer(
+            Sound.load(script_dir() + "/../assets/ambience.wav")
+        )
         return AudioDemo(audio^, chime, ambience, 0, False)
 
     def update(mut self, mut ctx: Context, input: Input) raises:

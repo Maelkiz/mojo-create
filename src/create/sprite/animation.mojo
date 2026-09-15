@@ -27,7 +27,9 @@ struct SpriteAnimation(Movable):
     var frames: List[Sprite]
     var fps: Float64
 
-    def __init__(out self, var frames: List[Sprite], fps: Float64 = 12.0) raises:
+    def __init__(
+        out self, var frames: List[Sprite], fps: Float64 = 12.0
+    ) raises:
         """Build an animation from frames already in memory.
 
         Raises on an empty frame list: an animation with no frames has no valid
@@ -36,7 +38,9 @@ struct SpriteAnimation(Movable):
         if len(frames) == 0:
             raise Error("SpriteAnimation needs at least one frame")
         if fps <= 0.0:
-            raise Error("SpriteAnimation fps must be positive, got " + String(fps))
+            raise Error(
+                "SpriteAnimation fps must be positive, got " + String(fps)
+            )
         self.frames = frames^
         self.fps = fps
 
@@ -127,7 +131,9 @@ struct SpriteAnimation(Movable):
         return SpriteAnimation(frames^, fps)
 
     @staticmethod
-    def from_folder(path: String, fps: Float64 = 12.0) raises -> SpriteAnimation:
+    def from_folder(
+        path: String, fps: Float64 = 12.0
+    ) raises -> SpriteAnimation:
         """Load every image in a directory as a frame, in natural number order.
 
         ```mojo

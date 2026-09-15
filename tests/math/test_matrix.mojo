@@ -1,6 +1,20 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+)
 from std.math import pi, abs
-from create.math.matrix import Matrix, identity, translate, rotate, scale, perspective, apply, inverse
+from create.math.matrix import (
+    Matrix,
+    identity,
+    translate,
+    rotate,
+    scale,
+    perspective,
+    apply,
+    inverse,
+)
 
 
 def test_zero_init() raises -> None:
@@ -36,8 +50,10 @@ def test_identity_3x3() raises -> None:
 
 def test_matmul_by_identity() raises -> None:
     var m = Matrix[2, 2]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0
-    m[1, 0] = 3.0; m[1, 1] = 4.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[1, 0] = 3.0
+    m[1, 1] = 4.0
     var id = identity[2]()
     var r = m @ id
     assert_equal(r[0, 0], 1.0)
@@ -49,11 +65,15 @@ def test_matmul_by_identity() raises -> None:
 def test_matmul_values() raises -> None:
     # [[1,2],[3,4]] @ [[5,6],[7,8]] = [[19,22],[43,50]]
     var a = Matrix[2, 2]()
-    a[0, 0] = 1.0; a[0, 1] = 2.0
-    a[1, 0] = 3.0; a[1, 1] = 4.0
+    a[0, 0] = 1.0
+    a[0, 1] = 2.0
+    a[1, 0] = 3.0
+    a[1, 1] = 4.0
     var b = Matrix[2, 2]()
-    b[0, 0] = 5.0; b[0, 1] = 6.0
-    b[1, 0] = 7.0; b[1, 1] = 8.0
+    b[0, 0] = 5.0
+    b[0, 1] = 6.0
+    b[1, 0] = 7.0
+    b[1, 1] = 8.0
     var r = a @ b
     assert_equal(r[0, 0], 19.0)
     assert_equal(r[0, 1], 22.0)
@@ -63,8 +83,10 @@ def test_matmul_values() raises -> None:
 
 def test_transpose_square() raises -> None:
     var m = Matrix[2, 2]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0
-    m[1, 0] = 3.0; m[1, 1] = 4.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[1, 0] = 3.0
+    m[1, 1] = 4.0
     var t = m.transposed()
     assert_equal(t[0, 0], 1.0)
     assert_equal(t[0, 1], 3.0)
@@ -75,8 +97,12 @@ def test_transpose_square() raises -> None:
 def test_transpose_non_square() raises -> None:
     # 2×3 → 3×2: element [r,c] maps to [c,r]
     var m = Matrix[2, 3]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0; m[0, 2] = 3.0
-    m[1, 0] = 4.0; m[1, 1] = 5.0; m[1, 2] = 6.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[0, 2] = 3.0
+    m[1, 0] = 4.0
+    m[1, 1] = 5.0
+    m[1, 2] = 6.0
     var t = m.transposed()
     assert_equal(t[0, 0], 1.0)
     assert_equal(t[1, 0], 2.0)
@@ -162,8 +188,10 @@ def test_perspective_key_elements() raises -> None:
 def test_inverse_2x2() raises -> None:
     # [[2,1],[1,1]], det=1, inverse=[[1,-1],[-1,2]]
     var m = Matrix[2, 2]()
-    m[0, 0] = 2.0; m[0, 1] = 1.0
-    m[1, 0] = 1.0; m[1, 1] = 1.0
+    m[0, 0] = 2.0
+    m[0, 1] = 1.0
+    m[1, 0] = 1.0
+    m[1, 1] = 1.0
     var inv = inverse(m)
     assert_almost_equal(inv[0, 0], 1.0, atol=1e-9)
     assert_almost_equal(inv[0, 1], -1.0, atol=1e-9)
@@ -174,9 +202,15 @@ def test_inverse_2x2() raises -> None:
 def test_inverse_roundtrip_3x3() raises -> None:
     # M @ inverse(M) ≈ identity
     var m = Matrix[3, 3]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0; m[0, 2] = 0.0
-    m[1, 0] = 0.0; m[1, 1] = 1.0; m[1, 2] = 3.0
-    m[2, 0] = 0.0; m[2, 1] = 0.0; m[2, 2] = 1.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[0, 2] = 0.0
+    m[1, 0] = 0.0
+    m[1, 1] = 1.0
+    m[1, 2] = 3.0
+    m[2, 0] = 0.0
+    m[2, 1] = 0.0
+    m[2, 2] = 1.0
     var inv = inverse(m)
     var prod = m @ inv
     for i in range(3):
@@ -198,7 +232,8 @@ def test_apply_4x4_with_w_divide() raises -> None:
     # Row 3 isn't the trivial (0,0,0,1): ow=2 regardless of input, so the
     # divide actually does something rather than passing values through.
     var m = Matrix[4, 4]()
-    m[0, 0] = 1.0; m[0, 3] = 5.0
+    m[0, 0] = 1.0
+    m[0, 3] = 5.0
     m[1, 1] = 1.0
     m[2, 2] = 1.0
     m[3, 3] = 2.0
@@ -219,9 +254,15 @@ def test_perspective_projects_point() raises -> None:
 def test_inverse_with_pivot_swap() raises -> None:
     # m[0,0] is zero, forcing the partial-pivot row swap before elimination.
     var m = Matrix[3, 3]()
-    m[0, 0] = 0.0; m[0, 1] = 1.0; m[0, 2] = 2.0
-    m[1, 0] = 1.0; m[1, 1] = 0.0; m[1, 2] = 3.0
-    m[2, 0] = 4.0; m[2, 1] = 5.0; m[2, 2] = 6.0
+    m[0, 0] = 0.0
+    m[0, 1] = 1.0
+    m[0, 2] = 2.0
+    m[1, 0] = 1.0
+    m[1, 1] = 0.0
+    m[1, 2] = 3.0
+    m[2, 0] = 4.0
+    m[2, 1] = 5.0
+    m[2, 2] = 6.0
     var inv = inverse(m)
     var prod = m @ inv
     for i in range(3):
@@ -237,9 +278,15 @@ def test_inverse_of_singular_matrix_is_garbage() raises -> None:
     # rejected — the result is huge, unusable finite values, not NaN and
     # not a valid inverse.
     var m = Matrix[3, 3]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0; m[0, 2] = 3.0
-    m[1, 0] = 4.0; m[1, 1] = 5.0; m[1, 2] = 6.0
-    m[2, 0] = 5.0; m[2, 1] = 7.0; m[2, 2] = 9.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[0, 2] = 3.0
+    m[1, 0] = 4.0
+    m[1, 1] = 5.0
+    m[1, 2] = 6.0
+    m[2, 0] = 5.0
+    m[2, 1] = 7.0
+    m[2, 2] = 9.0
     var inv = inverse(m)
     var max_abs = 0.0
     for i in range(3):
@@ -257,8 +304,10 @@ def test_inverse_of_singular_matrix_is_garbage() raises -> None:
 
 def test_copy_ctor_is_independent() raises -> None:
     var m = Matrix[2, 2]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0
-    m[1, 0] = 3.0; m[1, 1] = 4.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[1, 0] = 3.0
+    m[1, 1] = 4.0
     var c = Matrix[2, 2](copy=m)
     m[0, 0] = 99.0
     assert_equal(c[0, 0], 1.0)
@@ -269,8 +318,10 @@ def test_copy_ctor_is_independent() raises -> None:
 
 def test_write_to_contains_type_name() raises -> None:
     var m = Matrix[2, 2]()
-    m[0, 0] = 1.0; m[0, 1] = 2.0
-    m[1, 0] = 3.0; m[1, 1] = 4.0
+    m[0, 0] = 1.0
+    m[0, 1] = 2.0
+    m[1, 0] = 3.0
+    m[1, 1] = 4.0
     var s = String(m)
     assert_true(s.startswith("Matrix[2x2]("))
     assert_true(s.endswith(")"))

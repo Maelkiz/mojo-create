@@ -33,6 +33,6 @@ struct AutoScale:
     entity toggles it every frame forever instead of correcting it.
     """
 
-    comptime OFF    = 0  # canvas is the window; resizing changes ctx.width/height
-    comptime FIT    = 1  # uniform scale to fit, centred, bars on the short axis
+    comptime OFF = 0  # canvas is the window; resizing changes ctx.width/height
+    comptime FIT = 1  # uniform scale to fit, centred, bars on the short axis
     comptime EXTEND = 2  # same scale as FIT, no bars — leftover becomes extra world

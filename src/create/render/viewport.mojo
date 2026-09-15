@@ -1,5 +1,9 @@
 from std.math import min
-from create.math.matrix import Matrix, scale as mat_scale, translate as mat_translate
+from create.math.matrix import (
+    Matrix,
+    scale as mat_scale,
+    translate as mat_translate,
+)
 from .autoscale import AutoScale
 
 

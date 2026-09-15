@@ -52,17 +52,23 @@ struct SDLAudio:
         self.lib = _DLHandle("libSDL3.so")
 
     def get_error(self) raises -> String:
-        var ptr = self.lib.call["SDL_GetError", Pointer[UInt8, MutUntrackedOrigin]]()
+        var ptr = self.lib.call[
+            "SDL_GetError", Pointer[UInt8, MutUntrackedOrigin]
+        ]()
         return String(unsafe_from_utf8_ptr=ptr)
 
     def init(self) raises:
         if not self.lib.call["SDL_InitSubSystem", Bool](SDL_INIT_AUDIO):
-            raise Error("SDL_InitSubSystem(SDL_INIT_AUDIO) failed: " + self.get_error())
+            raise Error(
+                "SDL_InitSubSystem(SDL_INIT_AUDIO) failed: " + self.get_error()
+            )
 
     def quit(self) raises:
         self.lib.call["SDL_QuitSubSystem"](SDL_INIT_AUDIO)
 
-    def load_wav(self, path: String) raises -> Tuple[List[UInt8], Int32, Int32, Int32]:
+    def load_wav(
+        self, path: String
+    ) raises -> Tuple[List[UInt8], Int32, Int32, Int32]:
         """Load a WAV file. Returns (pcm, format, channels, freq)."""
         var spec = List[Int32](length=3, fill=0)
         var buf_out = List[Int](length=1, fill=0)
@@ -70,12 +76,17 @@ struct SDLAudio:
         var cpath = _cstr(path)
 
         if not self.lib.call["SDL_LoadWAV", Bool](
-            cpath.unsafe_ptr(), spec.unsafe_ptr(), buf_out.unsafe_ptr(), len_out.unsafe_ptr()
+            cpath.unsafe_ptr(),
+            spec.unsafe_ptr(),
+            buf_out.unsafe_ptr(),
+            len_out.unsafe_ptr(),
         ):
             raise Error("SDL_LoadWAV failed: " + self.get_error())
 
         var audio_len = Int(len_out[0])
-        var src = Pointer[UInt8, MutUntrackedOrigin](unsafe_from_address=buf_out[0])
+        var src = Pointer[UInt8, MutUntrackedOrigin](
+            unsafe_from_address=buf_out[0]
+        )
         var pcm = List[UInt8](length=audio_len, fill=0)
         var dst = pcm.unsafe_ptr()
         for i in range(audio_len):
@@ -84,7 +95,9 @@ struct SDLAudio:
 
         return pcm^, spec[0], spec[1], spec[2]
 
-    def open_device_stream(self, format: Int32, channels: Int32, freq: Int32) raises -> Int:
+    def open_device_stream(
+        self, format: Int32, channels: Int32, freq: Int32
+    ) raises -> Int:
         var spec = List[Int32](length=3, fill=0)
         spec[0] = format
         spec[1] = channels
@@ -102,11 +115,15 @@ struct SDLAudio:
 
     def resume_stream(self, stream: Int) raises:
         if not self.lib.call["SDL_ResumeAudioStreamDevice", Bool](stream):
-            raise Error("SDL_ResumeAudioStreamDevice failed: " + self.get_error())
+            raise Error(
+                "SDL_ResumeAudioStreamDevice failed: " + self.get_error()
+            )
 
     def pause_stream(self, stream: Int) raises:
         if not self.lib.call["SDL_PauseAudioStreamDevice", Bool](stream):
-            raise Error("SDL_PauseAudioStreamDevice failed: " + self.get_error())
+            raise Error(
+                "SDL_PauseAudioStreamDevice failed: " + self.get_error()
+            )
 
     def set_gain(self, stream: Int, gain: Float32) raises:
         if not self.lib.call["SDL_SetAudioStreamGain", Bool](stream, gain):

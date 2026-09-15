@@ -1,4 +1,10 @@
-from std.testing import TestSuite, assert_equal, assert_true, assert_false, assert_raises
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_true,
+    assert_false,
+    assert_raises,
+)
 from create.sprite.sprite import Sprite, _jpeg_dimensions
 
 
@@ -14,17 +20,17 @@ def test_solid_pixels_correct() raises -> None:
     var ptr = s.pixels.unsafe_ptr()
     for i in range(4):
         var off = i * 4
-        assert_equal(Int(ptr[unsafe_offset=off]), 255)      # R
-        assert_equal(Int(ptr[unsafe_offset=off + 1]), 0)    # G
-        assert_equal(Int(ptr[unsafe_offset=off + 2]), 0)    # B
+        assert_equal(Int(ptr[unsafe_offset=off]), 255)  # R
+        assert_equal(Int(ptr[unsafe_offset=off + 1]), 0)  # G
+        assert_equal(Int(ptr[unsafe_offset=off + 2]), 0)  # B
         assert_equal(Int(ptr[unsafe_offset=off + 3]), 255)  # A
 
 
 def test_solid_blue() raises -> None:
     var s = Sprite.solid(1, 1, 0, 0, 255)
     var ptr = s.pixels.unsafe_ptr()
-    assert_equal(Int(ptr[unsafe_offset=0]), 0)    # R
-    assert_equal(Int(ptr[unsafe_offset=1]), 0)    # G
+    assert_equal(Int(ptr[unsafe_offset=0]), 0)  # R
+    assert_equal(Int(ptr[unsafe_offset=1]), 0)  # G
     assert_equal(Int(ptr[unsafe_offset=2]), 255)  # B
     assert_equal(Int(ptr[unsafe_offset=3]), 255)  # A
 
@@ -53,14 +59,14 @@ def test_load_bmp_pixels() raises -> None:
     # test_2x2.bmp: top-left=red, top-right=white, bottom-left=blue, bottom-right=white
     var s = Sprite.load("tests/fixtures/test_2x2.bmp")
     var ptr = s.pixels.unsafe_ptr()
-    assert_equal(Int(ptr[unsafe_offset=0]), 255)   # (0,0) R
-    assert_equal(Int(ptr[unsafe_offset=1]), 0)     # (0,0) G
-    assert_equal(Int(ptr[unsafe_offset=2]), 0)     # (0,0) B
-    assert_equal(Int(ptr[unsafe_offset=3]), 255)   # (0,0) A
-    assert_equal(Int(ptr[unsafe_offset=4]), 255)   # (1,0) R — white
+    assert_equal(Int(ptr[unsafe_offset=0]), 255)  # (0,0) R
+    assert_equal(Int(ptr[unsafe_offset=1]), 0)  # (0,0) G
+    assert_equal(Int(ptr[unsafe_offset=2]), 0)  # (0,0) B
+    assert_equal(Int(ptr[unsafe_offset=3]), 255)  # (0,0) A
+    assert_equal(Int(ptr[unsafe_offset=4]), 255)  # (1,0) R — white
     assert_equal(Int(ptr[unsafe_offset=5]), 255)
     assert_equal(Int(ptr[unsafe_offset=6]), 255)
-    assert_equal(Int(ptr[unsafe_offset=8]), 0)     # (0,1) R — blue
+    assert_equal(Int(ptr[unsafe_offset=8]), 0)  # (0,1) R — blue
     assert_equal(Int(ptr[unsafe_offset=9]), 0)
     assert_equal(Int(ptr[unsafe_offset=10]), 255)
 
@@ -77,19 +83,19 @@ def test_load_bmp_32bit_pixels_and_alpha() raises -> None:
     assert_equal(Int(ptr[unsafe_offset=0]), 255)  # (0,0) R -- red
     assert_equal(Int(ptr[unsafe_offset=1]), 0)
     assert_equal(Int(ptr[unsafe_offset=2]), 0)
-    assert_equal(Int(ptr[unsafe_offset=3]), 0)    # (0,0) A
+    assert_equal(Int(ptr[unsafe_offset=3]), 0)  # (0,0) A
     assert_equal(Int(ptr[unsafe_offset=4]), 255)  # (1,0) -- white
     assert_equal(Int(ptr[unsafe_offset=5]), 255)
     assert_equal(Int(ptr[unsafe_offset=6]), 255)
-    assert_equal(Int(ptr[unsafe_offset=7]), 85)   # (1,0) A
-    assert_equal(Int(ptr[unsafe_offset=8]), 0)    # (0,1) -- blue
+    assert_equal(Int(ptr[unsafe_offset=7]), 85)  # (1,0) A
+    assert_equal(Int(ptr[unsafe_offset=8]), 0)  # (0,1) -- blue
     assert_equal(Int(ptr[unsafe_offset=9]), 0)
     assert_equal(Int(ptr[unsafe_offset=10]), 255)
-    assert_equal(Int(ptr[unsafe_offset=11]), 170) # (0,1) A
-    assert_equal(Int(ptr[unsafe_offset=12]), 255) # (1,1) -- white
+    assert_equal(Int(ptr[unsafe_offset=11]), 170)  # (0,1) A
+    assert_equal(Int(ptr[unsafe_offset=12]), 255)  # (1,1) -- white
     assert_equal(Int(ptr[unsafe_offset=13]), 255)
     assert_equal(Int(ptr[unsafe_offset=14]), 255)
-    assert_equal(Int(ptr[unsafe_offset=15]), 255) # (1,1) A
+    assert_equal(Int(ptr[unsafe_offset=15]), 255)  # (1,1) A
 
 
 def test_load_topdown_bmp_matches_bottom_up() raises -> None:
@@ -126,14 +132,14 @@ def test_load_png_pixels() raises -> None:
     # synthesise 255.
     var s = Sprite.load("tests/fixtures/test_2x2.png")
     var ptr = s.pixels.unsafe_ptr()
-    assert_equal(Int(ptr[unsafe_offset=0]), 255)   # (0,0) R -- red
+    assert_equal(Int(ptr[unsafe_offset=0]), 255)  # (0,0) R -- red
     assert_equal(Int(ptr[unsafe_offset=1]), 0)
     assert_equal(Int(ptr[unsafe_offset=2]), 0)
-    assert_equal(Int(ptr[unsafe_offset=3]), 255)   # synthesised alpha
-    assert_equal(Int(ptr[unsafe_offset=4]), 0)     # (1,0) -- green
+    assert_equal(Int(ptr[unsafe_offset=3]), 255)  # synthesised alpha
+    assert_equal(Int(ptr[unsafe_offset=4]), 0)  # (1,0) -- green
     assert_equal(Int(ptr[unsafe_offset=5]), 255)
     assert_equal(Int(ptr[unsafe_offset=6]), 0)
-    assert_equal(Int(ptr[unsafe_offset=8]), 0)     # (0,1) -- blue
+    assert_equal(Int(ptr[unsafe_offset=8]), 0)  # (0,1) -- blue
     assert_equal(Int(ptr[unsafe_offset=9]), 0)
     assert_equal(Int(ptr[unsafe_offset=10]), 255)
     assert_equal(Int(ptr[unsafe_offset=12]), 255)  # (1,1) -- white
@@ -157,13 +163,13 @@ def test_load_jpeg_pixels() raises -> None:
     _assert_close(Int(ptr[unsafe_offset=0]), 255, tol)  # (0,0) -- red
     _assert_close(Int(ptr[unsafe_offset=1]), 0, tol)
     _assert_close(Int(ptr[unsafe_offset=2]), 0, tol)
-    _assert_close(Int(ptr[unsafe_offset=4]), 0, tol)    # (1,0) -- green
+    _assert_close(Int(ptr[unsafe_offset=4]), 0, tol)  # (1,0) -- green
     _assert_close(Int(ptr[unsafe_offset=5]), 255, tol)
     _assert_close(Int(ptr[unsafe_offset=6]), 0, tol)
-    _assert_close(Int(ptr[unsafe_offset=8]), 0, tol)    # (0,1) -- blue
+    _assert_close(Int(ptr[unsafe_offset=8]), 0, tol)  # (0,1) -- blue
     _assert_close(Int(ptr[unsafe_offset=9]), 0, tol)
     _assert_close(Int(ptr[unsafe_offset=10]), 255, tol)
-    _assert_close(Int(ptr[unsafe_offset=12]), 255, tol) # (1,1) -- white
+    _assert_close(Int(ptr[unsafe_offset=12]), 255, tol)  # (1,1) -- white
     _assert_close(Int(ptr[unsafe_offset=13]), 255, tol)
     _assert_close(Int(ptr[unsafe_offset=14]), 255, tol)
 
@@ -225,9 +231,9 @@ def test_resize_uniform_sprite_stays_uniform() raises -> None:
     var ptr = s.pixels.unsafe_ptr()
     for i in range(4):  # 2×2 = 4 pixels
         var off = i * 4
-        assert_equal(Int(ptr[unsafe_offset=off]),     255)  # R
-        assert_equal(Int(ptr[unsafe_offset=off + 1]), 0)    # G
-        assert_equal(Int(ptr[unsafe_offset=off + 2]), 0)    # B
+        assert_equal(Int(ptr[unsafe_offset=off]), 255)  # R
+        assert_equal(Int(ptr[unsafe_offset=off + 1]), 0)  # G
+        assert_equal(Int(ptr[unsafe_offset=off + 2]), 0)  # B
         assert_equal(Int(ptr[unsafe_offset=off + 3]), 255)  # A
 
 
@@ -241,23 +247,23 @@ def test_resize_downscale_nearest_neighbour() raises -> None:
         for col in range(4):
             var off = (row * 4 + col) * 4
             if row < 2 and col < 2:
-                ptr[unsafe_offset=off] = 255      # top-left red
+                ptr[unsafe_offset=off] = 255  # top-left red
             elif row < 2:
                 ptr[unsafe_offset=off + 1] = 255  # top-right green
             elif col < 2:
                 ptr[unsafe_offset=off + 2] = 255  # bottom-left blue
             else:
-                ptr[unsafe_offset=off] = 255      # bottom-right white
+                ptr[unsafe_offset=off] = 255  # bottom-right white
                 ptr[unsafe_offset=off + 1] = 255
                 ptr[unsafe_offset=off + 2] = 255
             ptr[unsafe_offset=off + 3] = 255
     s.resize(2, 2)
     var dst = s.pixels.unsafe_ptr()
-    assert_equal(Int(dst[unsafe_offset=0]), 255)   # (0,0) red
+    assert_equal(Int(dst[unsafe_offset=0]), 255)  # (0,0) red
     assert_equal(Int(dst[unsafe_offset=1]), 0)
-    assert_equal(Int(dst[unsafe_offset=4]), 0)     # (1,0) green
+    assert_equal(Int(dst[unsafe_offset=4]), 0)  # (1,0) green
     assert_equal(Int(dst[unsafe_offset=5]), 255)
-    assert_equal(Int(dst[unsafe_offset=8]), 0)     # (0,1) blue
+    assert_equal(Int(dst[unsafe_offset=8]), 0)  # (0,1) blue
     assert_equal(Int(dst[unsafe_offset=9]), 0)
     assert_equal(Int(dst[unsafe_offset=10]), 255)
     assert_equal(Int(dst[unsafe_offset=12]), 255)  # (1,1) white
@@ -271,11 +277,11 @@ def test_resize_upscale_block_replication() raises -> None:
     # across its whole 2x2 destination block, not blended or interpolated.
     var s = Sprite(2, 2)
     var ptr = s.pixels.unsafe_ptr()
-    ptr[unsafe_offset=0] = 255    # (0,0) red
+    ptr[unsafe_offset=0] = 255  # (0,0) red
     ptr[unsafe_offset=3] = 255
-    ptr[unsafe_offset=5] = 255    # (1,0) green
+    ptr[unsafe_offset=5] = 255  # (1,0) green
     ptr[unsafe_offset=7] = 255
-    ptr[unsafe_offset=10] = 255   # (0,1) blue
+    ptr[unsafe_offset=10] = 255  # (0,1) blue
     ptr[unsafe_offset=11] = 255
     for i in range(4):
         ptr[unsafe_offset=12 + i] = 255  # (1,1) white
@@ -284,19 +290,19 @@ def test_resize_upscale_block_replication() raises -> None:
     for row in range(2):
         for col in range(2):
             var off = (row * 4 + col) * 4
-            assert_equal(Int(dst[unsafe_offset=off]), 255)     # red block
+            assert_equal(Int(dst[unsafe_offset=off]), 255)  # red block
             assert_equal(Int(dst[unsafe_offset=off + 1]), 0)
             assert_equal(Int(dst[unsafe_offset=off + 2]), 0)
     for row in range(2):
         for col in range(2, 4):
             var off = (row * 4 + col) * 4
-            assert_equal(Int(dst[unsafe_offset=off]), 0)       # green block
+            assert_equal(Int(dst[unsafe_offset=off]), 0)  # green block
             assert_equal(Int(dst[unsafe_offset=off + 1]), 255)
             assert_equal(Int(dst[unsafe_offset=off + 2]), 0)
     for row in range(2, 4):
         for col in range(2, 4):
             var off = (row * 4 + col) * 4
-            assert_equal(Int(dst[unsafe_offset=off]), 255)     # white block
+            assert_equal(Int(dst[unsafe_offset=off]), 255)  # white block
             assert_equal(Int(dst[unsafe_offset=off + 1]), 255)
             assert_equal(Int(dst[unsafe_offset=off + 2]), 255)
 
@@ -323,9 +329,9 @@ def test_solid_1x1() raises -> None:
     assert_equal(s.height, 1)
     assert_equal(len(s.pixels), 4)
     var ptr = s.pixels.unsafe_ptr()
-    assert_equal(Int(ptr[unsafe_offset=0]), 0)    # R
+    assert_equal(Int(ptr[unsafe_offset=0]), 0)  # R
     assert_equal(Int(ptr[unsafe_offset=1]), 255)  # G
-    assert_equal(Int(ptr[unsafe_offset=2]), 0)    # B
+    assert_equal(Int(ptr[unsafe_offset=2]), 0)  # B
     assert_equal(Int(ptr[unsafe_offset=3]), 255)  # A
 
 
@@ -398,8 +404,18 @@ def test_jpeg_dimensions_sof0() raises -> None:
     # SOI, then a baseline SOF0 marker (FF C0) with an 8-byte segment
     # encoding precision=8, height=0x0010, width=0x0020, 0 components.
     var data: List[UInt8] = [
-        0xFF, 0xD8,
-        0xFF, 0xC0, 0x00, 0x08, 0x08, 0x00, 0x10, 0x00, 0x20, 0x00,
+        0xFF,
+        0xD8,
+        0xFF,
+        0xC0,
+        0x00,
+        0x08,
+        0x08,
+        0x00,
+        0x10,
+        0x00,
+        0x20,
+        0x00,
     ]
     var dims = _jpeg_dimensions(data)
     assert_equal(dims[0], 0x20)
@@ -410,9 +426,24 @@ def test_jpeg_dimensions_sof2_progressive() raises -> None:
     # A leading non-SOF segment (a 4-byte APP0-like marker) must be skipped
     # via its own length before the SOF2 (FF C2) marker is found.
     var data: List[UInt8] = [
-        0xFF, 0xD8,
-        0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00,
-        0xFF, 0xC2, 0x00, 0x08, 0x08, 0x00, 0x05, 0x00, 0x07, 0x00,
+        0xFF,
+        0xD8,
+        0xFF,
+        0xE0,
+        0x00,
+        0x04,
+        0x00,
+        0x00,
+        0xFF,
+        0xC2,
+        0x00,
+        0x08,
+        0x08,
+        0x00,
+        0x05,
+        0x00,
+        0x07,
+        0x00,
     ]
     var dims = _jpeg_dimensions(data)
     assert_equal(dims[0], 0x07)
@@ -421,7 +452,17 @@ def test_jpeg_dimensions_sof2_progressive() raises -> None:
 
 def test_jpeg_dimensions_no_sof_raises() raises -> None:
     # SOI immediately followed by EOI -- no SOF marker ever appears.
-    var data: List[UInt8] = [0xFF, 0xD8, 0xFF, 0xD9, 0x00, 0x00, 0x00, 0x00, 0x00]
+    var data: List[UInt8] = [
+        0xFF,
+        0xD8,
+        0xFF,
+        0xD9,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x00,
+    ]
     with assert_raises(contains="No SOF marker"):
         _ = _jpeg_dimensions(data)
 
@@ -438,8 +479,8 @@ def test_load_bmp_alpha_channel() raises -> None:
     var s = Sprite.load("tests/fixtures/test_2x2.bmp")
     var ptr = s.pixels.unsafe_ptr()
     # BMP has no alpha — loader should set alpha=255 for all pixels
-    assert_equal(Int(ptr[unsafe_offset=3]),  255)  # (0,0) A
-    assert_equal(Int(ptr[unsafe_offset=7]),  255)  # (1,0) A
+    assert_equal(Int(ptr[unsafe_offset=3]), 255)  # (0,0) A
+    assert_equal(Int(ptr[unsafe_offset=7]), 255)  # (1,0) A
     assert_equal(Int(ptr[unsafe_offset=11]), 255)  # (0,1) A
     assert_equal(Int(ptr[unsafe_offset=15]), 255)  # (1,1) A
 

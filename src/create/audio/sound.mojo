@@ -16,7 +16,13 @@ struct Sound(Movable):
     var channels: Int32
     var freq: Int32
 
-    def __init__(out self, var pcm: List[UInt8], format: Int32, channels: Int32, freq: Int32):
+    def __init__(
+        out self,
+        var pcm: List[UInt8],
+        format: Int32,
+        channels: Int32,
+        freq: Int32,
+    ):
         self.pcm = pcm^
         self.format = format
         self.channels = channels
@@ -30,7 +36,13 @@ struct Sound(Movable):
         var header: List[UInt8]
         with open(path, "r") as f:
             header = f.read_bytes(4)
-        if len(header) == 4 and header[0] == 82 and header[1] == 73 and header[2] == 70 and header[3] == 70:
+        if (
+            len(header) == 4
+            and header[0] == 82
+            and header[1] == 73
+            and header[2] == 70
+            and header[3] == 70
+        ):
             var result = SDLAudio().load_wav(path)
             return Sound(result[0].copy(), result[1], result[2], result[3])
 
@@ -38,7 +50,9 @@ struct Sound(Movable):
         return Sound.from_pcm(decoded[0].copy(), decoded[1], decoded[2])
 
     @staticmethod
-    def from_pcm(data: List[Int16], channels: Int32 = 1, freq: Int32 = 44100) -> Sound:
+    def from_pcm(
+        data: List[Int16], channels: Int32 = 1, freq: Int32 = 44100
+    ) -> Sound:
         """Build a Sound from raw S16LE samples, e.g. a synthesized waveform."""
         var pcm = List[UInt8](length=len(data) * 2, fill=0)
         var dst = pcm.unsafe_ptr()

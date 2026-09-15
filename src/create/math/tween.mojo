@@ -84,7 +84,9 @@ struct Tween(Copyable, ImplicitlyCopyable, Movable):
         curve: Easing = Easing.LINEAR,
     ):
         """A tween from `start` to `end` over `duration` seconds."""
-        debug_assert(duration > 0.0, "Tween: duration must be greater than zero")
+        debug_assert(
+            duration > 0.0, "Tween: duration must be greater than zero"
+        )
         self.value = start
         self.progress = 0.0
         self.start = start

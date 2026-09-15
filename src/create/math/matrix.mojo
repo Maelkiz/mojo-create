@@ -1,7 +1,9 @@
 from std.math import sin, cos, tan, abs, min, max
 
 
-struct Matrix[rows: Int, cols: Int](Writable, Copyable, ImplicitlyCopyable, Movable):
+struct Matrix[rows: Int, cols: Int](
+    Copyable, ImplicitlyCopyable, Movable, Writable
+):
     """A fixed-size matrix, row-major, sized at compile time.
 
     Transforms are homogeneous, so 2D work uses `Matrix[3, 3]` and 3D
@@ -28,7 +30,9 @@ struct Matrix[rows: Int, cols: Int](Writable, Copyable, ImplicitlyCopyable, Mova
     def __setitem__(mut self, r: Int, c: Int, val: Float64):
         self.data[r * Self.cols + c] = val
 
-    def __matmul__[P: Int](self, rhs: Matrix[Self.cols, P]) -> Matrix[Self.rows, P]:
+    def __matmul__[
+        P: Int
+    ](self, rhs: Matrix[Self.cols, P]) -> Matrix[Self.rows, P]:
         var result = Matrix[Self.rows, P]()
         for r in range(Self.rows):
             for p in range(P):
@@ -102,7 +106,9 @@ def scale(s: Float64) -> Matrix[3, 3]:
     return scale(s, s)
 
 
-def perspective(fov: Float64, aspect: Float64, near: Float64, far: Float64) -> Matrix[4, 4]:
+def perspective(
+    fov: Float64, aspect: Float64, near: Float64, far: Float64
+) -> Matrix[4, 4]:
     """A 3D projection: vertical field of view in radians, width/height aspect,
     and the near and far clip distances. `Canvas` draws in 2D, so this is for a
     program doing its own 3D projection before it hands over coordinates."""
@@ -124,7 +130,9 @@ def apply(m: Matrix[3, 3], x: Float64, y: Float64) -> Tuple[Float64, Float64]:
     return (ox / ow, oy / ow)
 
 
-def apply(m: Matrix[4, 4], x: Float64, y: Float64, z: Float64) -> Tuple[Float64, Float64, Float64]:
+def apply(
+    m: Matrix[4, 4], x: Float64, y: Float64, z: Float64
+) -> Tuple[Float64, Float64, Float64]:
     """Transform a 3D point by `m`, dividing through by the homogeneous w — so
     a `perspective` matrix divides by depth here, not at construction."""
     var ox = m[0, 0] * x + m[0, 1] * y + m[0, 2] * z + m[0, 3]

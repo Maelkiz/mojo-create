@@ -26,7 +26,7 @@ that is already normalised.
 from std.math import sin, cos, pow, pi, tau, clamp
 
 
-struct Easing(Equatable, Copyable, ImplicitlyCopyable, Movable):
+struct Easing(Copyable, Equatable, ImplicitlyCopyable, Movable):
     """Which curve `ease` applies. A `Tween` stores one as a field.
 
     A wrapped `Int` rather than a bare one so a stray number cannot be passed
@@ -38,33 +38,33 @@ struct Easing(Equatable, Copyable, ImplicitlyCopyable, Movable):
     comptime LINEAR = Easing(0)
     """No easing — the fraction passes through unchanged."""
 
-    comptime IN_QUAD        = Easing(1)
-    comptime OUT_QUAD       = Easing(2)
-    comptime IN_OUT_QUAD    = Easing(3)
+    comptime IN_QUAD = Easing(1)
+    comptime OUT_QUAD = Easing(2)
+    comptime IN_OUT_QUAD = Easing(3)
 
-    comptime IN_CUBIC       = Easing(4)
-    comptime OUT_CUBIC      = Easing(5)
-    comptime IN_OUT_CUBIC   = Easing(6)
+    comptime IN_CUBIC = Easing(4)
+    comptime OUT_CUBIC = Easing(5)
+    comptime IN_OUT_CUBIC = Easing(6)
 
-    comptime IN_SINE        = Easing(7)
-    comptime OUT_SINE       = Easing(8)
-    comptime IN_OUT_SINE    = Easing(9)
+    comptime IN_SINE = Easing(7)
+    comptime OUT_SINE = Easing(8)
+    comptime IN_OUT_SINE = Easing(9)
 
-    comptime IN_EXPO        = Easing(10)
-    comptime OUT_EXPO       = Easing(11)
-    comptime IN_OUT_EXPO    = Easing(12)
+    comptime IN_EXPO = Easing(10)
+    comptime OUT_EXPO = Easing(11)
+    comptime IN_OUT_EXPO = Easing(12)
 
-    comptime IN_BACK        = Easing(13)
-    comptime OUT_BACK       = Easing(14)
-    comptime IN_OUT_BACK    = Easing(15)
+    comptime IN_BACK = Easing(13)
+    comptime OUT_BACK = Easing(14)
+    comptime IN_OUT_BACK = Easing(15)
 
-    comptime IN_ELASTIC     = Easing(16)
-    comptime OUT_ELASTIC    = Easing(17)
+    comptime IN_ELASTIC = Easing(16)
+    comptime OUT_ELASTIC = Easing(17)
     comptime IN_OUT_ELASTIC = Easing(18)
 
-    comptime IN_BOUNCE      = Easing(19)
-    comptime OUT_BOUNCE     = Easing(20)
-    comptime IN_OUT_BOUNCE  = Easing(21)
+    comptime IN_BOUNCE = Easing(19)
+    comptime OUT_BOUNCE = Easing(20)
+    comptime IN_OUT_BOUNCE = Easing(21)
 
     def __init__(out self, value: Int):
         self.value = value

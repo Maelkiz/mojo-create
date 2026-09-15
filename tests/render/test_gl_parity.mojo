@@ -245,8 +245,13 @@ def _mask_stats(
     if count == 0:
         return (-1, -1, -1, -1, 0.0, 0.0, 0)
     return (
-        x0, y0, x1, y1,
-        Float64(sx) / Float64(count), Float64(sy) / Float64(count), count,
+        x0,
+        y0,
+        x1,
+        y1,
+        Float64(sx) / Float64(count),
+        Float64(sy) / Float64(count),
+        count,
     )
 
 
@@ -275,41 +280,57 @@ def _assert_structural_match(
 
     assert_true(
         abs(cx0 - gx0) <= _BBOX_TOLERANCE,
-        shape_name + ": bbox left edge, cpu=" + String(cx0)
-        + " gpu=" + String(gx0),
+        shape_name
+        + ": bbox left edge, cpu="
+        + String(cx0)
+        + " gpu="
+        + String(gx0),
     )
     assert_true(
         abs(cy0 - gy0) <= _BBOX_TOLERANCE,
-        shape_name + ": bbox top edge, cpu=" + String(cy0)
-        + " gpu=" + String(gy0),
+        shape_name
+        + ": bbox top edge, cpu="
+        + String(cy0)
+        + " gpu="
+        + String(gy0),
     )
     assert_true(
         abs(cx1 - gx1) <= _BBOX_TOLERANCE,
-        shape_name + ": bbox right edge, cpu=" + String(cx1)
-        + " gpu=" + String(gx1),
+        shape_name
+        + ": bbox right edge, cpu="
+        + String(cx1)
+        + " gpu="
+        + String(gx1),
     )
     assert_true(
         abs(cy1 - gy1) <= _BBOX_TOLERANCE,
-        shape_name + ": bbox bottom edge, cpu=" + String(cy1)
-        + " gpu=" + String(gy1),
+        shape_name
+        + ": bbox bottom edge, cpu="
+        + String(cy1)
+        + " gpu="
+        + String(gy1),
     )
 
     assert_true(
         abs(ccx - gcx) <= _CENTROID_TOLERANCE,
-        shape_name + ": centroid x, cpu=" + String(ccx)
-        + " gpu=" + String(gcx),
+        shape_name + ": centroid x, cpu=" + String(ccx) + " gpu=" + String(gcx),
     )
     assert_true(
         abs(ccy - gcy) <= _CENTROID_TOLERANCE,
-        shape_name + ": centroid y, cpu=" + String(ccy)
-        + " gpu=" + String(gcy),
+        shape_name + ": centroid y, cpu=" + String(ccy) + " gpu=" + String(gcy),
     )
 
     var rel = abs(Float64(ccount - gcount)) / Float64(max(ccount, gcount))
     assert_true(
         rel <= _COVERAGE_TOLERANCE,
-        shape_name + ": coverage, cpu=" + String(ccount)
-        + " gpu=" + String(gcount) + " (" + String(rel * 100.0) + "% off)",
+        shape_name
+        + ": coverage, cpu="
+        + String(ccount)
+        + " gpu="
+        + String(gcount)
+        + " ("
+        + String(rel * 100.0)
+        + "% off)",
     )
 
 
@@ -351,7 +372,9 @@ def _assert_interior_colour_matches(
     var mean = Float64(total) / Float64(count * 3)
     assert_true(
         mean < _INTERIOR_ERROR_LIMIT,
-        shape_name + ": interior colour mean error " + String(mean)
+        shape_name
+        + ": interior colour mean error "
+        + String(mean)
         + " exceeds the tolerance",
     )
 

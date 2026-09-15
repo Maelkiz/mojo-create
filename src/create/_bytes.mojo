@@ -19,7 +19,7 @@ def le_uint[o: Origin](p: Pointer[UInt8, o], off: Int, count: Int) -> Int:
     """
     var v = 0
     for i in range(count):
-        v |= Int(p[unsafe_offset= off + i]) << (i * 8)
+        v |= Int(p[unsafe_offset=off + i]) << (i * 8)
     return v
 
 

@@ -1,4 +1,9 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+)
 from create.math.vector2 import Vector2
 from create.math.vector3 import Vector3
 from std.math import isnan, isinf

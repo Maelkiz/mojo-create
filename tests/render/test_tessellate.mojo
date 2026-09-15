@@ -264,7 +264,9 @@ def test_letterbox_geometry_skips_the_transform() raises -> None:
     # bars must come out exactly as recorded — this is the one kind that is
     # already in device space, and mapping it would be meaningless.
     var vb = VertexBuffer()
-    emit_letterbox(vb, letterbox_command(Color.BLACK, 20.0, 0.0, 80.0, 100.0), 100, 100)
+    emit_letterbox(
+        vb, letterbox_command(Color.BLACK, 20.0, 0.0, 80.0, 100.0), 100, 100
+    )
     # Left and right bars only: the content rect spans the full height.
     assert_equal(vb.count(), 12)
     var max_x = _x(vb, 0)
@@ -339,7 +341,15 @@ def test_a_sprite_is_upright_under_rotation() raises -> None:
     emit_sprite(
         vb,
         sprite_command(
-            v.base_matrix() @ rotate(0.7), _plain(), 20.0, 0.0, 10.0, 10.0, 7, 32, 32
+            v.base_matrix() @ rotate(0.7),
+            _plain(),
+            20.0,
+            0.0,
+            10.0,
+            10.0,
+            7,
+            32,
+            32,
         ),
         v.scale,
     )
@@ -352,9 +362,7 @@ def test_a_vertex_carries_its_colour_and_mode() raises -> None:
     var v = _viewport(100, 100)
     var s = _plain()
     s.fill = Color(255, 0, 0, 128)
-    emit_rect(
-        vb, rect_command(v.base_matrix(), s, 0.0, 0.0, 4.0, 4.0), v.scale
-    )
+    emit_rect(vb, rect_command(v.base_matrix(), s, 0.0, 0.0, 4.0, 4.0), v.scale)
     assert_equal(vb.data[4], Float32(1.0))
     assert_equal(vb.data[5], Float32(0.0))
     assert_equal(vb.data[6], Float32(0.0))

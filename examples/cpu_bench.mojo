@@ -50,7 +50,12 @@ from create.render._command import (
     triangle_command,
     text_command,
 )
-from create.render._raster import fill_all, fill_pixels, blit_sprite, line_pixels
+from create.render._raster import (
+    fill_all,
+    fill_pixels,
+    blit_sprite,
+    line_pixels,
+)
 from create.render._style import Style
 from create.math.matrix import identity
 
@@ -131,7 +136,9 @@ def _shape_style(alpha: Bool) -> Style:
     return st^
 
 
-def _shapes_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
+def _shapes_bench(
+    m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface
+) raises:
     for kind in range(3):
         for alpha in range(2):
             var st = _shape_style(alpha == 1)
@@ -149,8 +156,14 @@ def _shapes_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) rais
                     else:
                         be.record(
                             triangle_command(
-                                m, st, x, y + size, x - size, y - size,
-                                x + size, y - size,
+                                m,
+                                st,
+                                x,
+                                y + size,
+                                x - size,
+                                y - size,
+                                x + size,
+                                y - size,
                             )
                         )
                 var s = mem.surface()
@@ -163,7 +176,9 @@ def _shapes_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) rais
             _report("2000 " + name + " " + mode + "        ", t0, t1)
 
 
-def _rotated_bench(rot: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
+def _rotated_bench(
+    rot: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface
+) raises:
     var st = _shape_style(True)
     var t0 = perf_counter_ns()
     for _ in range(_REPS):
@@ -223,21 +238,24 @@ def _line_bench():
             var x = rng.float(-900.0, 900.0)
             var y = rng.float(-500.0, 500.0)
             var len = rng.float(20.0, 80.0)
-            line_pixels(
-                s, x, y, x + len, y + len * 0.3, c, 6
-            )
+            line_pixels(s, x, y, x + len, y + len * 0.3, c, 6)
     var t1 = perf_counter_ns()
     _report("2000 thick alpha lines        ", t0, t1)
 
 
-def _text_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
+def _text_bench(
+    m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface
+) raises:
     var st = _shape_style(False)
     var t0 = perf_counter_ns()
     for _ in range(_REPS):
         for _i in range(20):
             be.record(
                 text_command(
-                    m, st, -800.0, 400.0,
+                    m,
+                    st,
+                    -800.0,
+                    400.0,
                     String("2000 shapes, two sprites, this line"),
                 )
             )
@@ -247,7 +265,9 @@ def _text_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises
     _report("20 text lines                 ", t0, t1)
 
 
-def _frame_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raises:
+def _frame_bench(
+    m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface
+) raises:
     """One `gl_bench`-shaped frame: a clear plus 2000 mixed shapes."""
     var st = _shape_style(True)
     var t0 = perf_counter_ns()
@@ -266,8 +286,14 @@ def _frame_bench(m: Matrix[3, 3], mut be: Backend, mut mem: MemorySurface) raise
             else:
                 be.record(
                     triangle_command(
-                        m, st, x, y + size, x - size, y - size,
-                        x + size, y - size,
+                        m,
+                        st,
+                        x,
+                        y + size,
+                        x - size,
+                        y - size,
+                        x + size,
+                        y - size,
                     )
                 )
         var s = mem.surface()

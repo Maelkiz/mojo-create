@@ -3,7 +3,9 @@ from std.testing import TestSuite, assert_equal, assert_true, assert_false
 from create.sprite import Sprite, SpriteAnimation, SpriteAnimator
 
 
-def _animation(count: Int, fps: Float64 = 10.0) raises -> ArcPointer[SpriteAnimation]:
+def _animation(
+    count: Int, fps: Float64 = 10.0
+) raises -> ArcPointer[SpriteAnimation]:
     var frames = List[Sprite]()
     for i in range(count):
         frames.append(Sprite.solid(1, 1, UInt8(i), 0, 0))

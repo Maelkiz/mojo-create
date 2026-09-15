@@ -51,7 +51,9 @@ def test_from_sheet_is_row_major() raises -> None:
 
 
 def test_from_sheet_window() raises -> None:
-    var anim = SpriteAnimation.from_sheet(_sheet(2, 2, 3), 3, 3, start=2, count=2)
+    var anim = SpriteAnimation.from_sheet(
+        _sheet(2, 2, 3), 3, 3, start=2, count=2
+    )
     assert_equal(anim.count(), 2)
     assert_equal(_red(anim.frames[0], 0, 0), 3)
     assert_equal(_red(anim.frames[1], 0, 0), 4)

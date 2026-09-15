@@ -112,70 +112,70 @@ ABI, and `0` means what C means by `NULL`."""
 
 # ---------------------------------------------------- entry-point signatures
 
-comptime _GetString = def (UInt32) thin abi("C") -> _Bytes
-comptime _GetError = def () thin abi("C") -> UInt32
-comptime _GetIntegerv = def (UInt32, _Ints) thin abi("C") -> None
-comptime _Viewport = def (Int32, Int32, Int32, Int32) thin abi("C") -> None
-comptime _ClearColor = def (
-    Float32, Float32, Float32, Float32
-) thin abi("C") -> None
-comptime _Clear = def (UInt32) thin abi("C") -> None
-comptime _Enable = def (UInt32) thin abi("C") -> None
-comptime _BlendFunc = def (UInt32, UInt32) thin abi("C") -> None
+comptime _GetString = def(UInt32) thin abi("C") -> _Bytes
+comptime _GetError = def() thin abi("C") -> UInt32
+comptime _GetIntegerv = def(UInt32, _Ints) thin abi("C") -> None
+comptime _Viewport = def(Int32, Int32, Int32, Int32) thin abi("C") -> None
+comptime _ClearColor = def(Float32, Float32, Float32, Float32) thin abi(
+    "C"
+) -> None
+comptime _Clear = def(UInt32) thin abi("C") -> None
+comptime _Enable = def(UInt32) thin abi("C") -> None
+comptime _BlendFunc = def(UInt32, UInt32) thin abi("C") -> None
 
-comptime _GenObjects = def (Int32, _UInts) thin abi("C") -> None
-comptime _DeleteObjects = def (Int32, _UInts) thin abi("C") -> None
-comptime _BindBuffer = def (UInt32, UInt32) thin abi("C") -> None
-comptime _BufferData = def (
-    UInt32, Int64, _Address, UInt32
-) thin abi("C") -> None
-comptime _BindVertexArray = def (UInt32) thin abi("C") -> None
-comptime _VertexAttribPointer = def (
+comptime _GenObjects = def(Int32, _UInts) thin abi("C") -> None
+comptime _DeleteObjects = def(Int32, _UInts) thin abi("C") -> None
+comptime _BindBuffer = def(UInt32, UInt32) thin abi("C") -> None
+comptime _BufferData = def(UInt32, Int64, _Address, UInt32) thin abi(
+    "C"
+) -> None
+comptime _BindVertexArray = def(UInt32) thin abi("C") -> None
+comptime _VertexAttribPointer = def(
     UInt32, Int32, UInt32, UInt8, Int32, _Address
 ) thin abi("C") -> None
-comptime _EnableVertexAttribArray = def (UInt32) thin abi("C") -> None
+comptime _EnableVertexAttribArray = def(UInt32) thin abi("C") -> None
 
-comptime _CreateShader = def (UInt32) thin abi("C") -> UInt32
-comptime _ShaderSource = def (
-    UInt32, Int32, _Strings, _Address
-) thin abi("C") -> None
-comptime _CompileShader = def (UInt32) thin abi("C") -> None
-comptime _GetShaderiv = def (UInt32, UInt32, _Ints) thin abi("C") -> None
-comptime _GetInfoLog = def (
-    UInt32, Int32, _Address, _Bytes
-) thin abi("C") -> None
-comptime _CreateProgram = def () thin abi("C") -> UInt32
-comptime _AttachShader = def (UInt32, UInt32) thin abi("C") -> None
-comptime _LinkProgram = def (UInt32) thin abi("C") -> None
-comptime _GetProgramiv = def (UInt32, UInt32, _Ints) thin abi("C") -> None
-comptime _UseProgram = def (UInt32) thin abi("C") -> None
-comptime _DeleteShader = def (UInt32) thin abi("C") -> None
-comptime _DeleteProgram = def (UInt32) thin abi("C") -> None
+comptime _CreateShader = def(UInt32) thin abi("C") -> UInt32
+comptime _ShaderSource = def(UInt32, Int32, _Strings, _Address) thin abi(
+    "C"
+) -> None
+comptime _CompileShader = def(UInt32) thin abi("C") -> None
+comptime _GetShaderiv = def(UInt32, UInt32, _Ints) thin abi("C") -> None
+comptime _GetInfoLog = def(UInt32, Int32, _Address, _Bytes) thin abi(
+    "C"
+) -> None
+comptime _CreateProgram = def() thin abi("C") -> UInt32
+comptime _AttachShader = def(UInt32, UInt32) thin abi("C") -> None
+comptime _LinkProgram = def(UInt32) thin abi("C") -> None
+comptime _GetProgramiv = def(UInt32, UInt32, _Ints) thin abi("C") -> None
+comptime _UseProgram = def(UInt32) thin abi("C") -> None
+comptime _DeleteShader = def(UInt32) thin abi("C") -> None
+comptime _DeleteProgram = def(UInt32) thin abi("C") -> None
 
-comptime _GetUniformLocation = def (UInt32, _Bytes) thin abi("C") -> Int32
-comptime _Uniform2f = def (Int32, Float32, Float32) thin abi("C") -> None
-comptime _Uniform1i = def (Int32, Int32) thin abi("C") -> None
+comptime _GetUniformLocation = def(UInt32, _Bytes) thin abi("C") -> Int32
+comptime _Uniform2f = def(Int32, Float32, Float32) thin abi("C") -> None
+comptime _Uniform1i = def(Int32, Int32) thin abi("C") -> None
 
-comptime _BindTexture = def (UInt32, UInt32) thin abi("C") -> None
-comptime _TexImage2D = def (
+comptime _BindTexture = def(UInt32, UInt32) thin abi("C") -> None
+comptime _TexImage2D = def(
     UInt32, Int32, Int32, Int32, Int32, Int32, UInt32, UInt32, _Address
 ) thin abi("C") -> None
-comptime _TexSubImage2D = def (
+comptime _TexSubImage2D = def(
     UInt32, Int32, Int32, Int32, Int32, Int32, UInt32, UInt32, _Bytes
 ) thin abi("C") -> None
-comptime _TexParameteri = def (UInt32, UInt32, Int32) thin abi("C") -> None
-comptime _ActiveTexture = def (UInt32) thin abi("C") -> None
-comptime _PixelStorei = def (UInt32, Int32) thin abi("C") -> None
+comptime _TexParameteri = def(UInt32, UInt32, Int32) thin abi("C") -> None
+comptime _ActiveTexture = def(UInt32) thin abi("C") -> None
+comptime _PixelStorei = def(UInt32, Int32) thin abi("C") -> None
 
-comptime _DrawArrays = def (UInt32, Int32, Int32) thin abi("C") -> None
-comptime _GenFramebuffers = def (Int32, _UInts) thin abi("C") -> None
-comptime _BindFramebuffer = def (UInt32, UInt32) thin abi("C") -> None
-comptime _DeleteFramebuffers = def (Int32, _UInts) thin abi("C") -> None
-comptime _FramebufferTexture2D = def (
+comptime _DrawArrays = def(UInt32, Int32, Int32) thin abi("C") -> None
+comptime _GenFramebuffers = def(Int32, _UInts) thin abi("C") -> None
+comptime _BindFramebuffer = def(UInt32, UInt32) thin abi("C") -> None
+comptime _DeleteFramebuffers = def(Int32, _UInts) thin abi("C") -> None
+comptime _FramebufferTexture2D = def(
     UInt32, UInt32, UInt32, UInt32, Int32
 ) thin abi("C") -> None
-comptime _CheckFramebufferStatus = def (UInt32) thin abi("C") -> UInt32
-comptime _ReadPixels = def (
+comptime _CheckFramebufferStatus = def(UInt32) thin abi("C") -> UInt32
+comptime _ReadPixels = def(
     Int32, Int32, Int32, Int32, UInt32, UInt32, _Bytes
 ) thin abi("C") -> None
 
@@ -184,8 +184,7 @@ comptime _ReadPixels = def (
 
 
 def _sdl() raises -> _DLHandle:
-    """SDL3, for its GL loader alone. Refcounted, so this handle is additive.
-    """
+    """SDL3, for its GL loader alone. Refcounted, so this handle is additive."""
     comptime if CompilationTarget.is_macos():
         return _DLHandle("libSDL3.dylib")
     else:
@@ -209,9 +208,7 @@ def _proc_address(lib: _DLHandle, name: String) raises -> Int:
     _ = name
     if addr == 0:
         raise Error(
-            "GL function not available: "
-            + name
-            + " — is a GL context current?"
+            "GL function not available: " + name + " — is a GL context current?"
         )
     return addr
 
@@ -330,9 +327,7 @@ struct GL(Movable):
         self.shader_source = _bind[_ShaderSource](lib, "glShaderSource")
         self.compile_shader = _bind[_CompileShader](lib, "glCompileShader")
         self.get_shaderiv = _bind[_GetShaderiv](lib, "glGetShaderiv")
-        self.get_shader_info_log = _bind[_GetInfoLog](
-            lib, "glGetShaderInfoLog"
-        )
+        self.get_shader_info_log = _bind[_GetInfoLog](lib, "glGetShaderInfoLog")
         self.create_program = _bind[_CreateProgram](lib, "glCreateProgram")
         self.attach_shader = _bind[_AttachShader](lib, "glAttachShader")
         self.link_program = _bind[_LinkProgram](lib, "glLinkProgram")
@@ -413,7 +408,7 @@ struct GL(Movable):
         )
         return Int(buf[0])
 
-    def check(self, where: String) raises:
+    def check(self, site: String) raises:
         """Raise if GL flagged an error since the last check.
 
         Debug scaffolding, not a hot-path call: `glGetError` forces a
@@ -422,4 +417,4 @@ struct GL(Movable):
         """
         var code = self.get_error()
         if code != GL_NO_ERROR:
-            raise Error("GL error 0x" + hex(code) + " at " + where)
+            raise Error("GL error 0x" + hex(code) + " at " + site)

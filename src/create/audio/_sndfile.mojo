@@ -42,17 +42,34 @@ struct SndFile:
         self.lib = _DLHandle("libsndfile.so")
 
     def load(self, path: String) raises -> Tuple[List[Int16], Int32, Int32]:
-        """Decode an audio file to interleaved S16 PCM. Returns (samples, channels, freq)."""
+        """Decode an audio file to interleaved S16 PCM. Returns (samples, channels, freq).
+        """
         var info = List[UInt8](length=_SF_INFO_SIZE, fill=0)
         var cpath = _cstr(path)
-        var handle = self.lib.call["sf_open", Int](cpath.unsafe_ptr(), SFM_READ, info.unsafe_ptr())
+        var handle = self.lib.call["sf_open", Int](
+            cpath.unsafe_ptr(), SFM_READ, info.unsafe_ptr()
+        )
         if handle == 0:
-            var err = self.lib.call["sf_strerror", Pointer[UInt8, MutUntrackedOrigin]](Int(0))
+            var err = self.lib.call[
+                "sf_strerror", Pointer[UInt8, MutUntrackedOrigin]
+            ](Int(0))
             raise Error("sf_open failed: " + String(unsafe_from_utf8_ptr=err))
 
-        var frames = info.unsafe_ptr().unsafe_offset(_OFF_FRAMES).unsafe_bitcast[Int64]()[]
-        var samplerate = info.unsafe_ptr().unsafe_offset(_OFF_SAMPLERATE).unsafe_bitcast[Int32]()[]
-        var channels = info.unsafe_ptr().unsafe_offset(_OFF_CHANNELS).unsafe_bitcast[Int32]()[]
+        var frames = (
+            info.unsafe_ptr()
+            .unsafe_offset(_OFF_FRAMES)
+            .unsafe_bitcast[Int64]()[]
+        )
+        var samplerate = (
+            info.unsafe_ptr()
+            .unsafe_offset(_OFF_SAMPLERATE)
+            .unsafe_bitcast[Int32]()[]
+        )
+        var channels = (
+            info.unsafe_ptr()
+            .unsafe_offset(_OFF_CHANNELS)
+            .unsafe_bitcast[Int32]()[]
+        )
 
         var samples = List[Int16](length=Int(frames) * Int(channels), fill=0)
         var read_frames = self.lib.call["sf_readf_short", Int64](
@@ -61,7 +78,9 @@ struct SndFile:
         _ = self.lib.call["sf_close", Int32](handle)
 
         if read_frames < frames:
-            var actual = List[Int16](length=Int(read_frames) * Int(channels), fill=0)
+            var actual = List[Int16](
+                length=Int(read_frames) * Int(channels), fill=0
+            )
             var src = samples.unsafe_ptr()
             var dst = actual.unsafe_ptr()
             for i in range(len(actual)):

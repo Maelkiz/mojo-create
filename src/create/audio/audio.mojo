@@ -82,16 +82,22 @@ struct Audio(Movable):
             and self._voices[index].stream != 0
         )
 
-    def play(mut self, sound: ArcPointer[Sound], loop: Bool = False) raises -> Int:
+    def play(
+        mut self, sound: ArcPointer[Sound], loop: Bool = False
+    ) raises -> Int:
         """Play a Sound. Returns a voice id usable with `stop`/`pause`/`resume`/
         `is_playing`. Looping voices are refilled by `update`.
 
         `sound` is an `ArcPointer` so a looping voice can keep the PCM alive
         and shared -- callers hold their `Sound`s as `ArcPointer[Sound]`
         fields and pass a cheap `.copy()` of the pointer here."""
-        var stream = self._sdl.open_device_stream(sound[].format, sound[].channels, sound[].freq)
+        var stream = self._sdl.open_device_stream(
+            sound[].format, sound[].channels, sound[].freq
+        )
         self._sdl.set_gain(stream, self.volume)
-        self._sdl.put_data(stream, sound[].pcm.unsafe_ptr(), Int32(len(sound[].pcm)))
+        self._sdl.put_data(
+            stream, sound[].pcm.unsafe_ptr(), Int32(len(sound[].pcm))
+        )
         self._sdl.resume_stream(stream)
         var loop_sound = Optional(sound) if loop else None
 

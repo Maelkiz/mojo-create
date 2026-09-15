@@ -4,7 +4,12 @@
 # shapes, source-over alpha — are checked rather than eyeballed.
 
 from std.math import pi
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+)
 
 from create import *
 from create.core.headless import run_headless
@@ -33,7 +38,9 @@ def test_background_fills_every_pixel() raises -> None:
     var want = Color(10, 20, 30)
     for y in range(16):
         for x in range(16):
-            assert_equal(m.pixel(x, y), want, "pixel " + String(x) + "," + String(y))
+            assert_equal(
+                m.pixel(x, y), want, "pixel " + String(x) + "," + String(y)
+            )
 
 
 @fieldwise_init
@@ -665,7 +672,9 @@ struct ThickLineUnderNonUniformScale(Program):
             canvas.line(-10.0 / 3.0, 0.0, 10.0 / 3.0, 0.0)
 
 
-def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> None:
+def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> (
+    None
+):
     # scale(3.0, 1.0) makes the transform non-uniform, so _pixel_scale must
     # fall back to canvas.scale (the autoscale factor, 2x here) rather than
     # the local transform's own 3x — a 3-unit stroke comes out 6 pixels
@@ -677,7 +686,9 @@ def test_stroke_width_under_non_uniform_transform_follows_autoscale() raises -> 
     assert_equal(m.pixel(50, 53), Color.BLACK)
 
 
-def _non_background_box(m: MemorySurface, bg: Color) -> Tuple[Int, Int, Int, Int]:
+def _non_background_box(
+    m: MemorySurface, bg: Color
+) -> Tuple[Int, Int, Int, Int]:
     """Bounding box of every pixel that differs from `bg` — `(x0, y0, x1, y1)`,
     inclusive. Returns `(-1, -1, -1, -1)` when nothing was drawn.
 
@@ -782,7 +793,9 @@ struct BigText(Program):
 
 
 def test_font_size_grows_the_text_extent() raises -> None:
-    var small = _non_background_box(run_headless[SmallText](200, 200), Color.BLACK)
+    var small = _non_background_box(
+        run_headless[SmallText](200, 200), Color.BLACK
+    )
     var big = _non_background_box(run_headless[BigText](200, 200), Color.BLACK)
     assert_true(
         (big[2] - big[0]) > (small[2] - small[0]),
@@ -869,8 +882,14 @@ def test_animator_blits_the_current_frame() raises -> None:
     # and after three (48ms, 4.8 frame durations) on index 4. Same draw call
     # each time, so the overload reads the live index rather than a frame
     # captured at construction.
-    assert_equal(run_headless[AnimatorBlit](100, 100, frames=1).pixel(50, 50), Color(20, 0, 0))
-    assert_equal(run_headless[AnimatorBlit](100, 100, frames=3).pixel(50, 50), Color(80, 0, 0))
+    assert_equal(
+        run_headless[AnimatorBlit](100, 100, frames=1).pixel(50, 50),
+        Color(20, 0, 0),
+    )
+    assert_equal(
+        run_headless[AnimatorBlit](100, 100, frames=3).pixel(50, 50),
+        Color(80, 0, 0),
+    )
 
 
 struct AnimatorSized(Program):
@@ -883,7 +902,9 @@ struct AnimatorSized(Program):
     def create(mut ctx: Context) raises -> AnimatorSized:
         var frames = List[Sprite]()
         frames.append(Sprite.solid(2, 2, 255, 0, 0))
-        return AnimatorSized(SpriteAnimator(ArcPointer(SpriteAnimation(frames^))))
+        return AnimatorSized(
+            SpriteAnimator(ArcPointer(SpriteAnimation(frames^)))
+        )
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.BLACK)
@@ -938,12 +959,12 @@ struct AnimatorEveryOverload(Program):
 def test_every_animator_overload_draws_at_its_anchor() raises -> None:
     # World (x, y) maps to pixel (50 + x, 50 - y) at 1:1 on a 100x100 frame.
     var m = run_headless[AnimatorEveryOverload](100, 100)
-    assert_equal(m.pixel(10, 10), Color.RED)   # (a, Float64, Float64)
-    assert_equal(m.pixel(30, 10), Color.RED)   # (a, Int, Int)
-    assert_equal(m.pixel(50, 10), Color.RED)   # (a, Vector2)
-    assert_equal(m.pixel(10, 90), Color.RED)   # (a, Float64, Float64, w, h)
-    assert_equal(m.pixel(30, 90), Color.RED)   # (a, Int, Int, w, h)
-    assert_equal(m.pixel(50, 90), Color.RED)   # (a, Vector2, w, h)
+    assert_equal(m.pixel(10, 10), Color.RED)  # (a, Float64, Float64)
+    assert_equal(m.pixel(30, 10), Color.RED)  # (a, Int, Int)
+    assert_equal(m.pixel(50, 10), Color.RED)  # (a, Vector2)
+    assert_equal(m.pixel(10, 90), Color.RED)  # (a, Float64, Float64, w, h)
+    assert_equal(m.pixel(30, 90), Color.RED)  # (a, Int, Int, w, h)
+    assert_equal(m.pixel(50, 90), Color.RED)  # (a, Vector2, w, h)
     # Between the two rows nothing was drawn.
     assert_equal(m.pixel(50, 50), Color.BLACK)
 

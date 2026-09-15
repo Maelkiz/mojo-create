@@ -163,7 +163,7 @@ void main() {
 )
 
 
-def _gen_object(gen: def (Int32, _UInts) thin abi("C") -> None) -> UInt32:
+def _gen_object(gen: def(Int32, _UInts) thin abi("C") -> None) -> UInt32:
     """One GL object name, read back off the heap.
 
     Rule 2 from `_gl.mojo`: the name is a C out-parameter, so it comes back
@@ -175,7 +175,7 @@ def _gen_object(gen: def (Int32, _UInts) thin abi("C") -> None) -> UInt32:
 
 
 def _delete_object(
-    delete: def (Int32, _UInts) thin abi("C") -> None, name: UInt32
+    delete: def(Int32, _UInts) thin abi("C") -> None, name: UInt32
 ):
     var buf = List[UInt32](length=1, fill=name)
     delete(1, _UInts(unsafe_from_address=Int(buf.unsafe_ptr())))
@@ -184,13 +184,18 @@ def _delete_object(
 
 def _info_log(
     length: Int,
-    get: def (UInt32, Int32, _Address, _Bytes) thin abi("C") -> None,
+    get: def(UInt32, Int32, _Address, _Bytes) thin abi("C") -> None,
     name: UInt32,
 ) -> String:
     if length <= 0:
         return String("(no log)")
     var buf = List[UInt8](length=length + 1, fill=0)
-    get(name, Int32(length), 0, _Bytes(unsafe_from_address=Int(buf.unsafe_ptr())))
+    get(
+        name,
+        Int32(length),
+        0,
+        _Bytes(unsafe_from_address=Int(buf.unsafe_ptr())),
+    )
     var out = String(unsafe_from_utf8_ptr=buf.unsafe_ptr())
     _ = buf^
     return out^
@@ -229,12 +234,11 @@ def _compile(gl: GL, kind: UInt32, src: String) raises -> UInt32:
             GL_INFO_LOG_LENGTH,
             _Ints(unsafe_from_address=Int(length.unsafe_ptr())),
         )
-        var log = _info_log(
-            Int(length[0]), gl.get_shader_info_log, shader
-        )
+        var log = _info_log(Int(length[0]), gl.get_shader_info_log, shader)
         gl.delete_shader(shader)
         raise Error("GL shader failed to compile: " + log)
     return shader
+
 
 def _link(gl: GL) raises -> UInt32:
     var vertex = _compile(gl, GL_VERTEX_SHADER, _VERTEX_SHADER)
@@ -260,9 +264,7 @@ def _link(gl: GL) raises -> UInt32:
             GL_INFO_LOG_LENGTH,
             _Ints(unsafe_from_address=Int(length.unsafe_ptr())),
         )
-        var log = _info_log(
-            Int(length[0]), gl.get_program_info_log, program
-        )
+        var log = _info_log(Int(length[0]), gl.get_program_info_log, program)
         gl.delete_program(program)
         raise Error("GL shader program failed to link: " + log)
     return program
@@ -462,9 +464,7 @@ struct GLRenderer(Movable):
             # A resize, so once in a while — everything else the draw needs is
             # already set from construction.
             self.gl.viewport(0, 0, Int32(width), Int32(height))
-            self.gl.uniform_2f(
-                self.u_viewport, Float32(width), Float32(height)
-            )
+            self.gl.uniform_2f(self.u_viewport, Float32(width), Float32(height))
             self.viewport_w = width
             self.viewport_h = height
 
@@ -529,7 +529,9 @@ struct GLRenderer(Movable):
                 c.style.fill,
             )
 
-    def _pack(mut self, g: PlacedGlyph, mut text: TextRenderer) raises -> _AtlasRect:
+    def _pack(
+        mut self, g: PlacedGlyph, mut text: TextRenderer
+    ) raises -> _AtlasRect:
         """The glyph's rect in the atlas, uploading its mask on first sight."""
         if g.key in self.glyphs:
             return self.glyphs[g.key]
@@ -588,9 +590,7 @@ struct GLRenderer(Movable):
         self._bind(self._texture(c.image, images))
         emit_sprite(self.vertices, c, scale)
 
-    def _texture(
-        mut self, id: Int, images: Dict[Int, _Image]
-    ) raises -> UInt32:
+    def _texture(mut self, id: Int, images: Dict[Int, _Image]) raises -> UInt32:
         """The GL texture for a backend image id, uploaded on first use."""
         if id in self.textures:
             return self.textures[id]

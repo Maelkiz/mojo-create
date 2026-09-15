@@ -1,4 +1,9 @@
-from std.testing import TestSuite, assert_equal, assert_true, assert_almost_equal
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_true,
+    assert_almost_equal,
+)
 from create.render.color import Color
 
 

@@ -11,8 +11,8 @@ from .color import Color
 # source file, so `canvas.text` only works when a program is run from the repo
 # root. Anywhere else, every text draw raises "FT_New_Face failed — font not
 # found".
-comptime FONT_DEFAULT_PATH   = "defaults/fonts/NotoSans.ttf"
-comptime FONT_FALLBACK_PATH  = "defaults/fonts/NotoSansSymbols.ttf"
+comptime FONT_DEFAULT_PATH = "defaults/fonts/NotoSans.ttf"
+comptime FONT_FALLBACK_PATH = "defaults/fonts/NotoSansSymbols.ttf"
 
 
 struct FontWeight:
@@ -23,47 +23,48 @@ struct FontWeight:
     just the ones with names.
     """
 
-    comptime THIN      = 100
-    comptime LIGHT     = 300
-    comptime REGULAR   = 400
-    comptime MEDIUM    = 500
-    comptime BOLD      = 700
-    comptime BLACK     = 900
+    comptime THIN = 100
+    comptime LIGHT = 300
+    comptime REGULAR = 400
+    comptime MEDIUM = 500
+    comptime BOLD = 700
+    comptime BLACK = 900
+
 
 # FT_FaceRec offsets
 comptime _FACE_GLYPH = 152
-comptime _FACE_SIZE  = 160  # FT_Size* pointer
+comptime _FACE_SIZE = 160  # FT_Size* pointer
 
 # FT_SizeRec: face(8) + generic(16) = metrics at offset 24
 # FT_Size_Metrics: x_ppem(2)+y_ppem(2)+pad(4)+x_scale(8)+y_scale(8) = ascender at +24, descender at +32
 comptime _SIZE_METRICS = 24
-comptime _METRICS_ASC  = 24
+comptime _METRICS_ASC = 24
 comptime _METRICS_DESC = 32
 
 # FT_MM_Var offsets (64-bit layout: 3×UInt(4)+pad(4)+pointer(8))
 comptime _MM_NUM_AXIS = 0
-comptime _MM_AXIS     = 16
+comptime _MM_AXIS = 16
 
 # FT_Var_Axis offsets (64-bit layout: ptr(8)+3×Fixed(8)+ULong(8)+UInt(4)+pad(4) = 48 bytes)
-comptime _AXIS_DEF  = 16   # FT_Fixed default design value (16.16)
-comptime _AXIS_TAG  = 32   # FT_ULong 4-char tag
-comptime _AXIS_SIZE = 48   # sizeof(FT_Var_Axis)
+comptime _AXIS_DEF = 16  # FT_Fixed default design value (16.16)
+comptime _AXIS_TAG = 32  # FT_ULong 4-char tag
+comptime _AXIS_SIZE = 48  # sizeof(FT_Var_Axis)
 
 comptime _TAG_WGHT = 0x77676874  # 'wght'
 
 # FT_GlyphSlotRec offsets
-comptime _GLYPH_ADVANCE  = 128  # FT_Vector: x = first FT_Pos (8 bytes)
-comptime _GLYPH_BITMAP   = 152  # FT_Bitmap struct
+comptime _GLYPH_ADVANCE = 128  # FT_Vector: x = first FT_Pos (8 bytes)
+comptime _GLYPH_BITMAP = 152  # FT_Bitmap struct
 comptime _GLYPH_BMP_LEFT = 192  # FT_Int (signed, 4 bytes)
-comptime _GLYPH_BMP_TOP  = 196  # FT_Int (signed, 4 bytes)
+comptime _GLYPH_BMP_TOP = 196  # FT_Int (signed, 4 bytes)
 
 # FT_Bitmap field offsets (relative to bitmap start)
-comptime _BMP_ROWS   = 0
-comptime _BMP_WIDTH  = 4
-comptime _BMP_PITCH  = 8
+comptime _BMP_ROWS = 0
+comptime _BMP_WIDTH = 4
+comptime _BMP_PITCH = 8
 comptime _BMP_BUFFER = 16
 
-comptime _FT_LOAD_DEFAULT       = 0
+comptime _FT_LOAD_DEFAULT = 0
 comptime _FT_RENDER_MODE_NORMAL = 0
 
 
@@ -98,15 +99,21 @@ struct _GlyphInfo(Movable):
     one and forgets it.
     """
 
-    var pixels: List[UInt8]   # 8-bit grayscale alpha, row-major
+    var pixels: List[UInt8]  # 8-bit grayscale alpha, row-major
     var width: Int
     var height: Int
-    var bearing_x: Int        # horizontal offset from pen to glyph left edge
-    var bearing_y: Int        # vertical offset from baseline to glyph top
-    var advance_x: Int        # horizontal pen advance in pixels
+    var bearing_x: Int  # horizontal offset from pen to glyph left edge
+    var bearing_y: Int  # vertical offset from baseline to glyph top
+    var advance_x: Int  # horizontal pen advance in pixels
 
-    def __init__(out self, width: Int, height: Int,
-                 bearing_x: Int, bearing_y: Int, advance_x: Int):
+    def __init__(
+        out self,
+        width: Int,
+        height: Int,
+        bearing_x: Int,
+        bearing_y: Int,
+        advance_x: Int,
+    ):
         self.pixels = List[UInt8](length=width * height, fill=0)
         self.width = width
         self.height = height
@@ -128,11 +135,11 @@ struct Font(Movable):
     on every character of every string.
     """
 
-    var _lib: Int       # FT_Library opaque pointer
-    var _face: Int      # FT_Face opaque pointer
-    var _size: Int      # last set pixel height
-    var _weight: Int    # last set design-space weight (100–900)
-    var ascender: Int   # pixels above baseline (positive)
+    var _lib: Int  # FT_Library opaque pointer
+    var _face: Int  # FT_Face opaque pointer
+    var _size: Int  # last set pixel height
+    var _weight: Int  # last set design-space weight (100–900)
+    var ascender: Int  # pixels above baseline (positive)
     var descender: Int  # pixels below baseline (negative)
 
     def __init__(out self, path: String, size: Int, weight: Int = 400) raises:
@@ -144,9 +151,12 @@ struct Font(Movable):
         self._lib = _read_ptr(Int(lib_buf.unsafe_ptr()))
 
         var face_buf = InlineArray[UInt8, 8](fill=0)
-        if ft.call["FT_New_Face", Int32](
-            self._lib, path.unsafe_ptr(), Int(0), face_buf.unsafe_ptr()
-        ) != 0:
+        if (
+            ft.call["FT_New_Face", Int32](
+                self._lib, path.unsafe_ptr(), Int(0), face_buf.unsafe_ptr()
+            )
+            != 0
+        ):
             _ = ft.call["FT_Done_FreeType", Int32](self._lib)
             raise Error("FT_New_Face failed — font not found: " + path)
         self._face = _read_ptr(Int(face_buf.unsafe_ptr()))
@@ -160,11 +170,13 @@ struct Font(Movable):
     def _set_size(mut self, ft: _DLHandle, size: Int) raises:
         if size == self._size:
             return
-        _ = ft.call["FT_Set_Pixel_Sizes", Int32](self._face, UInt32(0), UInt32(size))
+        _ = ft.call["FT_Set_Pixel_Sizes", Int32](
+            self._face, UInt32(0), UInt32(size)
+        )
         self._size = size
         var size_ptr = _read_ptr(self._face + _FACE_SIZE)
         var m = size_ptr + _SIZE_METRICS
-        self.ascender  = _read_ptr(m + _METRICS_ASC)  >> 6
+        self.ascender = _read_ptr(m + _METRICS_ASC) >> 6
         self.descender = _read_ptr(m + _METRICS_DESC) >> 6
 
     def _set_weight(mut self, weight: Int) raises:
@@ -172,7 +184,10 @@ struct Font(Movable):
             return
         var ft = _DLHandle("libfreetype.so.6")
         var master_buf = InlineArray[UInt8, 8](fill=0)
-        if ft.call["FT_Get_MM_Var", Int32](self._face, master_buf.unsafe_ptr()) != 0:
+        if (
+            ft.call["FT_Get_MM_Var", Int32](self._face, master_buf.unsafe_ptr())
+            != 0
+        ):
             return
         var master = _read_ptr(Int(master_buf.unsafe_ptr()))
         var num_axis = _read_u32(master + _MM_NUM_AXIS)
@@ -183,7 +198,9 @@ struct Font(Movable):
         for i in range(num_axis):
             var a = axis_ptr + i * _AXIS_SIZE
             var tag = _read_ptr(a + _AXIS_TAG)
-            var val = weight << 16 if tag == _TAG_WGHT else _read_ptr(a + _AXIS_DEF)
+            var val = weight << 16 if tag == _TAG_WGHT else _read_ptr(
+                a + _AXIS_DEF
+            )
             var v = val
             for b in range(8):
                 coords[i * 8 + b] = UInt8(v & 0xFF)
@@ -199,7 +216,10 @@ struct Font(Movable):
         """Whether this face can draw this codepoint — how `TextRenderer`
         decides to fall back to the symbols face."""
         var ft = _DLHandle("libfreetype.so.6")
-        return ft.call["FT_Get_Char_Index", UInt32](self._face, Int(codepoint)) != 0
+        return (
+            ft.call["FT_Get_Char_Index", UInt32](self._face, Int(codepoint))
+            != 0
+        )
 
     def render(mut self, codepoint: Int, size: Int) raises -> _GlyphInfo:
         """Rasterise one glyph at `size` pixels.
@@ -211,25 +231,34 @@ struct Font(Movable):
         var ft = _DLHandle("libfreetype.so.6")
         self._set_size(ft, size)
 
-        if ft.call["FT_Load_Char", Int32](
-            self._face, codepoint, Int32(_FT_LOAD_DEFAULT)
-        ) != 0:
+        if (
+            ft.call["FT_Load_Char", Int32](
+                self._face, codepoint, Int32(_FT_LOAD_DEFAULT)
+            )
+            != 0
+        ):
             return _GlyphInfo(0, 0, 0, 0, size)
 
-        if ft.call["FT_Render_Glyph", Int32](
-            _read_ptr(self._face + _FACE_GLYPH), Int32(_FT_RENDER_MODE_NORMAL)
-        ) != 0:
+        if (
+            ft.call["FT_Render_Glyph", Int32](
+                _read_ptr(self._face + _FACE_GLYPH),
+                Int32(_FT_RENDER_MODE_NORMAL),
+            )
+            != 0
+        ):
             return _GlyphInfo(0, 0, 0, 0, size)
 
-        var glyph   = _read_ptr(self._face + _FACE_GLYPH)
-        var bmp     = glyph + _GLYPH_BITMAP
-        var rows      = _read_u32(bmp + _BMP_ROWS)
-        var width     = _read_u32(bmp + _BMP_WIDTH)
-        var pitch     = _read_i32(bmp + _BMP_PITCH)
-        var buf_ptr   = _read_ptr(bmp + _BMP_BUFFER)
-        var bmp_left  = _read_i32(glyph + _GLYPH_BMP_LEFT)
-        var bmp_top   = _read_i32(glyph + _GLYPH_BMP_TOP)
-        var advance_x = _read_ptr(glyph + _GLYPH_ADVANCE) >> 6  # 26.6 fixed-point
+        var glyph = _read_ptr(self._face + _FACE_GLYPH)
+        var bmp = glyph + _GLYPH_BITMAP
+        var rows = _read_u32(bmp + _BMP_ROWS)
+        var width = _read_u32(bmp + _BMP_WIDTH)
+        var pitch = _read_i32(bmp + _BMP_PITCH)
+        var buf_ptr = _read_ptr(bmp + _BMP_BUFFER)
+        var bmp_left = _read_i32(glyph + _GLYPH_BMP_LEFT)
+        var bmp_top = _read_i32(glyph + _GLYPH_BMP_TOP)
+        var advance_x = (
+            _read_ptr(glyph + _GLYPH_ADVANCE) >> 6
+        )  # 26.6 fixed-point
 
         var g = _GlyphInfo(width, rows, bmp_left, bmp_top, advance_x)
         if buf_ptr != 0 and width > 0 and rows > 0:

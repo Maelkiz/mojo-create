@@ -28,7 +28,9 @@ struct Smoke(Program):
         if input.is_key_down("right"):
             self.x += 100.0 * ctx.time.delta
         if input.just_pressed("space"):
-            _ = self.audio.play(ArcPointer(Sound.from_pcm(List[Int16](length=1, fill=0))))
+            _ = self.audio.play(
+                ArcPointer(Sound.from_pcm(List[Int16](length=1, fill=0)))
+            )
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.WHITE)

@@ -43,7 +43,10 @@ def test_bool_roughly_half() raises -> None:
             true_count += 1
     # Expect ~500 of 1000; tolerate a 100-draw (10 percentage point) band
     var deviation = abs(true_count - 500)
-    assert_true(deviation <= 100, "true_count=" + String(true_count) + ", deviation=" + String(deviation))
+    assert_true(
+        deviation <= 100,
+        "true_count=" + String(true_count) + ", deviation=" + String(deviation),
+    )
 
 
 def test_deterministic_seed() raises -> None:

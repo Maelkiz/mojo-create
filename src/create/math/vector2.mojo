@@ -2,7 +2,7 @@ from .vector3 import Vector3
 from std.math import sqrt
 
 
-struct Vector2(Equatable, Copyable, ImplicitlyCopyable, Movable, Writable):
+struct Vector2(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     """A 2D point or direction: arithmetic operators, `mag`, `normalize`,
     `dot`, `dist`, `lerp`, and `xyz` to widen into a `Vector3`.
 

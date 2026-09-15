@@ -205,9 +205,7 @@ def emit_rect(mut vb: VertexBuffer, c: DrawCommand, scale: Float64):
 
     # The ring is built in local units so it follows a rotated edge, but its
     # thickness is decided in pixels so the CPU path's one-pixel floor holds.
-    var sw = Float64(stroke_width_px(c.style, m, scale)) / pixel_scale(
-        m, scale
-    )
+    var sw = Float64(stroke_width_px(c.style, m, scale)) / pixel_scale(m, scale)
     var ix0 = lx0 + sw
     var iy0 = ly0 + sw
     var ix1 = lx1 - sw
@@ -317,9 +315,7 @@ def emit_triangle(mut vb: VertexBuffer, c: DrawCommand, scale: Float64):
     var p2 = mat_apply(m, c.geom[2], c.geom[3])
     var p3 = mat_apply(m, c.geom[4], c.geom[5])
     if c.style.fill_enabled:
-        vb.triangle(
-            p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], c.style.fill
-        )
+        vb.triangle(p1[0], p1[1], p2[0], p2[1], p3[0], p3[1], c.style.fill)
     if c.style.stroke_enabled:
         var w = Float64(stroke_width_px(c.style, m, scale))
         var sc = c.style.stroke

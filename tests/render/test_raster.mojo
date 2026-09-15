@@ -47,7 +47,11 @@ def test_fill_all_covers_every_pixel() raises -> None:
     var mem = _filled(3, 2, Color.WHITE)
     for y in range(2):
         for x in range(3):
-            assert_equal(mem.pixel(x, y), Color.WHITE, "pixel " + String(x) + "," + String(y))
+            assert_equal(
+                mem.pixel(x, y),
+                Color.WHITE,
+                "pixel " + String(x) + "," + String(y),
+            )
 
 
 def test_fill_pixels_is_half_open() raises -> None:
@@ -66,7 +70,11 @@ def test_fill_pixels_clips_at_every_edge() raises -> None:
     fill_pixels(mem.surface(), -10, -10, 20, 20, Color.WHITE)
     for y in range(4):
         for x in range(4):
-            assert_equal(mem.pixel(x, y), Color.WHITE, "pixel " + String(x) + "," + String(y))
+            assert_equal(
+                mem.pixel(x, y),
+                Color.WHITE,
+                "pixel " + String(x) + "," + String(y),
+            )
 
     var edge = MemorySurface(4, 4)
     fill_pixels(edge.surface(), -3, 0, 1, 4, Color.WHITE)
@@ -82,7 +90,9 @@ def test_fill_pixels_wholly_outside_writes_nothing() raises -> None:
     fill_pixels(mem.surface(), -20, -20, -10, -10, Color.WHITE)
     for y in range(4):
         for x in range(4):
-            assert_equal(mem.pixel(x, y).a, 0, "pixel " + String(x) + "," + String(y))
+            assert_equal(
+                mem.pixel(x, y).a, 0, "pixel " + String(x) + "," + String(y)
+            )
 
 
 def test_line_pixels_covers_both_endpoints() raises -> None:
@@ -112,7 +122,9 @@ def test_line_pixels_clips_outside_the_surface() raises -> None:
     assert_equal(mem.pixel(0, 0).a, 0)
 
 
-def test_line_pixels_composites_each_covered_pixel_exactly_once() raises -> None:
+def test_line_pixels_composites_each_covered_pixel_exactly_once() raises -> (
+    None
+):
     # A thick alpha line must match one `over` per pixel, not several stacked
     # up from overlapping per-step stamps (which would read darker here).
     var src = Color(255, 255, 255, 128)
@@ -162,13 +174,13 @@ def test_fill_triangle_collinear_vertices_do_not_crash() raises -> None:
     assert_equal(mem.pixel(7, 0).a, 0)
 
 
-def test_fill_triangle_off_surface_vertices_clip_instead_of_crashing() raises -> None:
+def test_fill_triangle_off_surface_vertices_clip_instead_of_crashing() raises -> (
+    None
+):
     var mem = MemorySurface(8, 8)
     # Left edge sits far off-surface at x = -20; the apex at (20, 4) is the
     # only row (y = 4) wide enough to reach all the way across the surface.
-    fill_triangle(
-        mem.surface(), -20.0, 2.0, 20.0, 4.0, -20.0, 6.0, Color.WHITE
-    )
+    fill_triangle(mem.surface(), -20.0, 2.0, 20.0, 4.0, -20.0, 6.0, Color.WHITE)
     assert_equal(mem.pixel(0, 4), Color.WHITE)
     assert_equal(mem.pixel(7, 4), Color.WHITE)
     assert_equal(mem.pixel(7, 7).a, 0)
@@ -212,7 +224,9 @@ def _brute_triangle[
                 blend(s, (row * W + col) * 4, c)
 
 
-def _assert_dilation_bound(a: MemorySurface, b: MemorySurface, bound: Int) raises:
+def _assert_dilation_bound(
+    a: MemorySurface, b: MemorySurface, bound: Int
+) raises:
     """Every ink pixel in `a` has an ink pixel in `b` within `bound` in
     Chebyshev distance, and vice versa — the same tolerance
     `test_gl_parity.mojo` applies across backends, applied here across the
@@ -243,8 +257,12 @@ def _assert_dilation_bound(a: MemorySurface, b: MemorySurface, bound: Int) raise
                 assert_true(found)
 
 
-def test_fill_triangle_matches_the_old_half_plane_test_within_one_pixel() raises -> None:
-    var triangles = List[Tuple[Float64, Float64, Float64, Float64, Float64, Float64]]()
+def test_fill_triangle_matches_the_old_half_plane_test_within_one_pixel() raises -> (
+    None
+):
+    var triangles = List[
+        Tuple[Float64, Float64, Float64, Float64, Float64, Float64]
+    ]()
     triangles.append((2.0, 1.0, 15.0, 3.0, 5.0, 18.0))
     triangles.append((0.0, 0.0, 6.0, 0.0, 0.0, 6.0))
     triangles.append((3.0, 17.0, 19.0, 2.0, 1.0, 9.0))
@@ -253,15 +271,21 @@ def test_fill_triangle_matches_the_old_half_plane_test_within_one_pixel() raises
     for t in triangles:
         var got = MemorySurface(20, 20)
         var want = MemorySurface(20, 20)
-        fill_triangle(got.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE)
-        _brute_triangle(want.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE)
+        fill_triangle(
+            got.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE
+        )
+        _brute_triangle(
+            want.surface(), t[0], t[1], t[2], t[3], t[4], t[5], Color.WHITE
+        )
         _assert_dilation_bound(got, want, 1)
 
 
 def test_blit_sprite_one_to_one() raises -> None:
     var sp = Sprite.solid(2, 2, 255, 0, 0)
     var mem = MemorySurface(4, 4)
-    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 1, 1, 2, 2)
+    blit_sprite(
+        mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 1, 1, 2, 2
+    )
     assert_equal(mem.pixel(1, 1), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(2, 2), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(0, 0).a, 0)
@@ -280,7 +304,9 @@ def test_blit_sprite_downscales_by_nearest_neighbour() raises -> None:
             ptr[unsafe_offset=off + 2] = 0 if col < 2 else 255
             ptr[unsafe_offset=off + 3] = 255
     var mem = MemorySurface(4, 4)
-    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 2)
+    blit_sprite(
+        mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 2
+    )
     assert_equal(mem.pixel(0, 0), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(1, 0), Color(0, 0, 255, 255))
     assert_equal(mem.pixel(0, 2).a, 0)
@@ -293,7 +319,9 @@ def test_blit_sprite_skips_transparent_source_pixels() raises -> None:
     ptr[unsafe_offset=3] = 255  # opaque red
     ptr[unsafe_offset=7] = 0  # fully transparent
     var mem = _filled(2, 1, Color(9, 9, 9, 255))
-    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 1)
+    blit_sprite(
+        mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 0, 0, 2, 1
+    )
     assert_equal(mem.pixel(0, 0), Color(255, 0, 0, 255))
     assert_equal(mem.pixel(1, 0), Color(9, 9, 9, 255))
 
@@ -302,13 +330,17 @@ def test_blit_sprite_clips_against_every_edge() raises -> None:
     var sp = Sprite.solid(4, 4, 255, 255, 255)
     var mem = MemorySurface(4, 4)
     # Anchored off the top-left: only the bottom-right quarter lands.
-    blit_sprite(mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, -2, -2, 4, 4)
+    blit_sprite(
+        mem.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, -2, -2, 4, 4
+    )
     assert_equal(mem.pixel(0, 0), Color.WHITE)
     assert_equal(mem.pixel(1, 1), Color.WHITE)
     assert_equal(mem.pixel(2, 2).a, 0)
 
     var far = MemorySurface(4, 4)
-    blit_sprite(far.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 3, 3, 4, 4)
+    blit_sprite(
+        far.surface(), sp.pixels.unsafe_ptr(), sp.width, sp.height, 3, 3, 4, 4
+    )
     assert_equal(far.pixel(3, 3), Color.WHITE)
     # A wrapped row would light up column 0.
     assert_equal(far.pixel(0, 3).a, 0)
@@ -380,7 +412,9 @@ def test_fill_span_opaque_matches_blend() raises -> None:
     fill_span(mem.surface(), 4, 4, Color(10, 20, 30, 255))
     _blend_span_reference(expected, 1, 4, 0, Color(10, 20, 30, 255))
     for x in range(6):
-        assert_equal(mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x))
+        assert_equal(
+            mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x)
+        )
 
 
 def test_fill_span_alpha_matches_blend() raises -> None:
@@ -389,7 +423,9 @@ def test_fill_span_alpha_matches_blend() raises -> None:
     fill_span(mem.surface(), 4, 4, Color(200, 100, 0, 128))
     _blend_span_reference(expected, 1, 4, 0, Color(200, 100, 0, 128))
     for x in range(6):
-        assert_equal(mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x))
+        assert_equal(
+            mem.pixel(x, 0), expected.pixel(x, 0), "pixel " + String(x)
+        )
 
 
 def test_fill_span_with_zero_alpha_is_a_no_op() raises -> None:
@@ -432,9 +468,7 @@ def test_fill_all_matches_the_reference_blend_loop() raises -> None:
     var ref_alpha = MemorySurface(5, 5)
     _blend_span_reference(ref_alpha, 0, 25, 0, Color(9, 8, 7, 128))
     for i in range(25):
-        assert_equal(
-            alpha.pixel(i % 5, i // 5), ref_alpha.pixel(i % 5, i // 5)
-        )
+        assert_equal(alpha.pixel(i % 5, i // 5), ref_alpha.pixel(i % 5, i // 5))
 
 
 def test_fill_pixels_matches_the_reference_blend_loop() raises -> None:
@@ -447,7 +481,8 @@ def test_fill_pixels_matches_the_reference_blend_loop() raises -> None:
     for y in range(8):
         for x in range(8):
             assert_equal(
-                mem.pixel(x, y), expected.pixel(x, y),
+                mem.pixel(x, y),
+                expected.pixel(x, y),
                 "pixel " + String(x) + "," + String(y),
             )
 

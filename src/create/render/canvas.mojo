@@ -140,9 +140,7 @@ struct Canvas:
     var _transform_inv: Matrix[3, 3]
     var _transform_stack: List[Matrix[3, 3]]
 
-    def __init__(
-        out self, view: Viewport, var state: PersistentCanvasState
-    ):
+    def __init__(out self, view: Viewport, var state: PersistentCanvasState):
         """Adopt this frame's mapping and carried-over state."""
         self.view = view.copy()
         self.width = view.width
@@ -217,9 +215,7 @@ struct Canvas:
     # to live here. They are properties of a matrix, not of a canvas, and only
     # the replay needs them now — see `_backend.mojo`.
 
-    def transform(
-        mut self, m: Matrix[3, 3]
-    ) -> TransformGuard[origin_of(self)]:
+    def transform(mut self, m: Matrix[3, 3]) -> TransformGuard[origin_of(self)]:
         """Apply `m` to everything drawn inside a `with` block.
 
         ```mojo
@@ -290,7 +286,8 @@ struct Canvas:
 
     def no_stroke(mut self):
         """Drop the outline. Worth knowing that stroke is *on* by default, in
-        black — a `rectangle` drawn without this gets an outline nobody asked for."""
+        black — a `rectangle` drawn without this gets an outline nobody asked for.
+        """
         self._style.stroke_enabled = False
 
     def stroke_width(mut self, w: Int):
@@ -455,7 +452,9 @@ struct Canvas:
     def sprite(mut self, a: SpriteAnimator, pos: Vector2):
         self.sprite(a, pos.x, pos.y)
 
-    def sprite(mut self, a: SpriteAnimator, cx: Float64, cy: Float64, w: Int, h: Int):
+    def sprite(
+        mut self, a: SpriteAnimator, cx: Float64, cy: Float64, w: Int, h: Int
+    ):
         self.sprite(a.animation[].frames[a.frame_index], cx, cy, w, h)
 
     def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int, w: Int, h: Int):

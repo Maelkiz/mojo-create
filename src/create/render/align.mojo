@@ -1,4 +1,4 @@
-struct HorizontalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
+struct HorizontalAlignment(Copyable, Equatable, ImplicitlyCopyable, Movable):
     """Which edge of the text box `canvas.text`'s position names horizontally.
 
     A separate type from `VerticalAlignment` so `canvas.text_align` can be
@@ -8,9 +8,9 @@ struct HorizontalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
 
     var value: Int
 
-    comptime LEFT   = HorizontalAlignment(0)
+    comptime LEFT = HorizontalAlignment(0)
     comptime CENTER = HorizontalAlignment(1)
-    comptime RIGHT  = HorizontalAlignment(2)
+    comptime RIGHT = HorizontalAlignment(2)
 
     def __init__(out self, value: Int):
         self.value = value
@@ -22,7 +22,7 @@ struct HorizontalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
         return self.value != other.value
 
 
-struct VerticalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
+struct VerticalAlignment(Copyable, Equatable, ImplicitlyCopyable, Movable):
     """Which edge of the text box `canvas.text`'s position names vertically.
 
     Edges of the box, not typographic baselines — there is no separate
@@ -33,7 +33,7 @@ struct VerticalAlignment(Equatable, Copyable, ImplicitlyCopyable, Movable):
 
     var value: Int
 
-    comptime TOP    = VerticalAlignment(0)
+    comptime TOP = VerticalAlignment(0)
     comptime MIDDLE = VerticalAlignment(1)
     comptime BOTTOM = VerticalAlignment(2)
 

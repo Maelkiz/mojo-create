@@ -26,7 +26,9 @@ struct Transforms(Program):
         # its own — the nesting below is what the demo is about.
         # Hit-test the sun in the frame it is drawn in. `to_local` maps a world
         # position (which is what `input.mouse` already is) into that frame.
-        var local = canvas.to_local(Float64(self.mouse_x), Float64(self.mouse_y))
+        var local = canvas.to_local(
+            Float64(self.mouse_x), Float64(self.mouse_y)
+        )
         var lx = local[0]
         var ly = local[1]
         var sun_hovered = lx * lx + ly * ly <= 40.0 * 40.0

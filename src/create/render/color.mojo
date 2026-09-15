@@ -20,7 +20,7 @@ def _mix(a: UInt8, b: UInt8, t: Float64) -> UInt8:
     return UInt8(Int(fa + (fb - fa) * t + 0.5))
 
 
-struct Color(Equatable, Writable, Copyable, ImplicitlyCopyable, Movable):
+struct Color(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     var r: UInt8
     var g: UInt8
     var b: UInt8

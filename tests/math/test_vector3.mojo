@@ -1,4 +1,9 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+)
 from create.math.vector3 import Vector3
 from create.math.vector2 import Vector2
 from std.math import isnan, isinf
@@ -166,7 +171,9 @@ def test_cross_anticommutative() raises -> None:
 
 
 def test_dist() raises -> None:
-    assert_almost_equal(Vector3(0.0, 0.0, 0.0).dist(Vector3(1.0, 2.0, 2.0)), 3.0, atol=1e-9)
+    assert_almost_equal(
+        Vector3(0.0, 0.0, 0.0).dist(Vector3(1.0, 2.0, 2.0)), 3.0, atol=1e-9
+    )
 
 
 def test_dist_sq() raises -> None:

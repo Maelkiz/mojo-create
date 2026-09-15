@@ -279,9 +279,7 @@ struct Backend(Movable):
         cmds.clear()
         self.commands = cmds^
 
-    def present_gpu(
-        mut self, width: Int, height: Int, scale: Float64
-    ) raises:
+    def present_gpu(mut self, width: Int, height: Int, scale: Float64) raises:
         """The GPU counterpart of `present`, onto the current drawable.
 
         Same contract: the frame is consumed and the recording left empty with
@@ -325,9 +323,7 @@ struct Backend(Movable):
 
     def replay[
         o: Origin[mut=True]
-    ](
-        mut self, s: Surface[o], cmds: List[DrawCommand], scale: Float64
-    ) raises:
+    ](mut self, s: Surface[o], cmds: List[DrawCommand], scale: Float64) raises:
         """Draw `cmds` onto `s`, in order.
 
         `scale` is the frame's autoscale factor — the fallback pixel scale for
@@ -456,7 +452,7 @@ struct Backend(Movable):
                     ly0 + sw_f,
                     ly1 - sw_f,
                     outer_lo,
-                    outer_hi + 1
+                    outer_hi + 1,
                 )
                 var inner_lo = max(xi[0], yi[0])
                 var inner_hi = min(xi[1], yi[1])
@@ -684,9 +680,7 @@ struct Backend(Movable):
         var m = c.transform
         # Only the anchor is mapped — the layout itself happens in pixel space.
         var p = mat_apply(m, c.geom[0], c.geom[1])
-        self.text.draw(
-            s, c.text, p[0], p[1], c.style, pixel_scale(m, scale)
-        )
+        self.text.draw(s, c.text, p[0], p[1], c.style, pixel_scale(m, scale))
 
     def _letterbox[
         o: Origin[mut=True]

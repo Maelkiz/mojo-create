@@ -70,7 +70,9 @@ def _word_aligned[o: Origin[mut=True]](s: Surface[o]) -> Bool:
     return Int(s.px) % 4 == 0
 
 
-def fill_span[o: Origin[mut=True]](s: Surface[o], off: Int, count: Int, c: Color):
+def fill_span[
+    o: Origin[mut=True]
+](s: Surface[o], off: Int, count: Int, c: Color):
     """Composite `count` consecutive pixels starting at byte offset `off`.
 
     The caller has already clipped to the surface and worked out the covered

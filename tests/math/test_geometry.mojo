@@ -1,4 +1,9 @@
-from std.testing import TestSuite, assert_equal, assert_true, assert_almost_equal
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_true,
+    assert_almost_equal,
+)
 from std.math import pi
 from create.math.geometry import Rectangle, Circle, Line, Triangle, overlaps
 from create.math.vector2 import Vector2
@@ -400,13 +405,13 @@ def test_overlaps_rect_rect_no() raises -> None:
 
 def test_overlaps_rect_rect_touching_edge() raises -> None:
     # Touching counts as overlap everywhere, matching every contains()
-    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5
-    var b = Rectangle(10.0, 0.0, 10.0, 10.0)   # left=5
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)  # right=5
+    var b = Rectangle(10.0, 0.0, 10.0, 10.0)  # left=5
     assert_true(overlaps(a, b))
 
 
 def test_overlaps_rect_rect_touching_corner() raises -> None:
-    var a = Rectangle(0.0, 0.0, 10.0, 10.0)    # right=5, top=5
+    var a = Rectangle(0.0, 0.0, 10.0, 10.0)  # right=5, top=5
     var b = Rectangle(10.0, 10.0, 10.0, 10.0)  # left=5, bottom=5
     assert_true(overlaps(a, b))
 
@@ -448,8 +453,8 @@ def test_overlaps_rect_circle_no() raises -> None:
 
 
 def test_overlaps_rect_circle_touching_boundary() raises -> None:
-    var r = Rectangle(0.0, 0.0, 10.0, 10.0)   # right=5
-    var c = Circle(8.0, 0.0, 3.0)             # left edge at 5
+    var r = Rectangle(0.0, 0.0, 10.0, 10.0)  # right=5
+    var c = Circle(8.0, 0.0, 3.0)  # left edge at 5
     assert_true(overlaps(r, c))
     assert_equal(overlaps(r, c), overlaps(c, r))
 
@@ -460,15 +465,15 @@ def test_overlaps_rect_circle_regression_far_corner() raises -> None:
     # point, so under the old generic (a.contains(b.closest_point(a.center)))
     # this pair gave a false negative depending on argument order. The
     # specialized overload here is exact regardless of which shape is a/b.
-    var r = Rectangle(0.0, 0.0, 100.0, 2.0)     # x in [-50, 50], y in [-1, 1]
-    var c = Circle(30.0, -20.0, 20.5)           # nearest rect point (30, -1)
+    var r = Rectangle(0.0, 0.0, 100.0, 2.0)  # x in [-50, 50], y in [-1, 1]
+    var c = Circle(30.0, -20.0, 20.5)  # nearest rect point (30, -1)
     assert_true(overlaps(r, c))
     assert_equal(overlaps(r, c), overlaps(c, r))
 
 
 def test_overlaps_circle_triangle_yes() raises -> None:
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
-    var c = Circle(3.0, 2.0, 1.0)   # centre inside the triangle
+    var c = Circle(3.0, 2.0, 1.0)  # centre inside the triangle
     assert_true(overlaps(c, t))
     assert_equal(overlaps(c, t), overlaps(t, c))
 
@@ -490,7 +495,7 @@ def test_overlaps_circle_triangle_edge_only() raises -> None:
 
 def test_overlaps_rect_triangle_yes() raises -> None:
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
-    var r = Rectangle(3.0, 2.0, 2.0, 2.0)   # centre inside the triangle
+    var r = Rectangle(3.0, 2.0, 2.0, 2.0)  # centre inside the triangle
     assert_true(overlaps(r, t))
     assert_equal(overlaps(r, t), overlaps(t, r))
 
@@ -590,7 +595,9 @@ def test_triangle_collinear_vertices_contains() raises -> None:
     assert_equal(t.contains(2.0, 1.0), False)
 
 
-def test_triangle_collinear_vertices_closest_point_reaches_zero_length_edge() raises -> None:
+def test_triangle_collinear_vertices_closest_point_reaches_zero_length_edge() raises -> (
+    None
+):
     # The (0,0)-(0,0) edge has len_sq == 0, exercising _closest_on_segment's
     # explicit zero-length branch (otherwise unreached by any other test).
     var t = Triangle(0.0, 0.0, 0.0, 0.0, 4.0, 0.0)
@@ -606,14 +613,18 @@ def test_triangle_collinear_vertices_overlaps() raises -> None:
     assert_true(overlaps(t, covering))
 
 
-def test_triangle_distinct_collinear_vertices_rejects_off_segment_point() raises -> None:
+def test_triangle_distinct_collinear_vertices_rejects_off_segment_point() raises -> (
+    None
+):
     # Three distinct collinear vertices along y = x. (50, 50) sits on that
     # infinite line but far outside the segment -- must not be "contained".
     var t = Triangle(0.0, 0.0, 1.0, 1.0, 2.0, 2.0)
     assert_equal(t.contains(50.0, 50.0), False)
 
 
-def test_triangle_distinct_collinear_vertices_contains_hull_point() raises -> None:
+def test_triangle_distinct_collinear_vertices_contains_hull_point() raises -> (
+    None
+):
     var t = Triangle(0.0, 0.0, 1.0, 1.0, 2.0, 2.0)
     assert_true(t.contains(1.0, 1.0))
 

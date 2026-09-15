@@ -199,12 +199,16 @@ def test_circle_span_matches_brute_force_fill_and_stroke() raises -> None:
     _check_circle_matches_brute_force(0.0, 0.0, 20.0, True, True, 3)
 
 
-def test_circle_span_matches_brute_force_radius_under_one_pixel() raises -> None:
+def test_circle_span_matches_brute_force_radius_under_one_pixel() raises -> (
+    None
+):
     _check_circle_matches_brute_force(10.0, -8.0, 0.6, True, True, 1)
     _check_circle_matches_brute_force(10.0, -8.0, 0.6, True, False, 1)
 
 
-def test_circle_span_matches_brute_force_stroke_wider_than_radius() raises -> None:
+def test_circle_span_matches_brute_force_stroke_wider_than_radius() raises -> (
+    None
+):
     _check_circle_matches_brute_force(-15.0, 5.0, 12.0, True, True, 40)
     _check_circle_matches_brute_force(-15.0, 5.0, 12.0, False, True, 40)
 

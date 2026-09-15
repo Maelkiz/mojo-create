@@ -47,8 +47,11 @@ struct Bench(Program):
     def create(mut ctx: Context) raises -> Bench:
         ctx.autoscale = AutoScale.OFF
         return Bench(
-            0.0, Sprite.load(script_dir() + "/sprite/assets/sprite.png"),
-            0, 0.0, 0.0,
+            0.0,
+            Sprite.load(script_dir() + "/sprite/assets/sprite.png"),
+            0,
+            0.0,
+            0.0,
         )
 
     def update(mut self, mut ctx: Context, input: Input) raises:

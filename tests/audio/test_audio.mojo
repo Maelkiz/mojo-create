@@ -126,7 +126,9 @@ def test_out_of_range_id_is_invalid() raises -> None:
     assert_true(audio.is_playing(id))
 
 
-def test_update_reaps_finished_one_shot_but_keeps_looping_voice() raises -> None:
+def test_update_reaps_finished_one_shot_but_keeps_looping_voice() raises -> (
+    None
+):
     """The suite's only wall-clock-dependent test. Under the dummy driver a
     256-sample buffer drains in real time, so the leak `update()` is meant to
     fix can only be observed by actually waiting for it."""

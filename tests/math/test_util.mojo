@@ -1,5 +1,20 @@
-from std.testing import TestSuite, assert_equal, assert_almost_equal, assert_true
-from create.math.util import lerp, map, norm, smoothstep, sign, fract, fmod, degrees, radians
+from std.testing import (
+    TestSuite,
+    assert_equal,
+    assert_almost_equal,
+    assert_true,
+)
+from create.math.util import (
+    lerp,
+    map,
+    norm,
+    smoothstep,
+    sign,
+    fract,
+    fmod,
+    degrees,
+    radians,
+)
 from std.math import pi, isnan, isinf
 
 
@@ -160,6 +175,7 @@ def test_degrees_quarter_turn() raises -> None:
 
 def test_radians_quarter_turn() raises -> None:
     from std.math import pi as PI
+
     assert_almost_equal(radians(90.0), PI / 2.0, atol=1e-12)
 
 
