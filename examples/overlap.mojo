@@ -14,7 +14,9 @@ struct App(Program):
         )
 
     def update(mut self, mut ctx: Context, input: Input) raises:
-        self.mouse.move_to(input.mouse)
+        # input.mouse is still a Vector2D until Input switches over; xy() is
+        # the visible conversion.
+        self.mouse.move_to(input.mouse.xy())
 
     def render(self, mut canvas: Canvas) raises:
         if overlaps(self.center, self.mouse):

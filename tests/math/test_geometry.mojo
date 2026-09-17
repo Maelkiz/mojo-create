@@ -6,6 +6,7 @@ from std.testing import (
 )
 from std.math import pi
 from create.math.geometry import Rectangle, Circle, Line, Triangle, overlaps
+from create.math.point2d import Point2D
 from create.math.vector2d import Vector2D
 
 
@@ -59,7 +60,7 @@ def test_rect_closest_point_inside() raises -> None:
 
 def test_rect_closest_point_vector2d() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 10.0)
-    var p = r.closest_point(Vector2D(10.0, 0.0))
+    var p = r.closest_point(Point2D(10.0, 0.0))
     assert_equal(p.x, 5.0)
     assert_equal(p.y, 0.0)
 
@@ -72,7 +73,7 @@ def test_rect_closest_point_bare_tuple() raises -> None:
 
 
 def test_rect_vector2d_int_constructor() raises -> None:
-    var r = Rectangle(Vector2D(1.0, 2.0), 10, 6)
+    var r = Rectangle(Point2D(1.0, 2.0), 10, 6)
     assert_equal(r.x, 1.0)
     assert_equal(r.y, 2.0)
     assert_equal(r.w, 10.0)
@@ -133,7 +134,7 @@ def test_circle_closest_point_inside() raises -> None:
 
 def test_circle_closest_point_vector2d() raises -> None:
     var c = Circle(0.0, 0.0, 5.0)
-    var p = c.closest_point(Vector2D(10.0, 0.0))
+    var p = c.closest_point(Point2D(10.0, 0.0))
     assert_almost_equal(p.x, 5.0, atol=1e-9)
     assert_almost_equal(p.y, 0.0, atol=1e-9)
 
@@ -179,7 +180,7 @@ def test_line_closest_point_clamps_past_endpoint() raises -> None:
 
 def test_line_closest_point_vector2d() raises -> None:
     var l = Line(0.0, 0.0, 4.0, 0.0)
-    var p = l.closest_point(Vector2D(2.0, 5.0))
+    var p = l.closest_point(Point2D(2.0, 5.0))
     assert_equal(p.x, 2.0)
     assert_equal(p.y, 0.0)
 
@@ -253,7 +254,7 @@ def test_line_intersects_t_intersection() raises -> None:
 def test_line_intersects_point_on_segment() raises -> None:
     var l = Line(0.0, 0.0, 4.0, 0.0)
     assert_true(l.intersects(2.0, 0.0))
-    assert_true(l.intersects(Vector2D(2.0, 0.0)))
+    assert_true(l.intersects(Point2D(2.0, 0.0)))
 
 
 def test_line_intersects_point_off_segment() raises -> None:
@@ -328,7 +329,7 @@ def test_triangle_center() raises -> None:
 
 def test_triangle_closest_point_vector2d() raises -> None:
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
-    var p = t.closest_point(Vector2D(3.0, 2.0))
+    var p = t.closest_point(Point2D(3.0, 2.0))
     assert_equal(p.x, 3.0)
     assert_equal(p.y, 2.0)
 
@@ -372,16 +373,16 @@ def test_triangle_move_to() raises -> None:
 
 def test_rect_contains_vector2d() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 10.0)
-    var inside = Vector2D(2.0, 2.0)
-    var outside = Vector2D(8.0, 0.0)
+    var inside = Point2D(2.0, 2.0)
+    var outside = Point2D(8.0, 0.0)
     assert_true(r.contains(inside))
     assert_equal(r.contains(outside), False)
 
 
 def test_circle_contains_vector2d() raises -> None:
     var c = Circle(0.0, 0.0, 5.0)
-    var inside = Vector2D(3.0, 4.0)
-    var outside = Vector2D(4.0, 4.0)
+    var inside = Point2D(3.0, 4.0)
+    var outside = Point2D(4.0, 4.0)
     assert_true(c.contains(inside))
     assert_equal(c.contains(outside), False)
 
@@ -860,6 +861,52 @@ def test_triangle_area() raises -> None:
 def test_triangle_area_degenerate_is_zero() raises -> None:
     var t = Triangle(0.0, 0.0, 2.0, 0.0, 4.0, 0.0)
     assert_equal(t.area(), 0.0)
+
+
+# The Point2D/Vector2D boundary — positions are locations, extents and
+# displacements are vectors, and these are the signatures naming both.
+def test_center_difference_is_a_displacement() raises -> None:
+    var r = Rectangle(Point2D(10.0, 0.0), 4.0, 4.0)
+    var c = Circle(Point2D(4.0, 0.0), 1.0)
+    var d: Vector2D = r.center() - c.center()
+    assert_equal(d, Vector2D(6.0, 0.0))
+
+
+def test_move_to_a_displaced_center() raises -> None:
+    """`move_to(center() + delta)` is the round trip the split has to allow:
+    a position plus a displacement is a position."""
+    var r = Rectangle(Point2D(1.0, 2.0), 4.0, 4.0)
+    r.move_to(r.center() + Vector2D(3.0, 4.0))
+    assert_equal(r.center(), Point2D(4.0, 6.0))
+
+
+def test_rect_from_a_position_and_an_extent() raises -> None:
+    var r = Rectangle(Point2D(1.0, 2.0), Vector2D(10.0, 6.0))
+    assert_equal(r.center(), Point2D(1.0, 2.0))
+    assert_equal(r.size(), Vector2D(10.0, 6.0))
+
+
+def test_translate_by_a_displacement() raises -> None:
+    var r = Rectangle(Point2D(1.0, 2.0), 4.0, 4.0)
+    r.translate(Vector2D(2.0, 3.0))
+    assert_equal(r.center(), Point2D(3.0, 5.0))
+    var c = Circle(Point2D(1.0, 2.0), 1.0)
+    c.translate(Vector2D(2.0, 3.0))
+    assert_equal(c.center(), Point2D(3.0, 5.0))
+    var l = Line(Point2D(0.0, 0.0), Point2D(2.0, 0.0))
+    l.translate(Vector2D(1.0, 1.0))
+    assert_equal(l.midpoint(), Point2D(2.0, 1.0))
+    var t = Triangle(Point2D(0.0, 0.0), Point2D(4.0, 0.0), Point2D(0.0, 3.0))
+    t.translate(Vector2D(1.0, 1.0))
+    assert_equal(t.center(), Point2D(1.0 + 4.0 / 3.0, 2.0))
+
+
+def test_shapes_still_take_bare_tuples() raises -> None:
+    """The implicit constructors are why the split costs a call site
+    nothing."""
+    var r = Rectangle((1, 2), 10, 6)
+    assert_equal(r.center(), Point2D(1.0, 2.0))
+    assert_true(r.contains((1.0, 2.0)))
 
 
 def main() raises:
