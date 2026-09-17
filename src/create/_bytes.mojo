@@ -26,3 +26,21 @@ def le_uint[o: Origin](p: Pointer[UInt8, o], off: Int, count: Int) -> Int:
 def sign_extend_32(v: Int) -> Int:
     """Reinterpret a 32-bit unsigned value as signed two's complement."""
     return v - 0x100000000 if v >= 0x80000000 else v
+
+
+def cstr(s: String) -> List[UInt8]:
+    """A NUL-terminated byte buffer for `s`, for passing to C.
+
+    `String.unsafe_ptr()` is not guaranteed NUL-terminated at `len(s)`, so a C
+    API that scans for the terminator can read past the buffer into whatever
+    follows it. Building the terminator explicitly sidesteps that.
+
+    Here rather than beside any one FFI wrapper because `audio`, `render` and
+    `sprite` all hand paths to C libraries and none of them may depend on the
+    others.
+    """
+    var bytes = List[UInt8]()
+    for b in s.as_bytes():
+        bytes.append(b)
+    bytes.append(0)
+    return bytes^

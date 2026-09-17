@@ -1,4 +1,5 @@
 from .color import Color
+from ._png import write_png
 
 
 struct Surface[origin: Origin[mut=True]](Copyable, ImplicitlyCopyable, Movable):
@@ -46,6 +47,27 @@ struct MemorySurface(Movable):
     def surface(mut self) -> Surface[origin_of(self.data)]:
         """Borrow this buffer as a `Surface` for the raster primitives."""
         return Surface(self.data.unsafe_ptr(), self.width, self.height)
+
+    def save(self, path: String, opaque: Bool = True) raises:
+        """Write this buffer to `path` as a PNG.
+
+        `opaque` forces every alpha byte to 255 on a copy first, which is the
+        right default for anything that came off a framebuffer: a window's
+        buffer frequently carries alpha 0 in the unused byte, and an image that
+        opens fully transparent is the obvious trap. Pass `opaque=False` only
+        when the alpha channel is meant — a capture that deliberately left its
+        background clear.
+        """
+        if not opaque:
+            write_png(self.data, self.width, self.height, path)
+            return
+        var out = List[UInt8](length=self.width * self.height * 4, fill=255)
+        for i in range(self.width * self.height):
+            var off = i * 4
+            out[off] = self.data[off]
+            out[off + 1] = self.data[off + 1]
+            out[off + 2] = self.data[off + 2]
+        write_png(out, self.width, self.height, path)
 
     def pixel(self, x: Int, y: Int) -> Color:
         var off = (y * self.width + x) * 4

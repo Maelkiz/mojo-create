@@ -13,26 +13,13 @@ int's worth of trailing padding).
 
 from std.ffi import _DLHandle
 
+from create._bytes import cstr as _cstr
+
 comptime SFM_READ: Int32 = 0x10
 comptime _SF_INFO_SIZE = 32
 comptime _OFF_FRAMES = 0
 comptime _OFF_SAMPLERATE = 8
 comptime _OFF_CHANNELS = 12
-
-
-def _cstr(s: String) -> List[UInt8]:
-    """A NUL-terminated byte buffer for `s`.
-
-    `String.unsafe_ptr()` is not guaranteed NUL-terminated at `len(s)` --
-    passing it straight to a C API that scans for NUL can read past the
-    buffer into whatever memory follows. Building the terminator explicitly
-    sidesteps that.
-    """
-    var bytes = List[UInt8]()
-    for b in s.as_bytes():
-        bytes.append(b)
-    bytes.append(0)
-    return bytes^
 
 
 struct SndFile:

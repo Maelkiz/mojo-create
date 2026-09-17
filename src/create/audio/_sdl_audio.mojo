@@ -23,24 +23,11 @@ raw-address-to-Pointer idiom `mojo-window`'s `gl_window.mojo` uses for
 
 from std.ffi import _DLHandle
 
+from create._bytes import cstr as _cstr
+
 comptime SDL_INIT_AUDIO: UInt32 = 0x00000010
 comptime SDL_AUDIO_S16: Int32 = 0x8010
 comptime SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK: UInt32 = 0xFFFFFFFF
-
-
-def _cstr(s: String) -> List[UInt8]:
-    """A NUL-terminated byte buffer for `s`.
-
-    `String.unsafe_ptr()` is not guaranteed NUL-terminated at `len(s)` --
-    passing it straight to a C API that scans for NUL can read past the
-    buffer into whatever memory follows. Building the terminator explicitly
-    sidesteps that.
-    """
-    var bytes = List[UInt8]()
-    for b in s.as_bytes():
-        bytes.append(b)
-    bytes.append(0)
-    return bytes^
 
 
 struct SDLAudio:
