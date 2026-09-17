@@ -4,6 +4,7 @@
 # shapes, source-over alpha — are checked rather than eyeballed.
 
 from std.math import pi
+from std.os import remove
 from std.testing import (
     TestSuite,
     assert_equal,
@@ -973,6 +974,133 @@ def test_every_animator_overload_draws_at_its_anchor() raises -> None:
     assert_equal(m.pixel(50, 90), Color.RED)  # (a, Point2D, w, h)
     # Between the two rows nothing was drawn.
     assert_equal(m.pixel(50, 50), Color.BLACK)
+
+
+# --- canvas.save_image -------------------------------------------------------
+#
+# Every one of these runs a design of 200x100 into a 640x480 buffer, so the
+# live frame is scaled by 3.2 and letterboxed — the export is only proving
+# anything if the framebuffer it came from looks nothing like it.
+
+comptime _IMG_1X = "/tmp/mojo_create_test_save_image_1x.png"
+comptime _IMG_2X = "/tmp/mojo_create_test_save_image_2x.png"
+comptime _IMG_ALPHA = "/tmp/mojo_create_test_save_image_alpha.png"
+
+
+def _saved(path: String) raises -> Sprite:
+    """Read back a file one of these programs wrote, then delete it."""
+    var back = Sprite.load(path)
+    remove(path)
+    return back^
+
+
+def _px(s: Sprite, x: Int, y: Int) -> Color:
+    var off = (y * s.width + x) * 4
+    return Color(
+        s.pixels[off], s.pixels[off + 1], s.pixels[off + 2], s.pixels[off + 3]
+    )
+
+
+def _scene(mut canvas: Canvas):
+    """A black ground with a 20x20 red square on the origin.
+
+    In design space the square covers x in [90, 110) and y in [40, 60), so the
+    export can be checked against design coordinates directly.
+    """
+    canvas.background(Color.BLACK)
+    canvas.no_stroke()
+    canvas.fill(Color.RED)
+    canvas.rectangle(0.0, 0.0, 20.0, 20.0)
+
+
+@fieldwise_init
+struct SaveImage(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SaveImage:
+        return SaveImage(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        _scene(canvas)
+        canvas.save_image(_IMG_1X)
+
+
+@fieldwise_init
+struct SaveImage2x(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SaveImage2x:
+        return SaveImage2x(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        _scene(canvas)
+        canvas.save_image(_IMG_2X, scale=2.0)
+
+
+@fieldwise_init
+struct SaveImageTransparent(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SaveImageTransparent:
+        return SaveImageTransparent(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        _scene(canvas)
+        canvas.save_image(_IMG_ALPHA, transparent=True)
+
+
+def test_save_image_writes_the_design_resolution() raises -> None:
+    var m = run_headless[SaveImage](200, 100, 1, 640, 480)
+    # The framebuffer it was captured from is neither that size nor bar-free.
+    assert_equal(m.width, 640)
+    assert_equal(m.pixel(320, 5), Color(0x22))
+    var img = _saved(_IMG_1X)
+    assert_equal(img.width, 200)
+    assert_equal(img.height, 100)
+
+
+def test_save_image_lays_out_in_design_coordinates() raises -> None:
+    _ = run_headless[SaveImage](200, 100, 1, 640, 480)
+    var img = _saved(_IMG_1X)
+    assert_equal(_px(img, 100, 50), Color.RED)
+    assert_equal(_px(img, 91, 41), Color.RED)
+    assert_equal(_px(img, 108, 58), Color.RED)
+    assert_equal(_px(img, 50, 50), Color.BLACK)
+
+
+def test_save_image_has_no_letterbox_bars() raises -> None:
+    _ = run_headless[SaveImage](200, 100, 1, 640, 480)
+    var img = _saved(_IMG_1X)
+    # Every corner is the program's own background, not the bar colour the
+    # live frame carries at the same relative position.
+    assert_equal(_px(img, 0, 0), Color.BLACK)
+    assert_equal(_px(img, 199, 0), Color.BLACK)
+    assert_equal(_px(img, 0, 99), Color.BLACK)
+    assert_equal(_px(img, 199, 99), Color.BLACK)
+
+
+def test_save_image_scales_the_whole_export() raises -> None:
+    _ = run_headless[SaveImage2x](200, 100, 1, 640, 480)
+    var img = _saved(_IMG_2X)
+    assert_equal(img.width, 400)
+    assert_equal(img.height, 200)
+    # The identical layout at twice the resolution: the square now covers
+    # [180, 220) x [80, 120).
+    assert_equal(_px(img, 200, 100), Color.RED)
+    assert_equal(_px(img, 182, 82), Color.RED)
+    assert_equal(_px(img, 100, 100), Color.BLACK)
+
+
+def test_save_image_can_keep_the_background_clear() raises -> None:
+    _ = run_headless[SaveImageTransparent](200, 100, 1, 640, 480)
+    var img = _saved(_IMG_ALPHA)
+    assert_equal(_px(img, 100, 50), Color.RED)
+    # Nothing was drawn here and the clear was dropped, so the buffer's own
+    # alpha 0 survives all the way to the file.
+    assert_equal(_px(img, 10, 10), Color(0, 0, 0, 0))
 
 
 def main() raises:

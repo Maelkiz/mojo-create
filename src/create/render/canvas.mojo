@@ -14,7 +14,7 @@ from create.math.matrix import (
 )
 from create.sprite.sprite import Sprite
 from create.sprite.animator import SpriteAnimator
-from ._backend import Backend
+from ._backend import Backend, _ImageRequest
 from .render_backend import RenderBackend
 from ._command import (
     circle_command,
@@ -304,6 +304,58 @@ struct Canvas:
         fades the previous frame a little further each time.
         """
         self._state.backend.record(clear_command(color))
+
+    def save_image(
+        mut self,
+        path: String,
+        scale: Float64 = 1.0,
+        transparent: Bool = False,
+    ) raises:
+        """Save this frame as a PNG at the design resolution, times `scale`.
+
+        Window-independent by construction: the size of the file is the space
+        the program draws in, never the size of the window, and the letterbox
+        bars are absent because they belong to a window this image is not of.
+        The same call under either backend produces the same image — the
+        capture is rasterised on the CPU from the recorded commands, so the
+        GPU path needs no readback. That is what makes this the export to use
+        for artwork, posters and golden-image tests; use `save_screenshot` for
+        what the user actually saw.
+
+        `transparent` drops the frame's `background`, leaving alpha 0 wherever
+        nothing was drawn. `scale` multiplies the output resolution, so
+        `scale=2.0` gives a 2x export of the identical layout.
+
+        Deferred, not immediate: the file is written when the frame is
+        presented, so it holds the whole frame however early in `render` this
+        was called. A failure to write raises there, from `present`, rather
+        than here.
+        """
+        if scale <= 0.0:
+            raise Error(
+                "save_image needs a positive scale, got " + String(scale)
+            )
+        var capture = Viewport()
+        # The design size, not the window's: under `EXTEND` that is the
+        # extended space, which is exactly the area the program drew into.
+        capture.autoscale = AutoScale.FIT
+        capture.set_design(self.width, self.height)
+        var pw = Int(Float64(self.width) * scale + 0.5)
+        var ph = Int(Float64(self.height) * scale + 0.5)
+        capture.set_size(pw, ph)
+        self._state.backend.request_image(
+            _ImageRequest(
+                path,
+                pw,
+                ph,
+                capture.scale,
+                # Commands carry the *window's* mapping baked in; undoing it
+                # and applying the capture's is a pure similarity, so one
+                # matrix in front of the replay is the whole rebase.
+                capture.base_matrix() @ self._base_inv,
+                transparent,
+            )
+        )
 
     def rectangle(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
         self._state.backend.record(

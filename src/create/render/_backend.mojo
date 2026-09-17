@@ -27,7 +27,7 @@ from ._gl_backend import GLRenderer
 from ._image import _Image
 from ._style import Style
 from ._transform import pixel_scale, stroke_width_px, uniform
-from .surface import Surface
+from .surface import MemorySurface, Surface
 from ._text import TextRenderer
 from .render_backend import RenderBackend
 
@@ -214,6 +214,27 @@ def _ellipse_row_span(
     return (start, end)
 
 
+@fieldwise_init
+struct _ImageRequest(Movable):
+    """A `canvas.save_image` that has not been serviced yet.
+
+    Filed while recording and flushed at present, because present is the only
+    place holding both the finished command buffer and a target to replay it
+    onto. Deferring also makes the contract honest: the file gets the *whole*
+    frame no matter where in `render` the call was made.
+    """
+
+    var path: String
+    var width: Int
+    var height: Int
+    var scale: Float64
+    """The capture's pixel scale — the fallback for commands whose transform
+    is not uniform, exactly as the live frame's autoscale factor is."""
+    var rebase: Matrix[3, 3]
+    """`capture_base @ window_base_inv` — see `replay`'s `pre`."""
+    var transparent: Bool
+
+
 struct Backend(Movable):
     """Where a frame's recorded commands become pixels.
 
@@ -238,6 +259,13 @@ struct Backend(Movable):
     them — `kind` then means what it says, and a sprite interned for the CPU
     replay is the same entry the GL path will key a texture from.
     """
+    var pending_image: Optional[_ImageRequest]
+    """A `save_image` filed by this frame, serviced at present.
+
+    One per frame: a second call overwrites the first, which is the only
+    sensible reading of two saves of the same frame to two paths being asked
+    for by accident.
+    """
     var commands: List[DrawCommand]
     """The frame being recorded.
 
@@ -255,6 +283,7 @@ struct Backend(Movable):
         self.text = TextRenderer()
         self.images = Dict[Int, _Image]()
         self.commands = List[DrawCommand]()
+        self.pending_image = Optional[_ImageRequest]()
         self.gl = Optional[GLRenderer]()
         if kind == RenderBackend.GPU:
             self.gl = Optional(GLRenderer())
@@ -262,6 +291,41 @@ struct Backend(Movable):
     def record(mut self, var c: DrawCommand):
         """Append one draw to the frame being recorded."""
         self.commands.append(c^)
+
+    def request_image(mut self, var request: _ImageRequest):
+        """File a design-resolution capture of the frame being recorded."""
+        self.pending_image = Optional(request^)
+
+    def _flush_image(mut self, cmds: List[DrawCommand]) raises:
+        """Service a pending `save_image` by replaying `cmds` a second time.
+
+        Onto an owned buffer of the capture's own size, through the CPU
+        rasteriser under both backends — the glyph cache and the image cache
+        live here rather than on `GLRenderer`, so a GPU frame needs no readback
+        to be captured at a resolution the window never had.
+
+        The bars are dropped by contract: the capture is the design area, and
+        a bar is a property of the window it is not being saved at. A
+        transparent capture drops the frame's clear as well, so the background
+        keeps the buffer's alpha 0.
+        """
+        if not self.pending_image:
+            return
+        var request = self.pending_image.take()
+        var mem = MemorySurface(request.width, request.height)
+        self.replay(
+            mem.surface(),
+            cmds,
+            request.scale,
+            pre=request.rebase,
+            skip_kinds=(
+                (1 << CMD_LETTERBOX)
+                | (1 << CMD_CLEAR) if request.transparent else (
+                    1 << CMD_LETTERBOX
+                )
+            ),
+        )
+        mem.save(request.path, opaque=not request.transparent)
 
     def present[
         o: Origin[mut=True]
@@ -276,6 +340,7 @@ struct Backend(Movable):
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
         self.replay(s, cmds, scale)
+        self._flush_image(cmds)
         cmds.clear()
         self.commands = cmds^
 
@@ -295,6 +360,7 @@ struct Backend(Movable):
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
         self.gl.value().draw(cmds, self.images, self.text, width, height, scale)
+        self._flush_image(cmds)
         cmds.clear()
         self.commands = cmds^
 
@@ -329,7 +395,7 @@ struct Backend(Movable):
         cmds: List[DrawCommand],
         scale: Float64,
         pre: Matrix[3, 3] = identity[3](),
-        skip: Int = -1,
+        skip_kinds: Int = 0,
     ) raises:
         """Draw `cmds` onto `s`, in order.
 
@@ -344,12 +410,13 @@ struct Backend(Movable):
         `capture_base @ window_base_inverse` in front of it. Identity on the
         live path, which is therefore unchanged.
 
-        `skip` drops every command of one kind — `CMD_LETTERBOX` for a capture
-        that is bar-free by contract, `CMD_CLEAR` for one with a transparent
-        background. `-1` drops nothing.
+        `skip_kinds` is a bit per command kind — `1 << CMD_LETTERBOX` for a
+        capture that is bar-free by contract, plus `1 << CMD_CLEAR` for one
+        with a transparent background. A mask rather than a single kind
+        because a transparent capture drops both, and `0` drops nothing.
         """
         for ref c in cmds:
-            if c.kind != skip:
+            if skip_kinds & (1 << c.kind) == 0:
                 self._one(s, c, scale, pre)
 
     def _one[
