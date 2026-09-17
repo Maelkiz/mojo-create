@@ -1,3 +1,5 @@
+from std.memory import unsafe_memcpy
+
 from .color import Color
 from ._png import write_png
 
@@ -61,12 +63,14 @@ struct MemorySurface(Movable):
         if not opaque:
             write_png(self.data, self.width, self.height, path)
             return
-        var out = List[UInt8](length=self.width * self.height * 4, fill=255)
-        for i in range(self.width * self.height):
-            var off = i * 4
-            out[off] = self.data[off]
-            out[off + 1] = self.data[off + 1]
-            out[off + 2] = self.data[off + 2]
+        var n = self.width * self.height
+        var out = List[UInt8](length=n * 4, fill=0)
+        unsafe_memcpy(
+            dest=out.unsafe_ptr(), src=self.data.unsafe_ptr(), count=n * 4
+        )
+        var px = out.unsafe_ptr()
+        for i in range(n):
+            px[unsafe_offset=i * 4 + 3] = 255
         write_png(out, self.width, self.height, path)
 
     def pixel(self, x: Int, y: Int) -> Color:

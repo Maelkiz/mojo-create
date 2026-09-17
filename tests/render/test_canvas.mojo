@@ -1103,5 +1103,63 @@ def test_save_image_can_keep_the_background_clear() raises -> None:
     assert_equal(_px(img, 10, 10), Color(0, 0, 0, 0))
 
 
+comptime _SHOT = "/tmp/mojo_create_test_save_screenshot.png"
+comptime _BOTH_SHOT = "/tmp/mojo_create_test_save_both_shot.png"
+comptime _BOTH_IMG = "/tmp/mojo_create_test_save_both_image.png"
+
+
+@fieldwise_init
+struct SaveScreenshot(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SaveScreenshot:
+        return SaveScreenshot(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        _scene(canvas)
+        canvas.save_screenshot(_SHOT)
+
+
+@fieldwise_init
+struct SaveBoth(Program):
+    var _unused: Int
+
+    @staticmethod
+    def create(mut ctx: Context) raises -> SaveBoth:
+        return SaveBoth(0)
+
+    def render(self, mut canvas: Canvas) raises:
+        _scene(canvas)
+        canvas.save_screenshot(_BOTH_SHOT)
+        canvas.save_image(_BOTH_IMG)
+
+
+def test_save_screenshot_writes_the_framebuffer_resolution() raises -> None:
+    _ = run_headless[SaveScreenshot](200, 100, 1, 640, 480)
+    var shot = _saved(_SHOT)
+    assert_equal(shot.width, 640)
+    assert_equal(shot.height, 480)
+
+
+def test_save_screenshot_keeps_the_letterbox_bars() raises -> None:
+    # The exact complement of the save_image assertion: same frame, and the
+    # corner that is the program's background there is bar here.
+    _ = run_headless[SaveScreenshot](200, 100, 1, 640, 480)
+    var shot = _saved(_SHOT)
+    assert_equal(_px(shot, 320, 5), Color(0x22))
+    assert_equal(_px(shot, 320, 474), Color(0x22))
+    # The design area sits in the middle, scaled by 3.2 rather than 1:1.
+    assert_equal(_px(shot, 320, 240), Color.RED)
+
+
+def test_both_captures_can_be_pending_in_one_frame() raises -> None:
+    _ = run_headless[SaveBoth](200, 100, 1, 640, 480)
+    var shot = _saved(_BOTH_SHOT)
+    var img = _saved(_BOTH_IMG)
+    assert_equal(shot.width, 640)
+    assert_equal(img.width, 200)
+
+
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

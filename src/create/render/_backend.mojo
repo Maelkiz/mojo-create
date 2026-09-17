@@ -1,4 +1,5 @@
 from std.collections import Dict, Optional
+from std.memory import unsafe_memcpy
 from std.math import max, min, abs, sqrt, ceil, floor
 
 from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
@@ -259,6 +260,13 @@ struct Backend(Movable):
     them — `kind` then means what it says, and a sprite interned for the CPU
     replay is the same entry the GL path will key a texture from.
     """
+    var pending_screenshot: Optional[String]
+    """A `save_screenshot` filed by this frame, serviced at present.
+
+    Just a path: a screenshot has no geometry to decide, which is the whole
+    difference from `_ImageRequest` — it is whatever the framebuffer holds
+    once the frame has been drawn.
+    """
     var pending_image: Optional[_ImageRequest]
     """A `save_image` filed by this frame, serviced at present.
 
@@ -284,6 +292,7 @@ struct Backend(Movable):
         self.images = Dict[Int, _Image]()
         self.commands = List[DrawCommand]()
         self.pending_image = Optional[_ImageRequest]()
+        self.pending_screenshot = Optional[String]()
         self.gl = Optional[GLRenderer]()
         if kind == RenderBackend.GPU:
             self.gl = Optional(GLRenderer())
@@ -295,6 +304,28 @@ struct Backend(Movable):
     def request_image(mut self, var request: _ImageRequest):
         """File a design-resolution capture of the frame being recorded."""
         self.pending_image = Optional(request^)
+
+    def request_screenshot(mut self, path: String):
+        """File a framebuffer-resolution capture of the frame being recorded."""
+        self.pending_screenshot = Optional(path)
+
+    def _flush_screenshot[o: Origin[mut=True]](mut self, s: Surface[o]) raises:
+        """Service a pending `save_screenshot` by copying the finished buffer.
+
+        After `replay`, so the bars are in it — a screenshot is what the user
+        saw, and at this point `s` already is that. Near-free: a copy of the
+        frame, with no second rasterisation.
+        """
+        if not self.pending_screenshot:
+            return
+        var path = self.pending_screenshot.take()
+        var mem = MemorySurface(s.width, s.height)
+        unsafe_memcpy(
+            dest=mem.data.unsafe_ptr(),
+            src=s.px,
+            count=s.width * s.height * 4,
+        )
+        mem.save(path)
 
     def _flush_image(mut self, cmds: List[DrawCommand]) raises:
         """Service a pending `save_image` by replaying `cmds` a second time.
@@ -340,6 +371,7 @@ struct Backend(Movable):
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
         self.replay(s, cmds, scale)
+        self._flush_screenshot(s)
         self._flush_image(cmds)
         cmds.clear()
         self.commands = cmds^

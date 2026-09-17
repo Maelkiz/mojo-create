@@ -357,6 +357,22 @@ struct Canvas:
             )
         )
 
+    def save_screenshot(mut self, path: String) raises:
+        """Save this frame as a PNG at the framebuffer's own resolution.
+
+        The complement of `save_image`: this answers what the user *saw*, so
+        it is the size of the drawable, letterbox bars included, drawn by
+        whichever rasteriser actually drew the frame. That makes it
+        deliberately machine-dependent — window size, HiDPI scaling and any
+        driver antialiasing are all in it, and two machines will not produce
+        the same file. Right for a bug report or for sharing a running sketch;
+        use `save_image` for anything that has to be reproducible.
+
+        Deferred and raising in the same way as `save_image`: the file is
+        written when the frame is presented, and a failure raises from there.
+        """
+        self._state.backend.request_screenshot(path)
+
     def rectangle(mut self, x: Float64, y: Float64, w: Float64, h: Float64):
         self._state.backend.record(
             rect_command(self._transform, self._style, x, y, w, h)
