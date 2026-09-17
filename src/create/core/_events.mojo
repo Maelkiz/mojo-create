@@ -22,6 +22,7 @@ from window.event import (
     Resized,
 )
 
+from create.math.point2d import Point2D
 from create.math.vector2d import Vector2D
 
 from .context import Context
@@ -73,7 +74,7 @@ def apply_events(
             input.mouse_pressed = True
             input.mouse_button = e.button
             input._set_mouse(p[0], p[1])
-            input.mouse_press_pos = Vector2D(p[0], p[1])
+            input.mouse_press_pos = Point2D(p[0], p[1])
             input._held_buttons |= 1 << e.button
             input._pressed_buttons |= 1 << e.button
         elif event.isa[MouseButtonUp]():

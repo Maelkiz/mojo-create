@@ -1,5 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true
 from create.core.input import Input
+from create.math.point2d import Point2D
 from create.math.vector2d import Vector2D
 
 
@@ -356,7 +357,7 @@ def test_set_mouse_floors_negative_coordinates() raises -> None:
     assert_equal(input.mouse_y, -2)
 
 
-def test_set_mouse_int_fields_track_the_vector() raises -> None:
+def test_set_mouse_int_fields_track_the_position() raises -> None:
     # The regression this method exists to prevent: a code path that updated
     # mouse_x/mouse_y while leaving `mouse` at its previous value.
     var input = Input()
@@ -366,6 +367,20 @@ def test_set_mouse_int_fields_track_the_vector() raises -> None:
     assert_equal(input.mouse.y, 60.25)
     assert_equal(input.mouse_x, -41)
     assert_equal(input.mouse_y, 60)
+
+
+def test_mouse_is_a_position_and_the_wheel_a_displacement() raises -> None:
+    # The split this type distinction exists for: a drag is the difference
+    # between two locations, which is a Vector2D, while the wheel already is
+    # one.
+    var input = Input()
+    input.mouse_press_pos = Point2D(10.0, 20.0)
+    input._set_mouse(13.0, 24.0)
+    var drag: Vector2D = input.mouse - input.mouse_press_pos
+    assert_equal(drag, Vector2D(3.0, 4.0))
+    assert_equal(input.mouse_press_pos + drag, input.mouse)
+    input.wheel = Vector2D(0.0, -1.0)
+    assert_equal(input.wheel.mag(), 1.0)
 
 
 def main() raises:

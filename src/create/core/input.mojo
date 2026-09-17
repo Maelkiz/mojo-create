@@ -1,5 +1,6 @@
 from std.math import floor
 
+from create.math.point2d import Point2D
 from create.math.vector2d import Vector2D
 from .key import Key, _KeyBits
 
@@ -22,12 +23,14 @@ struct Input(Movable):
     with no window involved.
 
     `mouse` is in world coordinates, so it is negative left of and below the
-    origin.
+    origin. It and `mouse_press_pos` are `Point2D` because they are
+    locations; `wheel` stays a `Vector2D` because a scroll delta is a
+    displacement.
     """
 
     var mouse_x: Int
     var mouse_y: Int
-    var mouse: Vector2D
+    var mouse: Point2D
     var mouse_pressed: Bool
     var mouse_button: Int
     # This frame's scroll delta — zeroed at the start of every frame, same
@@ -37,7 +40,7 @@ struct Input(Movable):
     # MouseButtonDown event itself rather than read off `mouse`, because a
     # MouseMoved later in the same frame would otherwise overwrite it before
     # a program ever sees where the click actually started.
-    var mouse_press_pos: Vector2D
+    var mouse_press_pos: Point2D
     var _held_keys: _KeyBits
     var _just_pressed: _KeyBits
     var _just_released: _KeyBits
@@ -50,11 +53,11 @@ struct Input(Movable):
     def __init__(out self):
         self.mouse_x = 0
         self.mouse_y = 0
-        self.mouse = Vector2D(0, 0)
+        self.mouse = Point2D(0, 0)
         self.mouse_pressed = False
         self.mouse_button = 0
         self.wheel = Vector2D(0, 0)
-        self.mouse_press_pos = Vector2D(0, 0)
+        self.mouse_press_pos = Point2D(0, 0)
         self._held_keys = _KeyBits()
         self._just_pressed = _KeyBits()
         self._just_released = _KeyBits()
@@ -83,7 +86,7 @@ struct Input(Movable):
         negative and the Int forms floor rather than truncate — truncation
         would round the left and bottom halves of the screen the wrong way.
         """
-        self.mouse = Vector2D(x, y)
+        self.mouse = Point2D(x, y)
         self.mouse_x = Int(floor(x))
         self.mouse_y = Int(floor(y))
 
