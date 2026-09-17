@@ -20,9 +20,14 @@ struct Point2D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     position's components as a direction says so: `Vector2D(p.xy())`.
 
     Subtraction is the one place a bare tuple does not work: `p - (1, 2)` is
-    ambiguous, because a tuple cannot say whether it means the other position
-    or a displacement. Name the type — `p - Vector2D(1, 2)` — and note that
-    `p + (1, 2)` is fine, since `__add__` has only the one overload.
+    ambiguous, because subtraction has two meanings on a position — the
+    displacement to another position, or a move backwards by a displacement —
+    and a tuple cannot say which. Name the type: `p - Vector2D(1, 2)` for a
+    move, `p - Point2D(1, 2)` for the displacement between them. `p + (1, 2)`
+    needs no annotation because addition has only one meaning: `Point2D +
+    Point2D` does not exist, so a displacement is the only thing the tuple
+    could be. The asymmetry is the algebra's, not an artifact of how the
+    overloads happen to be written.
 
     There are no `zero()`/`one()` factories either. `(0, 0)` through the
     implicit constructor is shorter than any name for the origin, and `one()`
