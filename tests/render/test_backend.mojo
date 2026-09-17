@@ -14,6 +14,8 @@ from create.render._backend import Backend
 from create.render._raster import blend
 from create.render._transform import pixel_scale, stroke_width_px
 from create.render._command import (
+    CMD_CLEAR,
+    CMD_LETTERBOX,
     DrawCommand,
     clear_command,
     rect_command,
@@ -325,6 +327,43 @@ def test_text_with_fill_disabled_draws_nothing() raises -> None:
     cmds.append(text_command(_base(), st, -40.0, 0.0, String("III")))
     var m = _replay(cmds)
     assert_equal(m.pixel(50, 50), Color.BLACK)
+
+
+def test_a_pre_matrix_relocates_the_whole_replay() raises -> None:
+    # What a capture does: the commands were recorded against one mapping and
+    # are replayed against another, without rewriting the command list.
+    var cmds = List[DrawCommand]()
+    cmds.append(clear_command(Color.BLACK))
+    cmds.append(rect_command(_base(), _solid(Color.RED), 0.0, 0.0, 20.0, 20.0))
+    var mem = MemorySurface(_W, _H)
+    var backend = Backend()
+    backend.replay(mem.surface(), cmds, 1.0, pre=translate(-30.0, 0.0))
+    # The rect moved 30 pixels left; the clear, which has no geometry, did not.
+    assert_equal(mem.pixel(20, 50), Color.RED)
+    assert_equal(mem.pixel(50, 50), Color.BLACK)
+
+
+def test_skipping_the_letterbox_leaves_its_region_untouched() raises -> None:
+    var cmds = List[DrawCommand]()
+    cmds.append(clear_command(Color.RED))
+    cmds.append(letterbox_command(Color.BLUE, 10.0, 20.0, 90.0, 80.0))
+    var mem = MemorySurface(_W, _H)
+    var backend = Backend()
+    backend.replay(mem.surface(), cmds, 1.0, skip=CMD_LETTERBOX)
+    assert_equal(mem.pixel(50, 50), Color.RED)
+    assert_equal(mem.pixel(50, 10), Color.RED)
+    assert_equal(mem.pixel(5, 50), Color.RED)
+
+
+def test_skipping_the_clear_leaves_the_background_transparent() raises -> None:
+    var cmds = List[DrawCommand]()
+    cmds.append(clear_command(Color.BLACK))
+    cmds.append(rect_command(_base(), _solid(Color.RED), 0.0, 0.0, 20.0, 20.0))
+    var mem = MemorySurface(_W, _H)
+    var backend = Backend()
+    backend.replay(mem.surface(), cmds, 1.0, skip=CMD_CLEAR)
+    assert_equal(mem.pixel(50, 50), Color.RED)
+    assert_equal(mem.pixel(10, 10), Color(0, 0, 0, 0))
 
 
 def test_letterbox_paints_outside_the_device_content_rect() raises -> None:

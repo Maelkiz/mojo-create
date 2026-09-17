@@ -1,7 +1,7 @@
 from std.collections import Dict, Optional
 from std.math import max, min, abs, sqrt, ceil, floor
 
-from create.math.matrix import Matrix, inverse, apply as mat_apply
+from create.math.matrix import Matrix, identity, inverse, apply as mat_apply
 
 from ._command import (
     CMD_CLEAR,
@@ -323,41 +323,74 @@ struct Backend(Movable):
 
     def replay[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], cmds: List[DrawCommand], scale: Float64) raises:
+    ](
+        mut self,
+        s: Surface[o],
+        cmds: List[DrawCommand],
+        scale: Float64,
+        pre: Matrix[3, 3] = identity[3](),
+        skip: Int = -1,
+    ) raises:
         """Draw `cmds` onto `s`, in order.
 
         `scale` is the frame's autoscale factor — the fallback pixel scale for
         commands whose transform is not uniform. It is constant for a frame, so
         it travels here rather than on every command.
+
+        `pre` multiplies every command's transform on the left, and exists
+        because a capture replays a frame whose commands were recorded against
+        a *different* mapping: `Canvas` bakes the window's base matrix into
+        each one, so writing that same frame into a design-sized buffer needs
+        `capture_base @ window_base_inverse` in front of it. Identity on the
+        live path, which is therefore unchanged.
+
+        `skip` drops every command of one kind — `CMD_LETTERBOX` for a capture
+        that is bar-free by contract, `CMD_CLEAR` for one with a transparent
+        background. `-1` drops nothing.
         """
         for ref c in cmds:
-            self._one(s, c, scale)
+            if c.kind != skip:
+                self._one(s, c, scale, pre)
 
     def _one[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64) raises:
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        pre: Matrix[3, 3],
+    ) raises:
+        # The one place the pre-matrix is composed, so no per-kind helper has
+        # to remember to do it.
+        var m = pre @ c.transform
         if c.kind == CMD_CLEAR:
             fill_all(s, c.style.fill)
         elif c.kind == CMD_RECT:
-            self._rect(s, c, scale)
+            self._rect(s, c, scale, m)
         elif c.kind == CMD_CIRCLE:
-            self._circle(s, c, scale)
+            self._circle(s, c, scale, m)
         elif c.kind == CMD_LINE:
-            self._line(s, c, scale)
+            self._line(s, c, scale, m)
         elif c.kind == CMD_TRIANGLE:
-            self._triangle(s, c, scale)
+            self._triangle(s, c, scale, m)
         elif c.kind == CMD_SPRITE:
-            self._sprite(s, c, scale)
+            self._sprite(s, c, scale, m)
         elif c.kind == CMD_TEXT:
-            self._text(s, c, scale)
+            self._text(s, c, scale, m)
         elif c.kind == CMD_LETTERBOX:
             self._letterbox(s, c)
 
     def _rect[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64):
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ):
         var W = s.width
-        var m = c.transform
         var x = c.geom[0]
         var y = c.geom[1]
         var lx0 = x - c.geom[2] / 2.0
@@ -488,10 +521,15 @@ struct Backend(Movable):
 
     def _circle[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64):
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ):
         var W = s.width
         var H = s.height
-        var m = c.transform
         var cx = c.geom[0]
         var cy = c.geom[1]
         var r = c.geom[2]
@@ -614,10 +652,15 @@ struct Backend(Movable):
 
     def _line[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64):
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ):
         if not c.style.stroke_enabled:
             return
-        var m = c.transform
         var p0 = mat_apply(m, c.geom[0], c.geom[1])
         var p1 = mat_apply(m, c.geom[2], c.geom[3])
         line_pixels(
@@ -632,8 +675,13 @@ struct Backend(Movable):
 
     def _triangle[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64):
-        var m = c.transform
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ):
         var p1 = mat_apply(m, c.geom[0], c.geom[1])
         var p2 = mat_apply(m, c.geom[2], c.geom[3])
         var p3 = mat_apply(m, c.geom[4], c.geom[5])
@@ -650,10 +698,15 @@ struct Backend(Movable):
 
     def _sprite[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64) raises:
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ) raises:
         if c.image not in self.images:
             return
-        var m = c.transform
         var p = mat_apply(m, c.geom[0], c.geom[1])
         var sf = pixel_scale(m, scale)
         var dw = max(Int(c.geom[2] * sf + 0.5), 1)
@@ -674,10 +727,15 @@ struct Backend(Movable):
 
     def _text[
         o: Origin[mut=True]
-    ](mut self, s: Surface[o], c: DrawCommand, scale: Float64) raises:
+    ](
+        mut self,
+        s: Surface[o],
+        c: DrawCommand,
+        scale: Float64,
+        m: Matrix[3, 3],
+    ) raises:
         if not c.style.fill_enabled:
             return
-        var m = c.transform
         # Only the anchor is mapped — the layout itself happens in pixel space.
         var p = mat_apply(m, c.geom[0], c.geom[1])
         self.text.draw(s, c.text, p[0], p[1], c.style, pixel_scale(m, scale))
