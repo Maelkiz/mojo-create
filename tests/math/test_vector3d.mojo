@@ -272,14 +272,31 @@ def test_init_tuple_float_int_float() raises -> None:
 
 
 def test_xy_drops_z() raises -> None:
-    var v = Vector3D(1.5, 2.5, 3.5).xy()
-    assert_equal(v.x, 1.5)
-    assert_equal(v.y, 2.5)
+    var t = Vector3D(1.5, 2.5, 3.5).xy()
+    assert_equal(t[0], 1.5)
+    assert_equal(t[1], 2.5)
+
+
+def test_xyz_returns_every_component() raises -> None:
+    var t = Vector3D(1.5, 2.5, 3.5).xyz()
+    assert_equal(t[0], 1.5)
+    assert_equal(t[1], 2.5)
+    assert_equal(t[2], 3.5)
 
 
 def test_xy_xyz_round_trip() raises -> None:
+    """The tuple return no longer chains, so the round trip reconstructs
+    through the `@implicit` constructor instead."""
     var v = Vector3D(1.5, 2.5, 3.5)
-    assert_equal(v.xy().xyz(v.z), v)
+    var flat = v.xy()
+    var narrowed: Vector2D = flat
+    assert_equal(Vector3D(narrowed.x, narrowed.y, v.z), v)
+
+
+def test_xyz_binds_back_to_a_vector3d() raises -> None:
+    var v = Vector3D(1.5, 2.5, 3.5)
+    var back: Vector3D = v.xyz()
+    assert_equal(back, v)
 
 
 def main() raises:

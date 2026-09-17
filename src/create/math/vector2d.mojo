@@ -1,15 +1,20 @@
-from .vector3d import Vector3D
 from std.math import sqrt
 
 
 struct Vector2D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     """A 2D point or direction: arithmetic operators, `mag`, `normalize`,
-    `dot`, `dist`, `lerp`, and `xyz` to widen into a `Vector3D`.
+    `dot`, `dist`, `lerp`, and `xy`/`xyz` to hand the components to another
+    type.
 
     The tuple constructors are `@implicit` on purpose: every position argument
     in the library takes a `Vector2D`, so `canvas.rectangle((0, 0), 100, 100)` works
     without naming the type, and a program only spells `Vector2D` when it is
     storing one.
+
+    `xy` and `xyz` return plain tuples rather than another vector type, which
+    is strictly more capable given those same `@implicit` constructors:
+    `v.xyz()` still binds to a `Vector3D` parameter, and it destructures as
+    well. Having to name the accessor is what keeps the conversion visible.
     """
 
     var x: Float64
@@ -110,5 +115,8 @@ struct Vector2D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
             self.x + (other.x - self.x) * t, self.y + (other.y - self.y) * t
         )
 
-    def xyz(self, z: Float64 = 0.0) -> Vector3D:
-        return Vector3D(self.x, self.y, z)
+    def xy(self) -> Tuple[Float64, Float64]:
+        return (self.x, self.y)
+
+    def xyz(self, z: Float64 = 0.0) -> Tuple[Float64, Float64, Float64]:
+        return (self.x, self.y, z)

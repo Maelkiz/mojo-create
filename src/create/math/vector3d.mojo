@@ -1,14 +1,19 @@
-from .vector2d import Vector2D
 from std.math import sqrt
 
 
 struct Vector3D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     """A 3D point or direction: arithmetic operators, `mag`, `normalize`,
-    `dot`, `cross`, `dist`, `lerp`, and `xy` to drop `z` and narrow into a
-    `Vector2D`.
+    `dot`, `cross`, `dist`, `lerp`, and `xy`/`xyz` to hand the components to
+    another type — `xy` dropping `z`.
 
     Drawing is 2D, so nothing in the library takes one — it is here for a
     program doing its own 3D work.
+
+    Both accessors return plain tuples rather than a `Vector2D`, which is
+    strictly more capable given the `@implicit` tuple constructors every
+    vector type here has: `v.xy()` still binds to a `Vector2D` parameter, and
+    it destructures as well. Having to name the accessor is what keeps the
+    conversion visible.
     """
 
     var x: Float64
@@ -140,5 +145,8 @@ struct Vector3D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
             self.z + (other.z - self.z) * t,
         )
 
-    def xy(self) -> Vector2D:
-        return Vector2D(self.x, self.y)
+    def xy(self) -> Tuple[Float64, Float64]:
+        return (self.x, self.y)
+
+    def xyz(self) -> Tuple[Float64, Float64, Float64]:
+        return (self.x, self.y, self.z)

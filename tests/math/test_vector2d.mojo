@@ -200,18 +200,37 @@ def test_init_tuple_float_int() raises -> None:
     assert_equal(v.y, 4.0)
 
 
+def test_xy_returns_the_components() raises -> None:
+    var t = Vector2D(1.5, 2.5).xy()
+    assert_equal(t[0], 1.5)
+    assert_equal(t[1], 2.5)
+
+
 def test_xyz_defaults_z_to_zero() raises -> None:
-    var v = Vector2D(1.5, 2.5).xyz()
-    assert_equal(v.x, 1.5)
-    assert_equal(v.y, 2.5)
-    assert_equal(v.z, 0.0)
+    var t = Vector2D(1.5, 2.5).xyz()
+    assert_equal(t[0], 1.5)
+    assert_equal(t[1], 2.5)
+    assert_equal(t[2], 0.0)
 
 
 def test_xyz_takes_z() raises -> None:
-    var v = Vector2D(1.5, 2.5).xyz(3.5)
-    assert_equal(v.x, 1.5)
-    assert_equal(v.y, 2.5)
-    assert_equal(v.z, 3.5)
+    var t = Vector2D(1.5, 2.5).xyz(3.5)
+    assert_equal(t[0], 1.5)
+    assert_equal(t[1], 2.5)
+    assert_equal(t[2], 3.5)
+
+
+def test_xy_binds_back_to_a_vector2d() raises -> None:
+    """The returned tuple lands in an `@implicit` constructor, which is what
+    makes a tuple return more capable than a typed one."""
+    var v = Vector2D(1.5, 2.5)
+    var back: Vector2D = v.xy()
+    assert_equal(back, v)
+
+
+def test_xyz_binds_to_a_vector3d() raises -> None:
+    var w: Vector3D = Vector2D(1.5, 2.5).xyz(3.5)
+    assert_equal(w, Vector3D(1.5, 2.5, 3.5))
 
 
 def main() raises:
