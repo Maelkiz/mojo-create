@@ -4,6 +4,20 @@ from .color import Color
 from ._png import write_png
 
 
+def _force_opaque(mut pixels: List[UInt8]):
+    """Set every alpha byte in an RGBA buffer to 255, in place.
+
+    The one owner of that rule. A framebuffer's alpha byte is frequently 0 —
+    it is the unused channel of an opaque window — so a capture written out
+    verbatim opens fully transparent, which is the obvious trap. Both capture
+    paths force it: `MemorySurface.save` on a copy, the GL readback on the
+    buffer it already owns.
+    """
+    var px = pixels.unsafe_ptr()
+    for i in range(len(pixels) // 4):
+        px[unsafe_offset=i * 4 + 3] = 255
+
+
 struct Surface[origin: Origin[mut=True]](Copyable, ImplicitlyCopyable, Movable):
     """A borrowed RGBA framebuffer: a pixel pointer plus its dimensions.
 
@@ -53,12 +67,10 @@ struct MemorySurface(Movable):
     def save(self, path: String, opaque: Bool = True) raises:
         """Write this buffer to `path` as a PNG.
 
-        `opaque` forces every alpha byte to 255 on a copy first, which is the
-        right default for anything that came off a framebuffer: a window's
-        buffer frequently carries alpha 0 in the unused byte, and an image that
-        opens fully transparent is the obvious trap. Pass `opaque=False` only
-        when the alpha channel is meant — a capture that deliberately left its
-        background clear.
+        `opaque` runs `_force_opaque` over a copy first, which is the right
+        default for anything that came off a framebuffer. Pass `opaque=False`
+        only when the alpha channel is meant — a capture that deliberately
+        left its background clear.
         """
         if not opaque:
             write_png(self.data, self.width, self.height, path)
@@ -68,9 +80,7 @@ struct MemorySurface(Movable):
         unsafe_memcpy(
             dest=out.unsafe_ptr(), src=self.data.unsafe_ptr(), count=n * 4
         )
-        var px = out.unsafe_ptr()
-        for i in range(n):
-            px[unsafe_offset=i * 4 + 3] = 255
+        _force_opaque(out)
         write_png(out, self.width, self.height, path)
 
     def pixel(self, x: Int, y: Int) -> Color:

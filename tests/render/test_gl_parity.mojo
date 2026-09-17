@@ -52,7 +52,6 @@ from create.render._gl import (
     GL_FRAMEBUFFER,
     GL_FRAMEBUFFER_COMPLETE,
     GL_NEAREST,
-    GL_PACK_ALIGNMENT,
     GL_RGBA,
     GL_RGBA8,
     GL_TEXTURE_2D,
@@ -61,7 +60,6 @@ from create.render._gl import (
     GL_TEXTURE_WRAP_S,
     GL_TEXTURE_WRAP_T,
     GL_UNSIGNED_BYTE,
-    _Bytes,
     _UInts,
 )
 from create.render.canvas import PersistentCanvasState
@@ -417,8 +415,8 @@ def _gpu_frame(mut win: GLWindow, shape: Int) raises -> List[UInt8]:
     has to be exactly `_PIXEL_W` x `_PIXEL_H` for the comparison to mean
     anything, and a window manager is free to hand back a different drawable.
 
-    Returns rows top-down, matching `MemorySurface`; `glReadPixels` hands them
-    back bottom-up.
+    Returns rows top-down, matching `MemorySurface` — `GLRenderer.read_frame`
+    does the flip.
     """
     var gl = GL()
     var names = List[UInt32](length=1, fill=0)
@@ -465,25 +463,9 @@ def _gpu_frame(mut win: GLWindow, shape: Int) raises -> List[UInt8]:
     state = step(program, ctx, input, state^)
     state.backend.present_gpu(_PIXEL_W, _PIXEL_H, ctx.view.scale)
 
-    var flipped = List[UInt8](length=_PIXEL_W * _PIXEL_H * 4, fill=0)
-    gl.pixel_storei(GL_PACK_ALIGNMENT, 1)
-    gl.read_pixels(
-        0,
-        0,
-        Int32(_PIXEL_W),
-        Int32(_PIXEL_H),
-        GL_RGBA,
-        GL_UNSIGNED_BYTE,
-        _Bytes(unsafe_from_address=Int(flipped.unsafe_ptr())),
-    )
-    gl.check("reading the offscreen frame back")
-
-    var out = List[UInt8](length=_PIXEL_W * _PIXEL_H * 4, fill=0)
-    for y in range(_PIXEL_H):
-        var src = (_PIXEL_H - 1 - y) * _PIXEL_W * 4
-        var dst = y * _PIXEL_W * 4
-        for i in range(_PIXEL_W * 4):
-            out[dst + i] = flipped[src + i]
+    # The same readback `save_screenshot` uses, so the parity test and the
+    # library cannot drift in how a GL frame is read or which way up it is.
+    var out = state.backend.gl.value().read_frame(_PIXEL_W, _PIXEL_H)
 
     gl.bind_framebuffer(GL_FRAMEBUFFER, 0)
     gl.delete_framebuffers(
@@ -493,7 +475,6 @@ def _gpu_frame(mut win: GLWindow, shape: Int) raises -> List[UInt8]:
     # must happen while the context is still current.
     _ = state^
     _ = names^
-    _ = flipped^
     return out^
 
 

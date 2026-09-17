@@ -28,7 +28,8 @@ from ._gl_backend import GLRenderer
 from ._image import _Image
 from ._style import Style
 from ._transform import pixel_scale, stroke_width_px, uniform
-from .surface import MemorySurface, Surface
+from ._png import write_png
+from .surface import MemorySurface, Surface, _force_opaque
 from ._text import TextRenderer
 from .render_backend import RenderBackend
 
@@ -327,6 +328,21 @@ struct Backend(Movable):
         )
         mem.save(path)
 
+    def _flush_screenshot_gpu(mut self, width: Int, height: Int) raises:
+        """The GPU counterpart: read the real framebuffer back off the driver.
+
+        There is no host buffer to copy from here, so this is the one capture
+        that costs a pipeline stall — see `GLRenderer.read_frame`. It runs
+        after `draw` and before the run loop's buffer swap, which is the only
+        window in which the finished frame is still the one being read.
+        """
+        if not self.pending_screenshot:
+            return
+        var path = self.pending_screenshot.take()
+        var frame = self.gl.value().read_frame(width, height)
+        _force_opaque(frame)
+        write_png(frame, width, height, path)
+
     def _flush_image(mut self, cmds: List[DrawCommand]) raises:
         """Service a pending `save_image` by replaying `cmds` a second time.
 
@@ -392,6 +408,7 @@ struct Backend(Movable):
         var cmds = self.commands^
         self.commands = List[DrawCommand]()
         self.gl.value().draw(cmds, self.images, self.text, width, height, scale)
+        self._flush_screenshot_gpu(width, height)
         self._flush_image(cmds)
         cmds.clear()
         self.commands = cmds^

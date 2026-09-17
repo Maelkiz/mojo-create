@@ -26,6 +26,7 @@ translucent one is a full-drawable quad in the batch, which blends, and an
 """
 
 from std.collections import Dict, Optional
+from std.memory import unsafe_memcpy
 
 from create.math.matrix import apply as mat_apply
 
@@ -55,6 +56,7 @@ from ._gl import (
     GL_LINK_STATUS,
     GL_MULTISAMPLE,
     GL_ONE_MINUS_SRC_ALPHA,
+    GL_PACK_ALIGNMENT,
     GL_R8,
     GL_RGBA,
     GL_RGBA8,
@@ -490,6 +492,43 @@ struct GLRenderer(Movable):
                 # bound, so no rebind here — `MODE_SOLID` never samples.
                 emit_letterbox(self.vertices, c, width, height)
         self._flush()
+
+    def read_frame(mut self, width: Int, height: Int) raises -> List[UInt8]:
+        """Read the current drawable back as `width` x `height` RGBA bytes.
+
+        Rows come back top-down, matching every `Surface` in this library;
+        `glReadPixels` hands them over bottom-up, so they are flipped here.
+
+        A readback stalls the pipeline: the driver has to finish everything
+        queued before it can answer. That is the whole reason this is not on
+        the per-frame path — once, on a keypress, it costs one frame's
+        latency, which is a different regime from reading every frame back.
+        """
+        var flipped = List[UInt8](length=width * height * 4, fill=0)
+        self.gl.pixel_storei(GL_PACK_ALIGNMENT, 1)
+        self.gl.read_pixels(
+            0,
+            0,
+            Int32(width),
+            Int32(height),
+            GL_RGBA,
+            GL_UNSIGNED_BYTE,
+            _Bytes(unsafe_from_address=Int(flipped.unsafe_ptr())),
+        )
+        self.gl.check("reading the frame back")
+
+        var out = List[UInt8](length=width * height * 4, fill=0)
+        var row = width * 4
+        for y in range(height):
+            var src = (height - 1 - y) * row
+            var dst = y * row
+            unsafe_memcpy(
+                dest=out.unsafe_ptr().unsafe_offset(dst),
+                src=flipped.unsafe_ptr().unsafe_offset(src),
+                count=row,
+            )
+        _ = flipped^
+        return out^
 
     def _text(
         mut self, c: DrawCommand, mut text: TextRenderer, scale: Float64
