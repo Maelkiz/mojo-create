@@ -26,7 +26,7 @@ struct App(Program):
     @staticmethod
     def create(mut ctx: Context) raises -> App:
         ctx.autoscale = AutoScale.FIT
-        return App(MENU, Menu(False), Draw(False, False, False, Vector2D(0, 0)))
+        return App(MENU, Menu(False), Draw(False, False, False, Point2D(0, 0)))
 
     def update(mut self, mut ctx: Context, input: Input) raises:
         if self.scene == MENU:

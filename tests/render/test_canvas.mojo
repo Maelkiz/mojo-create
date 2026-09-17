@@ -18,6 +18,7 @@ from create.sprite.sprite import Sprite
 from std.memory import ArcPointer
 from create.math.geometry import Circle, Line, Rectangle, Triangle
 from create.math.matrix import rotate, scale, translate
+from create.math.point2d import Point2D
 from create.math.vector2d import Vector2D
 
 
@@ -593,20 +594,24 @@ struct GeometryOverloads(Program):
         canvas.triangle(Triangle(90.0, 50.0, 80.0, 30.0, 100.0, 30.0))
 
         canvas.fill(Color.MAGENTA)
-        canvas.rectangle(Vector2D(-90.0, -40.0), 20.0, 20.0)
+        canvas.rectangle(Point2D(-90.0, -40.0), 20.0, 20.0)
 
         canvas.fill(Color.YELLOW)
-        canvas.circle(Vector2D(-30.0, -40.0), 10.0)
+        canvas.circle(Point2D(-30.0, -40.0), 10.0)
 
         canvas.stroke(Color.ORANGE)
         canvas.stroke_width(3)
-        canvas.line(Vector2D(20.0, -40.0), Vector2D(40.0, -40.0))
+        canvas.line(Point2D(20.0, -40.0), Point2D(40.0, -40.0))
 
         canvas.no_stroke()
         canvas.fill(Color.LIGHT_GRAY)
         canvas.triangle(
-            Vector2D(90.0, -30.0), Vector2D(80.0, -50.0), Vector2D(100.0, -50.0)
+            Point2D(90.0, -30.0), Point2D(80.0, -50.0), Point2D(100.0, -50.0)
         )
+
+        # The one overload naming both types: a position and an extent.
+        canvas.fill(Color.WHITE)
+        canvas.rectangle(Point2D(-90.0, 0.0), Vector2D(20.0, 20.0))
 
 
 def test_geometry_overloads_dispatch_correctly() raises -> None:
@@ -618,10 +623,11 @@ def test_geometry_overloads_dispatch_correctly() raises -> None:
     assert_equal(m.pixel(90, 80), Color.GREEN)  # circle(Circle)
     assert_equal(m.pixel(150, 80), Color.BLUE)  # line(Line)
     assert_equal(m.pixel(210, 85), Color.CYAN)  # triangle(Triangle)
-    assert_equal(m.pixel(30, 160), Color.MAGENTA)  # rect(Vector2D, w, h)
-    assert_equal(m.pixel(90, 160), Color.YELLOW)  # circle(Vector2D, r)
-    assert_equal(m.pixel(150, 160), Color.ORANGE)  # line(Vector2D, Vector2D)
-    assert_equal(m.pixel(210, 165), Color.LIGHT_GRAY)  # triangle(Vector2D x3)
+    assert_equal(m.pixel(30, 160), Color.MAGENTA)  # rect(Point2D, w, h)
+    assert_equal(m.pixel(90, 160), Color.YELLOW)  # circle(Point2D, r)
+    assert_equal(m.pixel(150, 160), Color.ORANGE)  # line(Point2D, Point2D)
+    assert_equal(m.pixel(210, 165), Color.LIGHT_GRAY)  # triangle(Point2D x3)
+    assert_equal(m.pixel(30, 120), Color.WHITE)  # rect(Point2D, Vector2D)
     assert_equal(m.pixel(5, 5), Color.BLACK)
 
 
@@ -908,7 +914,7 @@ struct AnimatorSized(Program):
 
     def render(self, mut canvas: Canvas) raises:
         canvas.background(Color.BLACK)
-        canvas.sprite(self.animator, Vector2D(0.0, 0.0), 40, 40)
+        canvas.sprite(self.animator, Point2D(0.0, 0.0), 40, 40)
 
 
 def test_animator_sized_overload_scales() raises -> None:
@@ -949,11 +955,11 @@ struct AnimatorEveryOverload(Program):
         # own anchor pixel.
         canvas.sprite(self.animator, -40.0, 40.0)
         canvas.sprite(self.animator, -20, 40)
-        canvas.sprite(self.animator, Vector2D(0.0, 40.0))
+        canvas.sprite(self.animator, Point2D(0.0, 40.0))
         # Bottom row: the sized overloads, scaled up to 4x4.
         canvas.sprite(self.animator, -40.0, -40.0, 4, 4)
         canvas.sprite(self.animator, -20, -40, 4, 4)
-        canvas.sprite(self.animator, Vector2D(0.0, -40.0), 4, 4)
+        canvas.sprite(self.animator, Point2D(0.0, -40.0), 4, 4)
 
 
 def test_every_animator_overload_draws_at_its_anchor() raises -> None:
@@ -961,10 +967,10 @@ def test_every_animator_overload_draws_at_its_anchor() raises -> None:
     var m = run_headless[AnimatorEveryOverload](100, 100)
     assert_equal(m.pixel(10, 10), Color.RED)  # (a, Float64, Float64)
     assert_equal(m.pixel(30, 10), Color.RED)  # (a, Int, Int)
-    assert_equal(m.pixel(50, 10), Color.RED)  # (a, Vector2D)
+    assert_equal(m.pixel(50, 10), Color.RED)  # (a, Point2D)
     assert_equal(m.pixel(10, 90), Color.RED)  # (a, Float64, Float64, w, h)
     assert_equal(m.pixel(30, 90), Color.RED)  # (a, Int, Int, w, h)
-    assert_equal(m.pixel(50, 90), Color.RED)  # (a, Vector2D, w, h)
+    assert_equal(m.pixel(50, 90), Color.RED)  # (a, Point2D, w, h)
     # Between the two rows nothing was drawn.
     assert_equal(m.pixel(50, 50), Color.BLACK)
 

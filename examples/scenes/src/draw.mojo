@@ -16,7 +16,7 @@ struct Draw:
     var back_pressed: Bool
     var _entering: Bool
     var drawing: Bool
-    var pen: Vector2D
+    var pen: Point2D
 
     def enter(mut self):
         self._entering = True
@@ -25,7 +25,9 @@ struct Draw:
         self._entering = False
         self.back_pressed = input.mouse_just_pressed(MouseButton.RIGHT)
         self.drawing = input.is_mouse_down(MouseButton.LEFT)
-        self.pen = input.mouse
+        # input.mouse is still a Vector2D until Input switches over; xy() is
+        # the visible conversion.
+        self.pen = input.mouse.xy()
 
     def render(self, mut canvas: Canvas) raises:
         if self._entering:
