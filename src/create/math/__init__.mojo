@@ -12,8 +12,8 @@ from .util import (
 )
 from .easing import Easing, ease
 from .tween import Tween
-from .vector2 import Vector2
-from .vector3 import Vector3
+from .vector2d import Vector2D
+from .vector3d import Vector3D
 from .matrix import (
     Matrix,
     identity,

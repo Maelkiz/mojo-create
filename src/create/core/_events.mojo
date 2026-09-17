@@ -22,7 +22,7 @@ from window.event import (
     Resized,
 )
 
-from create.math.vector2 import Vector2
+from create.math.vector2d import Vector2D
 
 from .context import Context
 from .input import Input
@@ -73,7 +73,7 @@ def apply_events(
             input.mouse_pressed = True
             input.mouse_button = e.button
             input._set_mouse(p[0], p[1])
-            input.mouse_press_pos = Vector2(p[0], p[1])
+            input.mouse_press_pos = Vector2D(p[0], p[1])
             input._held_buttons |= 1 << e.button
             input._pressed_buttons |= 1 << e.button
         elif event.isa[MouseButtonUp]():
@@ -87,7 +87,7 @@ def apply_events(
             input._released_buttons |= 1 << e.button
         elif event.isa[MouseWheel]():
             var e = event[MouseWheel]
-            input.wheel = Vector2(Float64(e.x), Float64(e.y))
+            input.wheel = Vector2D(Float64(e.x), Float64(e.y))
         elif event.isa[Resized]():
             pass  # ctx.width/height are refreshed every frame regardless.
     return quit

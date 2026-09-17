@@ -29,7 +29,7 @@ struct Tween(Copyable, ImplicitlyCopyable, Movable):
     and every entity simply owns its own.
 
     **Tweening something that is not a number.** `Tween(duration)` runs 0 to 1,
-    which is exactly what `Vector2.lerp` and `Color.lerp` take, so one scalar
+    which is exactly what `Vector2D.lerp` and `Color.lerp` take, so one scalar
     tween drives a position or a colour without a second type:
 
     ```mojo
@@ -100,7 +100,7 @@ struct Tween(Copyable, ImplicitlyCopyable, Movable):
         self._reversed = False
 
     def __init__(out self, duration: Float64, curve: Easing = Easing.LINEAR):
-        """A tween from 0 to 1 -- the fraction `Vector2.lerp` and `Color.lerp`
+        """A tween from 0 to 1 -- the fraction `Vector2D.lerp` and `Color.lerp`
         take, and the form to reach for when animating anything that is not a
         plain number."""
         self = Self(0.0, 1.0, duration, curve)

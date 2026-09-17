@@ -4,7 +4,7 @@ from .autoscale import AutoScale
 from .font import Font
 from .viewport import Viewport
 from create.math.geometry import Rectangle, Circle, Line, Triangle
-from create.math.vector2 import Vector2
+from create.math.vector2d import Vector2D
 from create.math.matrix import (
     Matrix,
     identity,
@@ -362,31 +362,31 @@ struct Canvas:
     def rectangle(mut self, r: Rectangle):
         self.rectangle(r.x, r.y, r.w, r.h)
 
-    def rectangle(mut self, pos: Vector2, w: Float64, h: Float64):
+    def rectangle(mut self, pos: Vector2D, w: Float64, h: Float64):
         self.rectangle(pos.x, pos.y, w, h)
 
-    def rectangle(mut self, pos: Vector2, size: Vector2):
+    def rectangle(mut self, pos: Vector2D, size: Vector2D):
         self.rectangle(pos.x, pos.y, size.x, size.y)
 
     def circle(mut self, c: Circle):
         self.circle(c.x, c.y, c.r)
 
-    def circle(mut self, pos: Vector2, r: Float64):
+    def circle(mut self, pos: Vector2D, r: Float64):
         self.circle(pos.x, pos.y, r)
 
-    def circle(mut self, pos: Vector2, r: Int):
+    def circle(mut self, pos: Vector2D, r: Int):
         self.circle(pos.x, pos.y, Float64(r))
 
     def line(mut self, l: Line):
         self.line(l.x0, l.y0, l.x1, l.y1)
 
-    def line(mut self, start: Vector2, end: Vector2):
+    def line(mut self, start: Vector2D, end: Vector2D):
         self.line(start.x, start.y, end.x, end.y)
 
     def triangle(mut self, t: Triangle):
         self.triangle(t.x1, t.y1, t.x2, t.y2, t.x3, t.y3)
 
-    def triangle(mut self, a: Vector2, b: Vector2, c: Vector2):
+    def triangle(mut self, a: Vector2D, b: Vector2D, c: Vector2D):
         self.triangle(a.x, a.y, b.x, b.y, c.x, c.y)
 
     def sprite(mut self, s: Sprite, cx: Int, cy: Int):
@@ -402,7 +402,7 @@ struct Canvas:
         """
         self.sprite(s, cx, cy, s.width, s.height)
 
-    def sprite(mut self, s: Sprite, pos: Vector2):
+    def sprite(mut self, s: Sprite, pos: Vector2D):
         self.sprite(s, pos.x, pos.y)
 
     def sprite(mut self, s: Sprite, cx: Float64, cy: Float64, w: Int, h: Int):
@@ -431,7 +431,7 @@ struct Canvas:
     def sprite(mut self, s: Sprite, cx: Int, cy: Int, w: Int, h: Int):
         self.sprite(s, Float64(cx), Float64(cy), w, h)
 
-    def sprite(mut self, s: Sprite, pos: Vector2, w: Int, h: Int):
+    def sprite(mut self, s: Sprite, pos: Vector2D, w: Int, h: Int):
         self.sprite(s, pos.x, pos.y, w, h)
 
     def sprite(mut self, a: SpriteAnimator, cx: Float64, cy: Float64):
@@ -449,7 +449,7 @@ struct Canvas:
     def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int):
         self.sprite(a, Float64(cx), Float64(cy))
 
-    def sprite(mut self, a: SpriteAnimator, pos: Vector2):
+    def sprite(mut self, a: SpriteAnimator, pos: Vector2D):
         self.sprite(a, pos.x, pos.y)
 
     def sprite(
@@ -460,7 +460,7 @@ struct Canvas:
     def sprite(mut self, a: SpriteAnimator, cx: Int, cy: Int, w: Int, h: Int):
         self.sprite(a, Float64(cx), Float64(cy), w, h)
 
-    def sprite(mut self, a: SpriteAnimator, pos: Vector2, w: Int, h: Int):
+    def sprite(mut self, a: SpriteAnimator, pos: Vector2D, w: Int, h: Int):
         self.sprite(a, pos.x, pos.y, w, h)
 
     def font_size(mut self, size: Int):
@@ -495,7 +495,7 @@ struct Canvas:
     def text(mut self, s: String, x: Int, y: Int) raises:
         self.text(s, Float64(x), Float64(y))
 
-    def text(mut self, s: String, pos: Vector2) raises:
+    def text(mut self, s: String, pos: Vector2D) raises:
         self.text(s, pos.x, pos.y)
 
     def font(mut self, var f: Font):

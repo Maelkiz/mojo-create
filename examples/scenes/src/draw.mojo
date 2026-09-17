@@ -16,7 +16,7 @@ struct Draw:
     var back_pressed: Bool
     var _entering: Bool
     var drawing: Bool
-    var pen: Vector2
+    var pen: Vector2D
 
     def enter(mut self):
         self._entering = True

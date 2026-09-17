@@ -1,6 +1,6 @@
 from std.math import floor
 
-from create.math.vector2 import Vector2
+from create.math.vector2d import Vector2D
 from .key import Key, _KeyBits
 
 
@@ -27,17 +27,17 @@ struct Input(Movable):
 
     var mouse_x: Int
     var mouse_y: Int
-    var mouse: Vector2
+    var mouse: Vector2D
     var mouse_pressed: Bool
     var mouse_button: Int
     # This frame's scroll delta — zeroed at the start of every frame, same
     # lifecycle as the just-pressed/just-released key bits.
-    var wheel: Vector2
+    var wheel: Vector2D
     # World position at the most recent press this frame. Captured at the
     # MouseButtonDown event itself rather than read off `mouse`, because a
     # MouseMoved later in the same frame would otherwise overwrite it before
     # a program ever sees where the click actually started.
-    var mouse_press_pos: Vector2
+    var mouse_press_pos: Vector2D
     var _held_keys: _KeyBits
     var _just_pressed: _KeyBits
     var _just_released: _KeyBits
@@ -50,11 +50,11 @@ struct Input(Movable):
     def __init__(out self):
         self.mouse_x = 0
         self.mouse_y = 0
-        self.mouse = Vector2(0, 0)
+        self.mouse = Vector2D(0, 0)
         self.mouse_pressed = False
         self.mouse_button = 0
-        self.wheel = Vector2(0, 0)
-        self.mouse_press_pos = Vector2(0, 0)
+        self.wheel = Vector2D(0, 0)
+        self.mouse_press_pos = Vector2D(0, 0)
         self._held_keys = _KeyBits()
         self._just_pressed = _KeyBits()
         self._just_released = _KeyBits()
@@ -70,7 +70,7 @@ struct Input(Movable):
         happened in."""
         self._just_pressed.clear_all()
         self._just_released.clear_all()
-        self.wheel = Vector2(0, 0)
+        self.wheel = Vector2D(0, 0)
         self._pressed_buttons = 0
         self._released_buttons = 0
 
@@ -83,7 +83,7 @@ struct Input(Movable):
         negative and the Int forms floor rather than truncate — truncation
         would round the left and bottom halves of the screen the wrong way.
         """
-        self.mouse = Vector2(x, y)
+        self.mouse = Vector2D(x, y)
         self.mouse_x = Int(floor(x))
         self.mouse_y = Int(floor(y))
 

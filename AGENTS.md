@@ -30,7 +30,7 @@ The goal is **Processing's ergonomics + clean separation of concerns + Mojo's pe
 | root | `src/create/__init__.mojo` | The preamble — `from create import *`, the union of every subpackage below |
 | `core` | `src/create/core/` | Program trait, run loops, Context, Time, Input, Key, script_dir |
 | `render` | `src/create/render/` | Canvas, DrawCommand, Backend, Surface, Viewport, AutoScale, Style, Color, Font, text layout, raster primitives, the GL renderer |
-| `math` | `src/create/math/` | Vector2, Vector3, Matrix, geometry shapes, random, util, easing curves and tweens |
+| `math` | `src/create/math/` | Vector2D, Vector3D, Matrix, geometry shapes, random, util, easing curves and tweens |
 | `sprite` | `src/create/sprite/` | Sprite — BMP/PNG/JPEG loading and raw pixel buffer; SpriteAnimation, SpriteAnimator — frame-based animation |
 | `audio` | `src/create/audio/` | Sound, Audio — WAV/OGG/FLAC/MP3 loading and playback |
 | `_bytes` | `src/create/_bytes.mojo` | Internal leaf — little-endian integer decoding. Imports nothing, re-exported by nothing |
@@ -91,7 +91,7 @@ pixi run create examples/sketch.mojo
 pixi run test
 
 # Run a single test file
-mojo run -I src tests/math/test_vector2.mojo
+mojo run -I src tests/math/test_vector2d.mojo
 
 # Type-check the whole library without running anything (output goes to build/, gitignored)
 pixi run precompile
@@ -177,7 +177,7 @@ Each subpackage exports the names it owns and nothing from a layer below:
 
 - `from create.core import *` — `Program`, `run`, `run_headless`, `Context`, `Time`, `Input`, `MouseButton`, `Key`, `script_dir`.
 - `from create.render import *` — `Canvas` and its guards, `Surface`/`MemorySurface`, `Viewport`, `Color`, `Font`/`FontWeight`, the alignments, `AutoScale`, `RenderBackend`.
-- `from create.math import *` — `Vector2`/`Vector3`, `Matrix` and its constructors, the geometry shapes and `overlaps`, `Random`, `Easing`/`ease`/`Tween`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
+- `from create.math import *` — `Vector2D`/`Vector3D`, `Matrix` and its constructors, the geometry shapes and `overlaps`, `Random`, `Easing`/`ease`/`Tween`, the util functions, and a re-export of `std.math` (`sin`, `cos`, `sqrt`, `clamp`, `pi`, `tau`, …).
 - `from create.sprite import *` — `Sprite`, `SpriteAnimation`, `SpriteAnimator`.
 - `from create.audio import *` — `Sound`, `Audio`.
 
@@ -390,7 +390,7 @@ Consequences worth internalising:
 - Glyphs and sprites are **not** flipped — only their anchor point is mapped.
 - `input.mouse` is delivered in world coordinates, so it can be negative.
 
-**All shapes are center-positioned** (unlike Processing). `canvas.rectangle((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner. Position arguments are `Vector2`, whose tuple constructors are `@implicit`, so a bare tuple works everywhere one is taken.
+**All shapes are center-positioned** (unlike Processing). `canvas.rectangle((x, y), w, h)` draws a rectangle centered at `(x, y)`, same as `canvas.circle()`, `canvas.sprite()`, etc. `Rectangle.x/y` is the center, not the top-left corner. Position arguments are `Vector2D`, whose tuple constructors are `@implicit`, so a bare tuple works everywhere one is taken.
 
 **Style defaults are not blank:** every frame starts from `Style()`, which has **stroke `BLACK` and
 enabled** — a `rectangle` drawn without `no_stroke()` gets an outline nobody asked for. The rest of the
@@ -402,7 +402,7 @@ The design size is a property of the program, not of the display: it is whatever
 
 `Input._set_mouse(x, y)` is the single writer of `mouse`, `mouse_x` and `mouse_y`, and every event
 arm in `run.mojo` that carries a pointer position goes through it — writing the fields directly
-desynchronises the `Vector2` from the `Int` pair. A new event that reports a position calls
+desynchronises the `Vector2D` from the `Int` pair. A new event that reports a position calls
 `_set_mouse` and adds only what is genuinely its own — `mouse_press_pos` on a press, say.
 
 **Parameter vs. field:** a resource the run loop *feeds* the program every frame (`Context`, `Input`, `Canvas`) stays a parameter; a resource the program *drives* on its own schedule (`Sprite`, `Font`, `Sound`, `Audio`, `SpriteAnimator`) is a field the program owns and constructs in `create`. This is why adding audio required zero changes to `Program`, `Context`, or `run.mojo` — `Audio` is just another field, like `Sprite`.

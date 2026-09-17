@@ -1,6 +1,6 @@
 from std.testing import TestSuite, assert_equal, assert_true
 from create.core.input import Input
-from create.math.vector2 import Vector2
+from create.math.vector2d import Vector2D
 
 
 def test_initial_mouse_position() raises -> None:
@@ -317,7 +317,7 @@ def test_new_frame_clears_just_pressed_and_released() raises -> None:
 
 def test_new_frame_clears_wheel_and_edge_buttons() raises -> None:
     var input = Input()
-    input.wheel = Vector2(3.0, -2.0)
+    input.wheel = Vector2D(3.0, -2.0)
     input._pressed_buttons |= 1 << 1
     input._released_buttons |= 1 << 2
     input._new_frame()

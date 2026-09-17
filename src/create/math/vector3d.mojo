@@ -1,11 +1,11 @@
-from .vector2 import Vector2
+from .vector2d import Vector2D
 from std.math import sqrt
 
 
-struct Vector3(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
+struct Vector3D(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     """A 3D point or direction: arithmetic operators, `mag`, `normalize`,
     `dot`, `cross`, `dist`, `lerp`, and `xy` to drop `z` and narrow into a
-    `Vector2`.
+    `Vector2D`.
 
     Drawing is 2D, so nothing in the library takes one — it is here for a
     program doing its own 3D work.
@@ -21,69 +21,69 @@ struct Vector3(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
         self.z = z
 
     def __init__(out self, x: Int, y: Int, z: Int):
-        self = Vector3(Float64(x), Float64(y), Float64(z))
+        self = Vector3D(Float64(x), Float64(y), Float64(z))
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Float64, Float64]):
-        self = Vector3(t[0], t[1], t[2])
+        self = Vector3D(t[0], t[1], t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Int, Int, Int]):
-        self = Vector3(Float64(t[0]), Float64(t[1]), Float64(t[2]))
+        self = Vector3D(Float64(t[0]), Float64(t[1]), Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Int, Int]):
-        self = Vector3(t[0], Float64(t[1]), Float64(t[2]))
+        self = Vector3D(t[0], Float64(t[1]), Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Float64, Int]):
-        self = Vector3(Float64(t[0]), t[1], Float64(t[2]))
+        self = Vector3D(Float64(t[0]), t[1], Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Int, Float64]):
-        self = Vector3(Float64(t[0]), Float64(t[1]), t[2])
+        self = Vector3D(Float64(t[0]), Float64(t[1]), t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Float64, Int]):
-        self = Vector3(t[0], t[1], Float64(t[2]))
+        self = Vector3D(t[0], t[1], Float64(t[2]))
 
     @implicit
     def __init__(out self, t: Tuple[Int, Float64, Float64]):
-        self = Vector3(Float64(t[0]), t[1], t[2])
+        self = Vector3D(Float64(t[0]), t[1], t[2])
 
     @implicit
     def __init__(out self, t: Tuple[Float64, Int, Float64]):
-        self = Vector3(t[0], Float64(t[1]), t[2])
+        self = Vector3D(t[0], Float64(t[1]), t[2])
 
     @staticmethod
-    def zero() -> Vector3:
-        return Vector3(0.0, 0.0, 0.0)
+    def zero() -> Vector3D:
+        return Vector3D(0.0, 0.0, 0.0)
 
     @staticmethod
-    def one() -> Vector3:
-        return Vector3(1.0, 1.0, 1.0)
+    def one() -> Vector3D:
+        return Vector3D(1.0, 1.0, 1.0)
 
-    def __add__(self, other: Vector3) -> Vector3:
-        return Vector3(self.x + other.x, self.y + other.y, self.z + other.z)
+    def __add__(self, other: Vector3D) -> Vector3D:
+        return Vector3D(self.x + other.x, self.y + other.y, self.z + other.z)
 
-    def __sub__(self, other: Vector3) -> Vector3:
-        return Vector3(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other: Vector3D) -> Vector3D:
+        return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
 
-    def __mul__(self, s: Float64) -> Vector3:
-        return Vector3(self.x * s, self.y * s, self.z * s)
+    def __mul__(self, s: Float64) -> Vector3D:
+        return Vector3D(self.x * s, self.y * s, self.z * s)
 
-    def __truediv__(self, s: Float64) -> Vector3:
-        return Vector3(self.x / s, self.y / s, self.z / s)
+    def __truediv__(self, s: Float64) -> Vector3D:
+        return Vector3D(self.x / s, self.y / s, self.z / s)
 
-    def __neg__(self) -> Vector3:
-        return Vector3(-self.x, -self.y, -self.z)
+    def __neg__(self) -> Vector3D:
+        return Vector3D(-self.x, -self.y, -self.z)
 
-    def __iadd__(mut self, other: Vector3):
+    def __iadd__(mut self, other: Vector3D):
         self.x += other.x
         self.y += other.y
         self.z += other.z
 
-    def __isub__(mut self, other: Vector3):
+    def __isub__(mut self, other: Vector3D):
         self.x -= other.x
         self.y -= other.y
         self.z -= other.z
@@ -98,14 +98,14 @@ struct Vector3(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
         self.y /= s
         self.z /= s
 
-    def __eq__(self, other: Vector3) -> Bool:
+    def __eq__(self, other: Vector3D) -> Bool:
         return self.x == other.x and self.y == other.y and self.z == other.z
 
-    def __ne__(self, other: Vector3) -> Bool:
+    def __ne__(self, other: Vector3D) -> Bool:
         return not (self == other)
 
     def write_to[W: Writer](self, mut writer: W):
-        writer.write("Vector3(", self.x, ", ", self.y, ", ", self.z, ")")
+        writer.write("Vector3D(", self.x, ", ", self.y, ", ", self.z, ")")
 
     def mag(self) -> Float64:
         return sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
@@ -113,32 +113,32 @@ struct Vector3(Copyable, Equatable, ImplicitlyCopyable, Movable, Writable):
     def mag_sq(self) -> Float64:
         return self.x * self.x + self.y * self.y + self.z * self.z
 
-    def normalize(self) -> Vector3:
+    def normalize(self) -> Vector3D:
         var m = self.mag()
-        return Vector3(self.x / m, self.y / m, self.z / m)
+        return Vector3D(self.x / m, self.y / m, self.z / m)
 
-    def dot(self, other: Vector3) -> Float64:
+    def dot(self, other: Vector3D) -> Float64:
         return self.x * other.x + self.y * other.y + self.z * other.z
 
-    def cross(self, other: Vector3) -> Vector3:
-        return Vector3(
+    def cross(self, other: Vector3D) -> Vector3D:
+        return Vector3D(
             self.y * other.z - self.z * other.y,
             self.z * other.x - self.x * other.z,
             self.x * other.y - self.y * other.x,
         )
 
-    def dist(self, other: Vector3) -> Float64:
+    def dist(self, other: Vector3D) -> Float64:
         return (self - other).mag()
 
-    def dist_sq(self, other: Vector3) -> Float64:
+    def dist_sq(self, other: Vector3D) -> Float64:
         return (self - other).mag_sq()
 
-    def lerp(self, other: Vector3, t: Float64) -> Vector3:
-        return Vector3(
+    def lerp(self, other: Vector3D, t: Float64) -> Vector3D:
+        return Vector3D(
             self.x + (other.x - self.x) * t,
             self.y + (other.y - self.y) * t,
             self.z + (other.z - self.z) * t,
         )
 
-    def xy(self) -> Vector2:
-        return Vector2(self.x, self.y)
+    def xy(self) -> Vector2D:
+        return Vector2D(self.x, self.y)

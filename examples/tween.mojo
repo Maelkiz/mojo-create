@@ -64,7 +64,7 @@ struct App(Program):
         var clock = Tween(1.6)
         clock.ping_pong()
 
-        # The 0-to-1 form. The hero's position comes from Vector2.lerp, which
+        # The 0-to-1 form. The hero's position comes from Vector2D.lerp, which
         # takes exactly that fraction -- one scalar tween moves a point.
         var slide = Tween(0.9, curves[_HERO])
         slide.play()
@@ -107,8 +107,8 @@ struct App(Program):
         # The hero: a point moved by lerping between two positions with the
         # tween's eased value. OUT_BACK and OUT_ELASTIC leave 0..1 mid-run, so
         # the box visibly overshoots both ends of its track.
-        var pos = Vector2(-420.0, 300.0).lerp(
-            Vector2(420.0, 300.0), self.slide.value
+        var pos = Vector2D(-420.0, 300.0).lerp(
+            Vector2D(420.0, 300.0), self.slide.value
         )
         canvas.fill(Color(235, 120, 70))
         canvas.rectangle(pos, 44, 44)

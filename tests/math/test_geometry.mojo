@@ -6,7 +6,7 @@ from std.testing import (
 )
 from std.math import pi
 from create.math.geometry import Rectangle, Circle, Line, Triangle, overlaps
-from create.math.vector2 import Vector2
+from create.math.vector2d import Vector2D
 
 
 # Rectangle — x,y is center
@@ -57,9 +57,9 @@ def test_rect_closest_point_inside() raises -> None:
     assert_equal(p.y, 1.0)
 
 
-def test_rect_closest_point_vector2() raises -> None:
+def test_rect_closest_point_vector2d() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 10.0)
-    var p = r.closest_point(Vector2(10.0, 0.0))
+    var p = r.closest_point(Vector2D(10.0, 0.0))
     assert_equal(p.x, 5.0)
     assert_equal(p.y, 0.0)
 
@@ -71,8 +71,8 @@ def test_rect_closest_point_bare_tuple() raises -> None:
     assert_equal(p.y, 0.0)
 
 
-def test_rect_vector2_int_constructor() raises -> None:
-    var r = Rectangle(Vector2(1.0, 2.0), 10, 6)
+def test_rect_vector2d_int_constructor() raises -> None:
+    var r = Rectangle(Vector2D(1.0, 2.0), 10, 6)
     assert_equal(r.x, 1.0)
     assert_equal(r.y, 2.0)
     assert_equal(r.w, 10.0)
@@ -131,9 +131,9 @@ def test_circle_closest_point_inside() raises -> None:
     assert_equal(p.y, 0.0)
 
 
-def test_circle_closest_point_vector2() raises -> None:
+def test_circle_closest_point_vector2d() raises -> None:
     var c = Circle(0.0, 0.0, 5.0)
-    var p = c.closest_point(Vector2(10.0, 0.0))
+    var p = c.closest_point(Vector2D(10.0, 0.0))
     assert_almost_equal(p.x, 5.0, atol=1e-9)
     assert_almost_equal(p.y, 0.0, atol=1e-9)
 
@@ -177,9 +177,9 @@ def test_line_closest_point_clamps_past_endpoint() raises -> None:
     assert_equal(p.y, 0.0)
 
 
-def test_line_closest_point_vector2() raises -> None:
+def test_line_closest_point_vector2d() raises -> None:
     var l = Line(0.0, 0.0, 4.0, 0.0)
-    var p = l.closest_point(Vector2(2.0, 5.0))
+    var p = l.closest_point(Vector2D(2.0, 5.0))
     assert_equal(p.x, 2.0)
     assert_equal(p.y, 0.0)
 
@@ -253,7 +253,7 @@ def test_line_intersects_t_intersection() raises -> None:
 def test_line_intersects_point_on_segment() raises -> None:
     var l = Line(0.0, 0.0, 4.0, 0.0)
     assert_true(l.intersects(2.0, 0.0))
-    assert_true(l.intersects(Vector2(2.0, 0.0)))
+    assert_true(l.intersects(Vector2D(2.0, 0.0)))
 
 
 def test_line_intersects_point_off_segment() raises -> None:
@@ -326,9 +326,9 @@ def test_triangle_center() raises -> None:
     assert_almost_equal(c.y, 2.0, atol=1e-9)
 
 
-def test_triangle_closest_point_vector2() raises -> None:
+def test_triangle_closest_point_vector2d() raises -> None:
     var t = Triangle(0.0, 0.0, 6.0, 0.0, 3.0, 6.0)
-    var p = t.closest_point(Vector2(3.0, 2.0))
+    var p = t.closest_point(Vector2D(3.0, 2.0))
     assert_equal(p.x, 3.0)
     assert_equal(p.y, 2.0)
 
@@ -370,18 +370,18 @@ def test_triangle_move_to() raises -> None:
     assert_almost_equal(t.y3, 6.0, atol=1e-9)
 
 
-def test_rect_contains_vector2() raises -> None:
+def test_rect_contains_vector2d() raises -> None:
     var r = Rectangle(0.0, 0.0, 10.0, 10.0)
-    var inside = Vector2(2.0, 2.0)
-    var outside = Vector2(8.0, 0.0)
+    var inside = Vector2D(2.0, 2.0)
+    var outside = Vector2D(8.0, 0.0)
     assert_true(r.contains(inside))
     assert_equal(r.contains(outside), False)
 
 
-def test_circle_contains_vector2() raises -> None:
+def test_circle_contains_vector2d() raises -> None:
     var c = Circle(0.0, 0.0, 5.0)
-    var inside = Vector2(3.0, 4.0)
-    var outside = Vector2(4.0, 4.0)
+    var inside = Vector2D(3.0, 4.0)
+    var outside = Vector2D(4.0, 4.0)
     assert_true(c.contains(inside))
     assert_equal(c.contains(outside), False)
 
