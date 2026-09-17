@@ -12,6 +12,7 @@ from .util import (
 )
 from .easing import Easing, ease
 from .tween import Tween
+from .point2d import Point2D
 from .vector2d import Vector2D
 from .vector3d import Vector3D
 from .matrix import (
